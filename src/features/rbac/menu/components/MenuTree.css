@@ -1,0 +1,116 @@
+/**
+ * 菜单树组件样式
+ * 支持深色模式
+ */
+
+/* 树节点基础样式 */
+.menu-tree-custom .ant-tree-treenode {
+  padding: 4px 0;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+}
+
+.menu-tree-custom .ant-tree-treenode:hover {
+  background-color: #f8fafc;
+}
+
+.dark .menu-tree-custom .ant-tree-treenode:hover {
+  background-color: rgba(51, 65, 85, 0.5);
+}
+
+/* 节点内容区域 */
+.menu-tree-custom .ant-tree-node-content-wrapper {
+  flex: 1;
+  min-width: 0;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.menu-tree-custom .ant-tree-node-content-wrapper:hover {
+  background: transparent !important;
+}
+
+/* 拖拽图标 */
+.menu-tree-custom .ant-tree-draggable-icon {
+  color: #94a3b8;
+  transition: color 0.2s ease;
+}
+
+.menu-tree-custom .ant-tree-treenode:hover .ant-tree-draggable-icon {
+  color: #3b82f6;
+}
+
+.dark .menu-tree-custom .ant-tree-draggable-icon {
+  color: #64748b;
+}
+
+.dark .menu-tree-custom .ant-tree-treenode:hover .ant-tree-draggable-icon {
+  color: #60a5fa;
+}
+
+/* 展开/收起图标 */
+.menu-tree-custom .ant-tree-switcher {
+  color: #64748b;
+  transition: color 0.2s ease;
+}
+
+.dark .menu-tree-custom .ant-tree-switcher {
+  color: #94a3b8;
+}
+
+/* 拖拽视觉反馈 */
+.menu-tree-custom .ant-tree-treenode.drag-over {
+  background-color: #eff6ff;
+  border: 2px dashed #3b82f6;
+  border-radius: 6px;
+}
+
+.dark .menu-tree-custom .ant-tree-treenode.drag-over {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: #60a5fa;
+}
+
+.menu-tree-custom .ant-tree-treenode.drag-over-gap-top {
+  border-top: 2px solid #3b82f6;
+}
+
+.dark .menu-tree-custom .ant-tree-treenode.drag-over-gap-top {
+  border-top-color: #60a5fa;
+}
+
+.menu-tree-custom .ant-tree-treenode.drag-over-gap-bottom {
+  border-bottom: 2px solid #3b82f6;
+}
+
+.dark .menu-tree-custom .ant-tree-treenode.drag-over-gap-bottom {
+  border-bottom-color: #60a5fa;
+}
+
+/* 选中状态（禁用默认选中样式） */
+.menu-tree-custom .ant-tree-treenode-selected {
+  background-color: transparent !important;
+}
+
+/* Tree连接线颜色 */
+.menu-tree-custom .ant-tree-indent-unit::before {
+  border-right-color: #e2e8f0;
+}
+
+.dark .menu-tree-custom .ant-tree-indent-unit::before {
+  border-right-color: rgba(102, 126, 234, 0.2);
+}
+
+/* 操作按钮hover效果 */
+.menu-tree-actions {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.menu-tree-node:hover .menu-tree-actions {
+  opacity: 1;
+}
+
+/* 确保菜单标题颜色不被覆盖 */
+.menu-tree-node span {
+  color: inherit !important;
+}

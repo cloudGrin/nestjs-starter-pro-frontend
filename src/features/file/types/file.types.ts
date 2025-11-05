@@ -1,0 +1,159 @@
+/**
+ * 文件管理模块类型定义
+ */
+
+/**
+ * 文件实体
+ */
+export interface FileEntity {
+  id: number;
+  originalName: string;
+  filename: string;
+  path: string;
+  url: string;
+  mimeType: string;
+  size: number;
+  module?: string;
+  tags?: string; // 数据库存储为逗号分隔的字符串（如："测试,截图"）
+  isPublic: boolean;
+  uploaderId: number;
+  uploader?: {
+    id: number;
+    username: string;
+    nickname?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * 文件上传参数
+ */
+export interface UploadFileDto {
+  file: File;
+  module?: string;
+  tags?: string;
+  isPublic?: boolean;
+  remark?: string;
+}
+
+/**
+ * 文件分片上传参数
+ */
+export interface UploadChunkDto {
+  chunk: Blob;
+  uploadId: string;
+  chunkIndex: number;
+  totalChunks: number;
+  chunkSize: number;
+  totalSize: number;
+  filename: string;
+  hash: string;
+  module?: string;
+  tags?: string;
+  isPublic?: boolean;
+  remark?: string;
+}
+
+/**
+ * 分片上传响应
+ */
+export interface ChunkUploadResponse {
+  uploadId: string;
+  chunkIndex: number;
+  totalChunks: number;
+  uploadedChunks: number[];
+  progress: number;
+  completed: boolean;
+  file?: FileEntity;
+}
+
+/**
+ * 分片上传进度
+ */
+export interface ChunkUploadProgress {
+  uploadId: string;
+  totalChunks: number;
+  uploadedChunks: number[];
+  progress: number;
+  completed: boolean;
+}
+
+/**
+ * 文件查询参数
+ */
+export interface QueryFileDto {
+  page?: number;
+  limit?: number; // 后端期望limit，不是pageSize
+  module?: string;
+  uploaderId?: number;
+  mimeType?: string;
+  keyword?: string;
+}
+
+/**
+ * 文件列表响应
+ */
+export interface FileListResponse {
+  items: FileEntity[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * 签名URL响应
+ */
+export interface SignedUrlResponse {
+  url: string;
+  expiresIn: number;
+  expiresAt: string;
+}
+
+/**
+ * 文件模块类型
+ */
+export type FileModule =
+  | 'user-avatar'
+  | 'document'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'other';
+
+/**
+ * 文件MIME类型分类
+ */
+export const FILE_TYPE_CATEGORIES = {
+  image: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
+  video: ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'],
+  audio: ['audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm', 'audio/aac'],
+  document: [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+  ],
+  archive: ['application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed'],
+} as const;
+
+/**
+ * 文件大小限制（字节）
+ */
+export const FILE_SIZE_LIMITS = {
+  image: 10 * 1024 * 1024, // 10MB
+  video: 500 * 1024 * 1024, // 500MB
+  audio: 50 * 1024 * 1024, // 50MB
+  document: 50 * 1024 * 1024, // 50MB
+  default: 100 * 1024 * 1024, // 100MB
+} as const;
+
+/**
+ * 分片大小（10MB）
+ */
+export const CHUNK_SIZE = 10 * 1024 * 1024;

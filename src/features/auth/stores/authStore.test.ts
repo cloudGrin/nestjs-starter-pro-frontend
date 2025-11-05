@@ -1,0 +1,340 @@
+/**
+ * authStore 测试
+ *
+ * 测试覆盖：
+ * - ✅ 登录流程
+ * - ✅ 登出流程
+ * - ✅ Token 刷新
+ * - ✅ 权限扁平化
+ * - ✅ LocalStorage 同步
+ */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { useAuthStore } from './authStore';
+import { authService } from '../services/auth.service';
+
+// Mock authService
+vi.mock('../services/auth.service', () => ({
+  authService: {
+    login: vi.fn(),
+    logout: vi.fn(),
+    refresh: vi.fn(),
+  },
+}));
+
+// Mock socket
+vi.mock('@/shared/utils/socket', () => ({
+  connectSocket: vi.fn(),
+  disconnectSocket: vi.fn(),
+}));
+
+// Mock app config
+vi.mock('@/shared/config/app.config', () => ({
+  appConfig: {
+    tokenKey: 'test-token',
+    refreshTokenKey: 'test-refresh-token',
+  },
+}));
+
+describe('authStore', () => {
+  beforeEach(() => {
+    // 重置 store 状态
+    useAuthStore.setState({ token: null, refreshToken: null, user: null });
+
+    // 清除 localStorage
+    localStorage.clear();
+
+    // 重置所有 mock
+    vi.clearAllMocks();
+  });
+
+  describe('login', () => {
+    it('应该成功登录并保存用户信息', async () => {
+      const mockResponse = {
+        user: {
+          id: 1,
+          username: 'testuser',
+          email: 'test@example.com',
+          roles: [
+            {
+              id: 1,
+              code: 'admin',
+              name: '管理员',
+              permissions: [
+                { id: 1, code: 'user:create', name: '创建用户' },
+                { id: 2, code: 'user:read', name: '查看用户' },
+              ],
+            },
+          ],
+        },
+        tokens: {
+          accessToken: 'mock-access-token',
+          refreshToken: 'mock-refresh-token',
+        },
+      };
+
+      vi.mocked(authService.login).mockResolvedValue(mockResponse);
+
+      await useAuthStore.getState().login('testuser', 'password123');
+
+      const state = useAuthStore.getState();
+
+      // 检查状态
+      expect(state.token).toBe('mock-access-token');
+      expect(state.refreshToken).toBe('mock-refresh-token');
+      expect(state.user).toBeDefined();
+      expect(state.user?.username).toBe('testuser');
+
+      // 检查 localStorage
+      expect(localStorage.getItem('test-token')).toBe('mock-access-token');
+      expect(localStorage.getItem('test-refresh-token')).toBe('mock-refresh-token');
+
+      // 检查 authService 被调用
+      expect(authService.login).toHaveBeenCalledWith({
+        account: 'testuser',
+        password: 'password123',
+      });
+    });
+
+    it('应该正确扁平化权限', async () => {
+      const mockResponse = {
+        user: {
+          id: 1,
+          username: 'testuser',
+          email: 'test@example.com',
+          roles: [
+            {
+              id: 1,
+              code: 'admin',
+              name: '管理员',
+              permissions: [
+                { id: 1, code: 'user:create', name: '创建用户' },
+                { id: 2, code: 'user:read', name: '查看用户' },
+              ],
+            },
+            {
+              id: 2,
+              code: 'editor',
+              name: '编辑',
+              permissions: [
+                { id: 2, code: 'user:read', name: '查看用户' }, // 重复权限
+                { id: 3, code: 'user:update', name: '更新用户' },
+              ],
+            },
+          ],
+        },
+        tokens: {
+          accessToken: 'mock-access-token',
+          refreshToken: 'mock-refresh-token',
+        },
+      };
+
+      vi.mocked(authService.login).mockResolvedValue(mockResponse);
+
+      await useAuthStore.getState().login('testuser', 'password123');
+
+      const state = useAuthStore.getState();
+
+      // 应该去重并扁平化
+      expect(state.user?.permissions).toEqual(
+        expect.arrayContaining(['user:create', 'user:read', 'user:update'])
+      );
+      expect(state.user?.permissions).toHaveLength(3); // 去重后只有3个
+    });
+
+    it('应该处理登录失败', async () => {
+      vi.mocked(authService.login).mockRejectedValue(new Error('Invalid credentials'));
+
+      await expect(
+        useAuthStore.getState().login('testuser', 'wrongpassword')
+      ).rejects.toThrow('Invalid credentials');
+
+      const state = useAuthStore.getState();
+
+      // 状态应该保持为空
+      expect(state.token).toBeNull();
+      expect(state.refreshToken).toBeNull();
+      expect(state.user).toBeNull();
+    });
+  });
+
+  describe('logout', () => {
+    it('应该成功登出并清除所有状态', async () => {
+      // 先设置登录状态
+      useAuthStore.setState({
+        token: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        user: {
+          id: 1,
+          username: 'testuser',
+          email: 'test@example.com',
+          permissions: ['user:read'],
+        } as any,
+      });
+
+      localStorage.setItem('test-token', 'mock-access-token');
+      localStorage.setItem('test-refresh-token', 'mock-refresh-token');
+
+      vi.mocked(authService.logout).mockResolvedValue(undefined);
+
+      await useAuthStore.getState().logout();
+
+      const state = useAuthStore.getState();
+
+      // 检查状态已清空
+      expect(state.token).toBeNull();
+      expect(state.refreshToken).toBeNull();
+      expect(state.user).toBeNull();
+
+      // 检查 localStorage 已清空
+      expect(localStorage.getItem('test-token')).toBeNull();
+      expect(localStorage.getItem('test-refresh-token')).toBeNull();
+
+      // 检查 authService 被调用
+      expect(authService.logout).toHaveBeenCalledWith('mock-refresh-token');
+    });
+
+    it('应该在 API 调用失败时仍然清空状态', async () => {
+      useAuthStore.setState({
+        token: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        user: {
+          id: 1,
+          username: 'testuser',
+          email: 'test@example.com',
+        } as any,
+      });
+
+      // 模拟网络错误（直接 reject）
+      vi.mocked(authService.logout).mockImplementation(() => {
+        return Promise.reject(new Error('Network error'));
+      });
+
+      // logout 会抛出错误，但 finally 块仍然会清空状态
+      try {
+        await useAuthStore.getState().logout();
+      } catch (error) {
+        // 预期会有错误，忽略即可
+      }
+
+      const state = useAuthStore.getState();
+
+      // 即使 API 失败，状态也应该被清空（finally 块执行）
+      expect(state.token).toBeNull();
+      expect(state.refreshToken).toBeNull();
+      expect(state.user).toBeNull();
+    });
+  });
+
+  describe('refreshAccessToken', () => {
+    it('应该成功刷新 access token', async () => {
+      useAuthStore.setState({
+        token: 'old-access-token',
+        refreshToken: 'mock-refresh-token',
+        user: { id: 1, username: 'testuser', email: 'test@example.com' } as any,
+      });
+
+      vi.mocked(authService.refresh).mockResolvedValue({
+        accessToken: 'new-access-token',
+      });
+
+      const result = await useAuthStore.getState().refreshAccessToken();
+
+      expect(result).toBe(true);
+
+      const state = useAuthStore.getState();
+
+      // token 应该更新
+      expect(state.token).toBe('new-access-token');
+
+      // refreshToken 和 user 应该保持不变
+      expect(state.refreshToken).toBe('mock-refresh-token');
+      expect(state.user?.username).toBe('testuser');
+
+      // 检查 localStorage
+      expect(localStorage.getItem('test-token')).toBe('new-access-token');
+
+      // 检查 authService 被调用
+      expect(authService.refresh).toHaveBeenCalledWith({
+        refreshToken: 'mock-refresh-token',
+      });
+    });
+
+    it('应该在没有 refreshToken 时返回 false', async () => {
+      useAuthStore.setState({
+        token: null,
+        refreshToken: null,
+        user: null,
+      });
+
+      const result = await useAuthStore.getState().refreshAccessToken();
+
+      expect(result).toBe(false);
+
+      // authService 不应该被调用
+      expect(authService.refresh).not.toHaveBeenCalled();
+    });
+
+    it('应该在刷新失败时清除认证信息', async () => {
+      useAuthStore.setState({
+        token: 'old-access-token',
+        refreshToken: 'mock-refresh-token',
+        user: { id: 1, username: 'testuser', email: 'test@example.com' } as any,
+      });
+
+      vi.mocked(authService.refresh).mockRejectedValue(new Error('Refresh token expired'));
+
+      const result = await useAuthStore.getState().refreshAccessToken();
+
+      expect(result).toBe(false);
+
+      const state = useAuthStore.getState();
+
+      // 状态应该被清空
+      expect(state.token).toBeNull();
+      expect(state.refreshToken).toBeNull();
+      expect(state.user).toBeNull();
+    });
+  });
+
+  describe('setUser', () => {
+    it('应该更新用户信息', () => {
+      const newUser = {
+        id: 1,
+        username: 'updateduser',
+        email: 'updated@example.com',
+        permissions: ['user:read', 'user:create'],
+      } as any;
+
+      useAuthStore.getState().setUser(newUser);
+
+      const state = useAuthStore.getState();
+
+      expect(state.user).toEqual(newUser);
+    });
+  });
+
+  describe('clearAuth', () => {
+    it('应该清除所有认证信息', () => {
+      useAuthStore.setState({
+        token: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        user: { id: 1, username: 'testuser', email: 'test@example.com' } as any,
+      });
+
+      localStorage.setItem('test-token', 'mock-access-token');
+      localStorage.setItem('test-refresh-token', 'mock-refresh-token');
+
+      useAuthStore.getState().clearAuth();
+
+      const state = useAuthStore.getState();
+
+      expect(state.token).toBeNull();
+      expect(state.refreshToken).toBeNull();
+      expect(state.user).toBeNull();
+
+      expect(localStorage.getItem('test-token')).toBeNull();
+      expect(localStorage.getItem('test-refresh-token')).toBeNull();
+    });
+  });
+});

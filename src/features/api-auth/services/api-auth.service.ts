@@ -1,0 +1,108 @@
+/**
+ * API认证服务
+ */
+import { request } from '@/shared/utils/request';
+import type {
+  ApiApp,
+  ApiAppListResponse,
+  ApiKey,
+  ApiStatistics,
+  CreateApiAppDto,
+  UpdateApiAppDto,
+  CreateApiKeyDto,
+  QueryApiAppDto,
+  QueryStatisticsDto,
+  CreateApiKeyResponse,
+} from '../types/api-auth.types';
+
+export const apiAuthService = {
+  /**
+   * 获取API应用列表
+   */
+  getApiApps: (params: QueryApiAppDto) =>
+    request.get<ApiAppListResponse>('/api-apps', { params }),
+
+  /**
+   * 获取API应用详情
+   */
+  getApiApp: (appId: string) => request.get<ApiApp>(`/api-apps/${appId}`),
+
+  /**
+   * 创建API应用
+   */
+  createApiApp: (data: CreateApiAppDto) =>
+    request.post<ApiApp>('/api-apps', data, {
+      requestOptions: {
+        messageConfig: {
+          successMessage: '创建API应用成功',
+        },
+      },
+    }),
+
+  /**
+   * 更新API应用
+   */
+  updateApiApp: (appId: string, data: UpdateApiAppDto) =>
+    request.put<ApiApp>(`/api-apps/${appId}`, data, {
+      requestOptions: {
+        messageConfig: {
+          successMessage: '更新API应用成功',
+        },
+      },
+    }),
+
+  /**
+   * 删除API应用
+   */
+  deleteApiApp: (appId: string) =>
+    request.delete(`/api-apps/${appId}`, {
+      requestOptions: {
+        confirmConfig: {
+          message: '删除应用后，所有相关的API密钥将立即失效，此操作不可恢复。确定要删除吗？',
+          title: '删除API应用',
+        },
+        messageConfig: {
+          successMessage: '删除API应用成功',
+        },
+      },
+    }),
+
+  /**
+   * 获取应用的密钥列表
+   */
+  getApiKeys: (appId: string) => request.get<ApiKey[]>(`/api-apps/${appId}/keys`),
+
+  /**
+   * 生成API密钥
+   */
+  createApiKey: (appId: string, data: CreateApiKeyDto) =>
+    request.post<CreateApiKeyResponse>(`/api-apps/${appId}/keys`, data, {
+      requestOptions: {
+        messageConfig: {
+          successMessage: 'API密钥生成成功，请立即复制并安全保存',
+        },
+      },
+    }),
+
+  /**
+   * 撤销API密钥
+   */
+  revokeApiKey: (keyId: number) =>
+    request.delete(`/api-apps/keys/${keyId}`, {
+      requestOptions: {
+        confirmConfig: {
+          message: '撤销后密钥将立即失效，使用该密钥的所有请求都将被拒绝。确定要撤销吗？',
+          title: '撤销API密钥',
+        },
+        messageConfig: {
+          successMessage: 'API密钥已撤销',
+        },
+      },
+    }),
+
+  /**
+   * 获取API使用统计
+   */
+  getStatistics: (appId: string, params: QueryStatisticsDto) =>
+    request.get<ApiStatistics>(`/api-apps/${appId}/statistics`, { params }),
+};

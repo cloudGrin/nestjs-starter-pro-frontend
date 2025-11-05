@@ -1,0 +1,36 @@
+/* 面包屑样式 - 已适配深色模式（移除硬编码颜色，使用JSX中的动态className） */
+.breadcrumb-container :global(.app-breadcrumbs) {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  line-height: 22px;
+  /* 移除硬编码颜色，由JSX动态控制 */
+}
+
+/* 面包屑列表项 - 确保垂直居中 */
+.breadcrumb-container :global(.app-breadcrumbs) :global(li) {
+  display: inline-flex;
+  align-items: center;
+}
+
+.breadcrumb-container :global(.app-breadcrumbs) :global(.ant-breadcrumb-link),
+.breadcrumb-container :global(.app-breadcrumbs) :global(.ant-breadcrumb-separator) {
+  /* 移除硬编码颜色，由JSX动态控制 */
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 最后一项（当前页）使用主文本色 + 加粗 */
+.breadcrumb-container :global(.app-breadcrumbs) :global(li:last-child) :global(.ant-breadcrumb-link) {
+  font-weight: 500;
+  /* 移除硬编码颜色，由JSX动态控制 */
+}
+
+/* 文本溢出处理 */
+.breadcrumb-container :global(.app-breadcrumbs) :global(.ant-breadcrumb-link) {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

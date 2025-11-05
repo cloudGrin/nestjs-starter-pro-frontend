@@ -1,0 +1,191 @@
+/**
+ * 主题CSS变量定义
+ *
+ * 说明：
+ * - 使用CSS变量统一管理颜色，避免硬编码
+ * - 支持深色模式（通过.dark类切换）
+ * - 保持原有的视觉效果（渐变、毛玻璃、品牌色等）
+ */
+
+@layer base {
+  :root {
+    /* ===== 品牌色 ===== */
+    --brand-primary: 102 126 234;           /* #667eea - 蓝紫色 */
+    --brand-secondary: 118 75 162;          /* #764ba2 - 紫色 */
+    --brand-link: 145 209 255;              /* #91d1ff - 亮蓝色（深色模式链接） */
+
+    /* ===== 基础背景色（浅色模式） ===== */
+    --bg-primary: 255 255 255;              /* #ffffff - 主背景（Header、Card等） */
+    --bg-secondary: 249 250 251;            /* #f9fafb - 次级背景（Content区域） */
+    --bg-tertiary: 248 250 252;             /* #f8fafc - 第三级背景（Sidebar顶部） */
+    --bg-quaternary: 241 245 249;           /* #f1f5f9 - 第四级背景（Sidebar底部） */
+
+    /* ===== 文字色（浅色模式） ===== */
+    --text-primary: 15 23 42;               /* #0f172a - slate-900 主文字 */
+    --text-secondary: 100 116 139;          /* #64748b - slate-600 次要文字 */
+    --text-tertiary: 148 163 184;           /* #94a3b8 - slate-400 辅助文字 */
+
+    /* ===== 边框色（浅色模式） ===== */
+    --border-primary: 226 232 240;          /* #e2e8f0 - slate-200 主边框 */
+    --border-secondary: 241 245 249;        /* #f1f5f9 - slate-100 次级边框 */
+
+    /* ===== 阴影（浅色模式） ===== */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);                    /* 小阴影 */
+    --shadow-md: 2px 0 12px rgba(0, 0, 0, 0.04);                   /* 中阴影（Sidebar） */
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);                   /* 大阴影 */
+
+    /* ===== 毛玻璃效果 ===== */
+    --backdrop-blur: none;                  /* 浅色模式不需要毛玻璃 */
+  }
+
+  /* ===== 深色模式 ===== */
+  .dark {
+    /* 背景色（深色模式） */
+    --bg-primary: 15 23 42;                 /* slate-900 - 主背景 */
+    --bg-secondary: 30 41 59;               /* slate-800 - 次级背景 */
+    --bg-tertiary: 51 65 85;                /* slate-700 - 第三级背景 */
+
+    /* 文字色（深色模式） */
+    --text-primary: 248 250 252;            /* slate-50 - 主文字 */
+    --text-secondary: 203 213 225;          /* slate-300 - 次要文字 */
+    --text-tertiary: 163 163 163;           /* #a3a3a3 - 辅助文字 */
+
+    /* 边框色（深色模式 - 使用品牌色半透明） */
+    --border-primary: 102 126 234 / 0.2;    /* 品牌色20%透明度 */
+    --border-secondary: 102 126 234 / 0.1;  /* 品牌色10%透明度 */
+
+    /* 阴影（深色模式 - 使用品牌色发光） */
+    --shadow-sm: 0 1px 8px rgba(102, 126, 234, 0.15), inset 0 1px 0 rgba(102, 126, 234, 0.1);
+    --shadow-md: 2px 0 24px rgba(102, 126, 234, 0.1), inset -1px 0 0 rgba(102, 126, 234, 0.15);
+    --shadow-lg: 0 12px 48px rgba(102, 126, 234, 0.15);
+
+    /* 毛玻璃效果（深色模式） */
+    --backdrop-blur: blur(20px);            /* 20px模糊 */
+  }
+}
+
+/* ===== 渐变背景类（无法用Tailwind实现的复杂渐变） ===== */
+
+/* Header渐变背景 */
+.header-bg {
+  background: #ffffff !important;
+  border-bottom-color: #e2e8f0 !important; /* 浅色模式：slate-200 */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+.dark .header-bg {
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.9) 0%,
+    rgba(15, 23, 42, 0.95) 100%
+  ) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom-color: rgba(102, 126, 234, 0.2) !important; /* 深色模式：品牌色半透明 */
+  box-shadow: 0 1px 8px rgba(102, 126, 234, 0.15), inset 0 1px 0 rgba(102, 126, 234, 0.1) !important;
+}
+
+/* Sidebar渐变背景 */
+.sidebar-bg {
+  background: linear-gradient(
+    180deg,
+    #f8fafc 0%,
+    #f1f5f9 100%
+  ) !important;
+  border-right-color: #e2e8f0 !important; /* 浅色模式：slate-200 */
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.04) !important;
+}
+
+.dark .sidebar-bg {
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.95) 0%,
+    rgba(15, 23, 42, 0.98) 100%
+  ) !important;
+  backdrop-filter: blur(20px) !important;
+  border-right-color: rgba(102, 126, 234, 0.2) !important; /* 深色模式：品牌色半透明 */
+  box-shadow: 2px 0 24px rgba(102, 126, 234, 0.1), inset -1px 0 0 rgba(102, 126, 234, 0.15) !important;
+}
+
+/* Sidebar Logo区域渐变背景 */
+.sidebar-logo-bg {
+  background: transparent !important;
+}
+
+.dark .sidebar-logo-bg {
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  ) !important;
+}
+
+/* MainLayout Content区域径向渐变背景 */
+.content-bg {
+  background: #f9fafb !important;
+}
+
+.dark .content-bg {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  background-image:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(102, 126, 234, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 80%,
+      rgba(118, 75, 162, 0.08) 0%,
+      transparent 50%
+    ) !important;
+}
+
+/* ===== Ant Design组件深色模式样式覆盖 ===== */
+
+/* Card玻璃拟态样式 */
+.dark .ant-card {
+  background: rgba(30, 41, 59, 0.6) !important;
+  border-color: rgba(102, 126, 234, 0.2) !important;
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.08) !important;
+}
+
+.dark .ant-card-head {
+  background: rgba(30, 41, 59, 0.4) !important;
+  border-color: rgba(102, 126, 234, 0.2) !important;
+}
+
+/* Table玻璃拟态样式 */
+.dark .ant-table {
+  background: rgba(30, 41, 59, 0.4) !important;
+}
+
+.dark .ant-table-thead > tr > th {
+  background: rgba(30, 41, 59, 0.5) !important;
+  color: rgb(var(--text-secondary)) !important;
+  border-color: rgba(102, 126, 234, 0.15) !important;
+}
+
+/* Modal玻璃拟态样式 */
+.dark .ant-modal-content {
+  background: rgba(30, 41, 59, 0.9) !important;
+  box-shadow: 0 12px 48px rgba(102, 126, 234, 0.15) !important;
+}
+
+.dark .ant-modal-header {
+  background: rgba(30, 41, 59, 0.95) !important;
+  border-color: rgba(102, 126, 234, 0.2) !important;
+}
+
+/* ===== 工具类 ===== */
+
+/* 品牌色渐变文字 */
+.text-brand-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 平滑过渡 */
+.transition-theme {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
