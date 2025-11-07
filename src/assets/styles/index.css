@@ -4,6 +4,8 @@
 /* 主题CSS变量 */
 @import "./theme.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* 全局样式 - 使用 @layer base 确保优先级低于工具类 */
 @layer base {
   * {
