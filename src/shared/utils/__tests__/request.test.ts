@@ -422,6 +422,38 @@ describe('request - Axios封装', () => {
       expect(sessionExpiredListener).toHaveBeenCalled();
       window.removeEventListener('auth:session-expired', sessionExpiredListener);
     });
+
+    it('Token 刷新失败时应该让等待队列中的并发请求一起失败', async () => {
+      localStorage.setItem(appConfig.tokenKey, 'expired-token');
+      localStorage.setItem(appConfig.refreshTokenKey, 'invalid-refresh-token');
+
+      refreshMock.onPost('/auth/refresh').reply(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => resolve([401]), 10);
+          })
+      );
+      mock.onGet('/users').replyOnce(401);
+      mock.onGet('/roles').replyOnce(401);
+
+      const firstRequest = request.get('/users');
+      const secondRequest = request.get('/roles');
+      let secondRequestState = 'pending';
+
+      secondRequest.then(
+        () => {
+          secondRequestState = 'resolved';
+        },
+        () => {
+          secondRequestState = 'rejected';
+        }
+      );
+
+      await expect(firstRequest).rejects.toThrow();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(secondRequestState).toBe('rejected');
+    });
   });
 
   describe('错误处理 - 403 权限不足', () => {

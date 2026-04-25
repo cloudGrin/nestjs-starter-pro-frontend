@@ -11,7 +11,7 @@ import {
   useUpdateApiApp,
   useDeleteApiApp,
 } from '../hooks/useApiApps';
-import { PageWrap, TableActions, StatusBadge } from '@/shared/components';
+import { PageWrap, TableActions, StatusBadge, PermissionGuard } from '@/shared/components';
 import { formatDate } from '@/shared/utils';
 import type { ApiApp, CreateApiAppDto, UpdateApiAppDto } from '../types/api-auth.types';
 import type { ColumnsType } from 'antd/es/table';
@@ -211,9 +211,11 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
     <PageWrap
       title="API应用管理"
       titleRight={
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          创建应用
-        </Button>
+        <PermissionGuard permissions={['api-app:create']}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            创建应用
+          </Button>
+        </PermissionGuard>
       }
     >
       <Card>

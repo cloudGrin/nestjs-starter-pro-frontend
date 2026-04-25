@@ -19,7 +19,7 @@ import { PlusOutlined, DeleteOutlined, CopyOutlined, EyeInvisibleOutlined } from
 import { useForm, Controller } from 'react-hook-form';
 import dayjs from 'dayjs';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey } from '../hooks/useApiApps';
-import { TableActions, StatusBadge } from '@/shared/components';
+import { TableActions, StatusBadge, PermissionGuard } from '@/shared/components';
 import { formatDate } from '@/shared/utils';
 import type { ApiKey, CreateApiKeyDto, CreateApiKeyResponse } from '../types/api-auth.types';
 import type { ColumnsType } from 'antd/es/table';
@@ -201,9 +201,11 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
     <div>
       <div className="mb-4 flex justify-between items-center">
         <Text strong>API密钥列表</Text>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          生成密钥
-        </Button>
+        <PermissionGuard permissions={['api-app:key:create']}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            生成密钥
+          </Button>
+        </PermissionGuard>
       </div>
 
       <Table

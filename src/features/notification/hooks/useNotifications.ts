@@ -35,86 +35,81 @@ export const useNotifications = (params: QueryNotificationDto) => {
  * 通过 WebSocket 实时接收推送，无需轮询
  */
 export const useUnreadNotifications = () => {
+  return useQuery({
+    queryKey: notificationKeys.unread(),
+    queryFn: () => notificationService.getUnreadList(),
+  });
+};
+
+type NotificationSocket = NonNullable<ReturnType<typeof getSocket>>;
+
+/**
+ * 统一桥接 WebSocket 通知事件到 TanStack Query 缓存刷新。
+ *
+ * 该组件应在应用根部挂载一次，避免多个 useUnreadNotifications 调用重复注册监听器。
+ */
+export function NotificationEventsBridge() {
   const queryClient = useQueryClient();
 
   // 监听 WebSocket 通知事件
   useEffect(() => {
-    // 定义事件处理器
-    const handleNotification = (notification: unknown) => {
-      console.log('[WebSocket] New notification received:', notification);
-      // 刷新未读通知列表
+    const refreshNotificationQueries = () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.unread() });
       queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
     };
 
-    const handleNotificationRead = (data: { id: number }) => {
-      console.log('[WebSocket] Notification marked as read:', data.id);
-      queryClient.invalidateQueries({ queryKey: notificationKeys.unread() });
-      queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
+    const handleNotification = () => refreshNotificationQueries();
+    const handleNotificationRead = () => refreshNotificationQueries();
+    const handleNotificationReadAll = () => refreshNotificationQueries();
+
+    const register = (socket: NotificationSocket) => {
+      socket.on('notification', handleNotification);
+      socket.on('notification:read', handleNotificationRead);
+      socket.on('notification:readAll', handleNotificationReadAll);
     };
 
-    const handleNotificationReadAll = (data: { affected: number }) => {
-      console.log('[WebSocket] All notifications marked as read:', data.affected);
-      queryClient.invalidateQueries({ queryKey: notificationKeys.unread() });
-      queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
+    const unregister = (socket: NotificationSocket) => {
+      socket.off('notification', handleNotification);
+      socket.off('notification:read', handleNotificationRead);
+      socket.off('notification:readAll', handleNotificationReadAll);
     };
+
+    let activeSocket: NotificationSocket | null = null;
 
     // 尝试获取 socket 并注册事件
     const tryRegisterEvents = () => {
       const socket = getSocket();
-      if (!socket || !socket.connected) {
-        return false;
+      if (!socket?.connected || socket === activeSocket) {
+        return;
       }
 
-      console.log('[useUnreadNotifications] Registering WebSocket event listeners');
-      socket.on('notification', handleNotification);
-      socket.on('notification:read', handleNotificationRead);
-      socket.on('notification:readAll', handleNotificationReadAll);
-      return true;
+      if (activeSocket) {
+        unregister(activeSocket);
+      }
+
+      register(socket);
+      activeSocket = socket;
     };
 
     // 立即尝试注册
-    const registered = tryRegisterEvents();
+    tryRegisterEvents();
 
-    // 如果未注册成功，设置定时器等待连接
-    let retryTimer: ReturnType<typeof setInterval> | null = null;
-    if (!registered) {
-      retryTimer = setInterval(() => {
-        if (tryRegisterEvents()) {
-          // 注册成功，清除定时器
-          if (retryTimer) {
-            clearInterval(retryTimer);
-            retryTimer = null;
-          }
-        }
-      }, 1000); // 每秒检查一次
-    }
+    // Socket 会在登录后或 token 刷新后建立/替换，这里持续检查实例变化。
+    const retryTimer = setInterval(tryRegisterEvents, 1000);
 
     // 清理函数
     return () => {
-      // 清除定时器
-      if (retryTimer) {
-        clearInterval(retryTimer);
-      }
+      clearInterval(retryTimer);
 
       // 移除事件监听
-      const socket = getSocket();
-      if (socket) {
-        socket.off('notification', handleNotification);
-        socket.off('notification:read', handleNotificationRead);
-        socket.off('notification:readAll', handleNotificationReadAll);
-        console.log('[useUnreadNotifications] Removed WebSocket event listeners');
+      if (activeSocket) {
+        unregister(activeSocket);
       }
     };
   }, [queryClient]);
 
-  return useQuery({
-    queryKey: notificationKeys.unread(),
-    queryFn: () => notificationService.getUnreadList(),
-    // ❌ 不再使用轮询，改用 WebSocket 推送
-    // refetchInterval: 30000,
-  });
-};
+  return null;
+}
 
 /**
  * 标记单条通知为已读

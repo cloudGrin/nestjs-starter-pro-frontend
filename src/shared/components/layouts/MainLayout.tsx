@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Layout } from 'antd';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/authStore';
+import { NotificationEventsBridge } from '@/features/notification/hooks/useNotifications';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 
@@ -28,6 +29,7 @@ export function MainLayout() {
 
   return (
     <Layout className="min-h-screen">
+      <NotificationEventsBridge />
       <Sidebar collapsed={collapsed} />
 
       <Layout className="content-bg transition-theme">

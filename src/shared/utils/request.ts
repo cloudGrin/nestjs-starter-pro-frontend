@@ -306,20 +306,31 @@ attachApiValidator();
  * RefreshToken 并发控制
  */
 let isRefreshing = false;
-let refreshSubscribers: Array<(token: string) => void> = [];
+let refreshSubscribers: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
 
 /**
  * 添加到刷新队列
  */
-function subscribeTokenRefresh(callback: (token: string) => void) {
-  refreshSubscribers.push(callback);
+function subscribeTokenRefresh(
+  resolve: (token: string) => void,
+  reject: (error: unknown) => void
+) {
+  refreshSubscribers.push({ resolve, reject });
 }
 
 /**
  * 通知所有等待的请求
  */
 function onRefreshed(token: string) {
-  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers.forEach((subscriber) => subscriber.resolve(token));
+  refreshSubscribers = [];
+}
+
+function onRefreshFailed(error: unknown) {
+  refreshSubscribers.forEach((subscriber) => subscriber.reject(error));
   refreshSubscribers = [];
 }
 
@@ -372,11 +383,11 @@ axiosInstance.interceptors.response.use(
 
       if (isRefreshing) {
         // 如果正在刷新，将请求加入队列
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
           subscribeTokenRefresh((token: string) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
             resolve(axiosInstance(originalRequest));
-          });
+          }, reject);
         });
       }
 
@@ -408,6 +419,7 @@ axiosInstance.interceptors.response.use(
           return axiosInstance(originalRequest);
         } catch (refreshError) {
           expireSession();
+          onRefreshFailed(refreshError);
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
@@ -415,6 +427,7 @@ axiosInstance.interceptors.response.use(
       } else {
         // 没有 refreshToken，直接跳转登录
         isRefreshing = false;
+        onRefreshFailed(error);
         expireSession();
         return Promise.reject(error);
       }
