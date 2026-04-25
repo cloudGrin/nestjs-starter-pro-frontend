@@ -1,34 +1,20 @@
 /**
- * 表格操作列组件（企业级设计）
+ * 表格操作列组件
  *
  * 用途：
- * 1. 统一的表格操作按钮样式（现代化hover效果）
+ * 1. 统一的表格操作按钮样式
  * 2. 权限控制
  * 3. 超过3个按钮自动折叠到下拉菜单
- * 4. 支持多种操作类型：按钮、开关、分隔线
- * 5. 微交互：hover放大、危险操作红色突出
  *
  * @example
- * // 基础按钮用法（向后兼容）
  * <TableActions
  *   actions={[
  *     { label: '编辑', onClick: handleEdit },
  *     { label: '删除', onClick: handleDelete, danger: true, permission: 'user:delete' },
  *   ]}
  * />
- *
- * @example
- * // 带类型的高级用法
- * <TableActions
- *   actions={[
- *     { type: 'switch', checked: true, onChange: handleToggle, tooltip: '启用/禁用', permission: 'user:update' },
- *     { type: 'divider' },
- *     { type: 'button', label: '编辑', icon: <EditOutlined />, onClick: handleEdit },
- *     { type: 'button', label: '删除', onClick: handleDelete, danger: true },
- *   ]}
- * />
  */
-import { Button, Dropdown, Space, Switch, Divider, Tooltip } from 'antd';
+import { Button, Dropdown, Space, Tooltip } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
 import { usePermission } from '@/shared/hooks';
 import type { NonEmptyArray } from '@/shared/hooks/usePermission';
@@ -43,50 +29,19 @@ interface BaseAction {
   tooltip?: string;
 }
 
-/** 按钮操作 */
 interface ButtonAction extends BaseAction {
-  /** 操作类型 */
   type?: 'button';
-  /** 按钮文字 */
   label: string;
-  /** 点击回调 */
   onClick: () => void;
-  /** 是否为危险操作 */
   danger?: boolean;
-  /** 是否禁用 */
   disabled?: boolean;
-  /** 加载状态 */
   loading?: boolean;
-  /** 图标 */
   icon?: React.ReactNode;
 }
 
-/** 开关操作 */
-interface SwitchAction extends BaseAction {
-  /** 操作类型 */
-  type: 'switch';
-  /** 开关状态 */
-  checked: boolean;
-  /** 状态变化回调 */
-  onChange: (checked: boolean) => void;
-  /** 加载状态 */
-  loading?: boolean;
-  /** 是否禁用 */
-  disabled?: boolean;
-}
-
-/** 分隔线 */
-interface DividerAction {
-  /** 操作类型 */
-  type: 'divider';
-}
-
-/** 操作类型联合 */
-type Action = ButtonAction | SwitchAction | DividerAction;
-
 interface TableActionsProps {
   /** 操作列表 */
-  actions: Action[];
+  actions: ButtonAction[];
   /** 最多显示几个按钮（超过的折叠到下拉菜单） */
   maxVisible?: number;
 }
@@ -97,8 +52,7 @@ export function TableActions({ actions, maxVisible = 3 }: TableActionsProps) {
   /**
    * 检查是否有权限访问某个操作
    */
-  const checkPermission = (action: Action): boolean => {
-    if (action.type === 'divider') return true;
+  const checkPermission = (action: ButtonAction): boolean => {
     if (!action.permission) return true;
     const permissions: string[] = Array.isArray(action.permission)
       ? action.permission
@@ -110,34 +64,7 @@ export function TableActions({ actions, maxVisible = 3 }: TableActionsProps) {
   /**
    * 渲染单个操作
    */
-  const renderAction = (action: Action, index: number): React.ReactNode => {
-    // 渲染分隔线
-    if (action.type === 'divider') {
-      return <Divider key={`divider-${index}`} type="vertical" className="my-0" />;
-    }
-
-    // 渲染开关
-    if (action.type === 'switch') {
-      const switchElement = (
-        <Switch
-          checked={action.checked}
-          onChange={action.onChange}
-          loading={action.loading}
-          disabled={action.disabled}
-          size="small"
-        />
-      );
-
-      return action.tooltip ? (
-        <Tooltip key={`switch-${index}`} title={action.tooltip}>
-          {switchElement}
-        </Tooltip>
-      ) : (
-        <span key={`switch-${index}`}>{switchElement}</span>
-      );
-    }
-
-    // 渲染按钮（默认类型，企业级设计）
+  const renderAction = (action: ButtonAction, index: number): React.ReactNode => {
     const button = (
       <Button
         type="text"
@@ -175,27 +102,17 @@ export function TableActions({ actions, maxVisible = 3 }: TableActionsProps) {
     return <span className="text-gray-400">-</span>;
   }
 
-  // 将操作分为两类：固定显示的（switch、divider）和可折叠的（button）
-  const fixedActions = visibleActions.filter(
-    (action) => action.type === 'switch' || action.type === 'divider'
-  );
-  const collapsibleActions = visibleActions.filter(
-    (action) => !action.type || action.type === 'button'
-  ) as ButtonAction[];
-
-  // 如果可折叠的按钮数量 <= maxVisible，全部显示
-  if (collapsibleActions.length <= maxVisible) {
+  if (visibleActions.length <= maxVisible) {
     return (
       <Space size="small">
-        {fixedActions.map((action, index) => renderAction(action, index))}
-        {collapsibleActions.map((action, index) => renderAction(action, index + fixedActions.length))}
+        {visibleActions.map((action, index) => renderAction(action, index))}
       </Space>
     );
   }
 
-  // 如果可折叠的按钮数量 > maxVisible，前面显示按钮，后面折叠到下拉菜单
-  const buttonActions = collapsibleActions.slice(0, maxVisible - 1);
-  const dropdownActions = collapsibleActions.slice(maxVisible - 1);
+  // 如果按钮数量 > maxVisible，前面显示按钮，后面折叠到下拉菜单
+  const buttonActions = visibleActions.slice(0, maxVisible - 1);
+  const dropdownActions = visibleActions.slice(maxVisible - 1);
 
   const menuItems: MenuProps['items'] = dropdownActions.map((action, index) => ({
     key: index,
@@ -208,8 +125,7 @@ export function TableActions({ actions, maxVisible = 3 }: TableActionsProps) {
 
   return (
     <Space size="small">
-      {fixedActions.map((action, index) => renderAction(action, index))}
-      {buttonActions.map((action, index) => renderAction(action, index + fixedActions.length))}
+      {buttonActions.map((action, index) => renderAction(action, index))}
 
       <Dropdown
         menu={{

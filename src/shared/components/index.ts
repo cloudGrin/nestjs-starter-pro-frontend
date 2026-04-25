@@ -17,18 +17,6 @@ export { EmptyState } from './feedback/EmptyState';
 // 显示组件
 export { StatusBadge } from './display/StatusBadge';
 
-// 插画组件
-export {
-  EmptyIllustration,
-  NotFoundIllustration,
-  NoAccessIllustration,
-  ErrorIllustration,
-  NoSearchResultIllustration,
-  LoadingIllustration,
-  SuccessIllustration,
-  CongratulationIllustration,
-} from './illustrations';
-
 // 认证组件
 export { PermissionGuard } from './auth/PermissionGuard';
 export { ProtectedRoute } from './auth/ProtectedRoute';

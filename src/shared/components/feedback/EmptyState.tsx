@@ -3,7 +3,7 @@
  *
  * 用途：
  * 1. 数据为空时的友好提示（现代化动画设计）
- * 2. 支持自定义图标、文案、操作按钮、SVG插画
+ * 2. 支持自定义图标、文案、操作按钮、空状态插画
  * 3. 淡入动画 + 现代化插画
  *
  * @example
@@ -16,11 +16,7 @@
  *
  * @example
  * // 使用自定义插画
- * <EmptyState
- *   illustration={<NoSearchResultIllustration />}
- *   title="搜索无结果"
- *   description="换个关键词试试吧"
- * />
+ * <EmptyState illustration={<CustomIllustration />} title="暂无数据" />
  */
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
