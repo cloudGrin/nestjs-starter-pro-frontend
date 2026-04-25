@@ -26,5 +26,5 @@ All notable changes to this project will be documented in this file.
 - Vitest test setup for unit and component tests.
 
 ### Changed
-- Project renamed to `nestjs-starter-pro-web`.
+- Project renamed to `home-web`.
 - Frontend aligned with the simplified `home-admin` Swagger contract.

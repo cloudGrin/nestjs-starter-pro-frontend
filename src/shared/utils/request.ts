@@ -274,7 +274,7 @@ export const refreshAxios = axios.create({
 });
 
 /**
- * 请求拦截器：添加 Token、参数验证、二次确认
+ * 请求拦截器：添加 Token、二次确认
  */
 axiosInstance.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {

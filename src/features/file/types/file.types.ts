@@ -27,17 +27,6 @@ export interface FileEntity {
 }
 
 /**
- * 文件上传参数
- */
-export interface UploadFileDto {
-  file: File;
-  module?: string;
-  tags?: string;
-  isPublic?: boolean;
-  remark?: string;
-}
-
-/**
  * 文件查询参数
  */
 export interface QueryFileDto {
@@ -74,26 +63,6 @@ export type FileModule =
   | 'video'
   | 'audio'
   | 'other';
-
-/**
- * 文件MIME类型分类
- */
-export const FILE_TYPE_CATEGORIES = {
-  image: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
-  video: ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'],
-  audio: ['audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm', 'audio/aac'],
-  document: [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'text/plain',
-  ],
-  archive: ['application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed'],
-} as const;
 
 /**
  * 文件大小限制（字节）

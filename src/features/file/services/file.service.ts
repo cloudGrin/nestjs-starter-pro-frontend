@@ -52,13 +52,6 @@ export const getFiles = async (params: QueryFileDto): Promise<FileListResponse> 
 };
 
 /**
- * 获取文件详情
- */
-export const getFileById = async (id: number): Promise<FileEntity> => {
-  return await request.get<FileEntity>(`${BASE_URL}/${id}`);
-};
-
-/**
  * 下载文件
  */
 export const downloadFile = async (id: number, filename?: string): Promise<void> => {

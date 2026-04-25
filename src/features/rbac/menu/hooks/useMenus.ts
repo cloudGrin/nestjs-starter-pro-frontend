@@ -50,17 +50,6 @@ export function useUserMenus(options?: { enabled?: boolean }) {
 }
 
 /**
- * 获取菜单详情
- */
-export function useMenu(id: number) {
-  return useQuery({
-    queryKey: ['menus', id],
-    queryFn: () => menuService.getMenu(id),
-    enabled: !!id,
-  });
-}
-
-/**
  * 创建菜单
  */
 export function useCreateMenu() {
@@ -83,9 +72,8 @@ export function useUpdateMenu() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateMenuDto }) =>
       menuService.updateMenu(id, data),
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['menus'] });
-      queryClient.invalidateQueries({ queryKey: ['menus', variables.id] });
     },
   });
 }
@@ -98,32 +86,6 @@ export function useDeleteMenu() {
 
   return useMutation({
     mutationFn: (id: number) => menuService.deleteMenu(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['menus'] });
-    },
-  });
-}
-
-/**
- * 验证路径唯一性
- */
-export function useValidatePath(path: string, excludeId?: number) {
-  return useQuery({
-    queryKey: ['menus', 'validate-path', path, excludeId],
-    queryFn: () => menuService.validatePath(path, excludeId),
-    enabled: !!path,
-  });
-}
-
-/**
- * 批量更新状态
- */
-export function useBatchUpdateStatus() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ menuIds, isActive }: { menuIds: number[]; isActive: boolean }) =>
-      menuService.batchUpdateStatus(menuIds, isActive),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['menus'] });
     },

@@ -19,17 +19,6 @@ export const useFiles = (params: QueryFileDto) => {
 };
 
 /**
- * 获取文件详情
- */
-export const useFile = (id: number) => {
-  return useQuery({
-    queryKey: [FILE_QUERY_KEY, 'detail', id],
-    queryFn: () => fileService.getFileById(id),
-    enabled: !!id,
-  });
-};
-
-/**
  * 上传文件（直传）
  */
 export const useUploadFile = () => {

@@ -90,25 +90,3 @@ export interface UpdateMenuDto {
   meta?: Record<string, unknown>;
   remark?: string;
 }
-
-/**
- * 移动菜单DTO
- */
-export interface MoveMenuDto {
-  targetParentId: number | null;
-}
-
-/**
- * 路径验证响应
- */
-export interface ValidatePathResponse {
-  isUnique: boolean;
-}
-
-/**
- * 批量更新菜单状态DTO
- */
-export interface BatchUpdateMenuStatusDto {
-  menuIds: number[];
-  isActive: boolean;
-}

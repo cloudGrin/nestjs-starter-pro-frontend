@@ -1,6 +1,6 @@
 {
-  "name": "nestjs-starter-pro-web",
-  "private": false,
+  "name": "home-web",
+  "private": true,
   "version": "2.0.0",
   "type": "module",
   "packageManager": "pnpm@10.3.0",
@@ -8,17 +8,8 @@
     "node": ">=20.19.0 || >=22.12.0",
     "pnpm": ">=9"
   },
-  "description": "Frontend for NestJS Starter Pro - A lightweight, production-ready admin dashboard built with React 18 + TypeScript 5 + Ant Design 5",
-  "author": "NestJS Starter Pro Team",
+  "description": "Frontend management console for home-admin.",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/YOUR_USERNAME/nestjs-starter-pro-web.git"
-  },
-  "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/nestjs-starter-pro-web/issues"
-  },
-  "homepage": "https://github.com/YOUR_USERNAME/nestjs-starter-pro-web#readme",
   "keywords": [
     "react",
     "typescript",
@@ -29,11 +20,7 @@
     "rbac",
     "zustand",
     "tanstack-query",
-    "tailwindcss",
-    "starter",
-    "boilerplate",
-    "lightweight",
-    "production-ready"
+    "tailwindcss"
   ],
   "scripts": {
     "dev": "vite",

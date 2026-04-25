@@ -9,7 +9,6 @@ import type {
   QueryMenuDto,
   CreateMenuDto,
   UpdateMenuDto,
-  ValidatePathResponse,
 } from '../types/menu.types';
 
 export const menuService = {
@@ -28,11 +27,6 @@ export const menuService = {
    * 获取当前用户菜单树（用于动态渲染）
    */
   getUserMenus: () => request.get<MenuTreeNode[]>('/menus/user-menus'),
-
-  /**
-   * 获取菜单详情
-   */
-  getMenu: (id: number) => request.get<Menu>(`/menus/${id}`),
 
   /**
    * 创建菜单
@@ -70,26 +64,6 @@ export const menuService = {
         },
         messageConfig: {
           successMessage: '删除菜单成功',
-        },
-      },
-    }),
-
-  /**
-   * 验证路径唯一性
-   */
-  validatePath: (path: string, excludeId?: number) =>
-    request.get<ValidatePathResponse>('/menus/validate-path', {
-      params: { path, excludeId },
-    }),
-
-  /**
-   * 批量启用/禁用菜单
-   */
-  batchUpdateStatus: (menuIds: number[], isActive: boolean) =>
-    request.patch('/menus/batch-status', { menuIds, isActive }, {
-      requestOptions: {
-        messageConfig: {
-          successMessage: `批量${isActive ? '启用' : '禁用'}菜单成功`,
         },
       },
     }),

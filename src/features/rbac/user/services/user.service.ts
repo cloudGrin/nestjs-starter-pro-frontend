@@ -20,11 +20,6 @@ export const userService = {
     request.get<UserListResponse>('/users', { params }),
 
   /**
-   * 获取用户详情
-   */
-  getUser: (id: number) => request.get<User>(`/users/${id}`),
-
-  /**
    * 创建用户
    */
   createUser: (data: CreateUserDto) =>
@@ -65,23 +60,6 @@ export const userService = {
     }),
 
   /**
-   * 批量删除用户
-   */
-  batchDeleteUsers: (ids: number[]) =>
-    request.delete('/users/batch', {
-      data: { ids },
-      requestOptions: {
-        confirmConfig: {
-          message: `确定要删除选中的 ${ids.length} 个用户吗？删除后可以从回收站恢复。`,
-          title: '批量删除用户',
-        },
-        messageConfig: {
-          successMessage: `成功删除 ${ids.length} 个用户`,
-        },
-      },
-    }),
-
-  /**
    * 分配角色
    */
   assignRoles: (id: number, data: AssignRolesDto) =>
@@ -89,24 +67,6 @@ export const userService = {
       requestOptions: {
         messageConfig: {
           successMessage: '分配角色成功',
-        },
-      },
-    }),
-
-  /**
-   * 获取用户权限列表
-   */
-  getUserPermissions: (id: number) =>
-    request.get<{ permissions: string[] }>(`/users/${id}/permissions`),
-
-  /**
-   * 启用/禁用用户
-   */
-  toggleUserStatus: (id: number, enabled: boolean) =>
-    request.put(`/users/${id}/${enabled ? 'enable' : 'disable'}`, undefined, {
-      requestOptions: {
-        messageConfig: {
-          successMessage: enabled ? '用户已启用' : '用户已禁用',
         },
       },
     }),

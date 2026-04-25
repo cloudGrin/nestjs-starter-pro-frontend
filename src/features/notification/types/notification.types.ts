@@ -52,22 +52,6 @@ export interface Notification {
 }
 
 /**
- * 创建通知DTO
- */
-export interface CreateNotificationDto {
-  title: string;
-  content: string;
-  type: NotificationType;
-  priority: NotificationPriority;
-  recipientIds?: number[]; // 指定接收用户
-  isBroadcast?: boolean; // true表示广播给所有用户
-  channels?: Array<'internal' | 'bark' | 'feishu'>;
-  sendExternalWhenOffline?: boolean;
-  metadata?: Record<string, unknown>;
-  expireAt?: string;
-}
-
-/**
  * 查询通知DTO
  */
 export interface QueryNotificationDto {

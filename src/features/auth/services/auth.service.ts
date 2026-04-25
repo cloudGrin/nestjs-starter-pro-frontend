@@ -1,6 +1,5 @@
 import { request } from '@/shared/utils/request';
 import type { LoginDto, LoginResponse } from '../types/auth.types';
-import type { User } from '@/shared/types/user.types';
 
 /**
  * 认证服务
@@ -23,9 +22,4 @@ export const authService = {
    */
   logout: (refreshToken?: string) =>
     request.post('/auth/logout', { refreshToken }),
-
-  /**
-   * 获取当前用户信息
-   */
-  getProfile: () => request.get<User>('/users/profile'),
 };

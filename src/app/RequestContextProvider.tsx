@@ -9,7 +9,7 @@
  * - 使用 App.useApp() 获取 message 和 modal 实例
  * - 通过全局变量暴露给 request.ts
  */
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { App } from 'antd';
 import type { MessageInstance } from 'antd/es/message/interface';
 import type { ModalStaticFunctions } from 'antd/es/modal/confirm';
@@ -50,7 +50,7 @@ export function getGlobalModal(): Omit<ModalStaticFunctions, 'warn'> {
 export function RequestContextProvider({ children }: RequestContextProviderProps) {
   const { message, modal } = App.useApp();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // 初始化全局实例
     globalMessage = message;
     globalModal = modal;

@@ -6,6 +6,7 @@ import {
   LogoutOutlined,
   BulbOutlined,
   BulbFilled,
+  DownOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -146,7 +147,7 @@ export function Header({ collapsed, onToggleCollapsed }: HeaderProps) {
               animate={{ y: [0, 2, 0] }}
               transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
             >
-              ▼
+              <DownOutlined />
             </motion.div>
           </div>
         </Dropdown>

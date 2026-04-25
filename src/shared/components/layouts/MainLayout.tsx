@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Layout } from 'antd';
-import { Outlet, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/features/auth/stores/authStore';
+import { Outlet } from 'react-router-dom';
 import { NotificationEventsBridge } from '@/features/notification/hooks/useNotifications';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -13,19 +12,6 @@ const { Content } = Layout;
  */
 export function MainLayout() {
   const [collapsed, setCollapsed] = useState(false);
-  const navigate = useNavigate();
-  const { user } = useAuthStore();
-
-  // 检查登录状态
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-    }
-  }, [user, navigate]);
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <Layout className="min-h-screen">

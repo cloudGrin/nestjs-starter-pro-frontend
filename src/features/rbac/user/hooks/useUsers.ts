@@ -25,17 +25,6 @@ export function useUsers(params: QueryUserDto) {
 }
 
 /**
- * 获取用户详情
- */
-export function useUser(id: number) {
-  return useQuery({
-    queryKey: ['users', id],
-    queryFn: () => userService.getUser(id),
-    enabled: !!id, // id存在时才执行查询
-  });
-}
-
-/**
  * 创建用户
  */
 export function useCreateUser() {
@@ -61,10 +50,9 @@ export function useUpdateUser() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateUserDto }) =>
       userService.updateUser(id, data),
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       // 更新成功后，失效相关缓存
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['users', variables.id] });
       // ⚠️ 不需要手动显示提示，Service 中已配置
     },
     // ⚠️ 不需要 onError，axios 拦截器已统一处理
@@ -88,22 +76,6 @@ export function useDeleteUser() {
 }
 
 /**
- * 批量删除用户
- */
-export function useBatchDeleteUsers() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (ids: number[]) => userService.batchDeleteUsers(ids),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      // ⚠️ 不需要手动显示提示，Service 中已配置
-    },
-    // ⚠️ 不需要 onError，axios 拦截器已统一处理
-  });
-}
-
-/**
  * 分配角色
  */
 export function useAssignRoles() {
@@ -112,35 +84,6 @@ export function useAssignRoles() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: AssignRolesDto }) =>
       userService.assignRoles(id, data),
-    onSuccess: (_, variables) => {
-      // Service层已配置successMessage，不需要在这里显示
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['users', variables.id] });
-    },
-    // onError已由axios拦截器统一处理
-  });
-}
-
-/**
- * 获取用户权限列表
- */
-export function useUserPermissions(id: number) {
-  return useQuery({
-    queryKey: ['users', id, 'permissions'],
-    queryFn: () => userService.getUserPermissions(id),
-    enabled: !!id,
-  });
-}
-
-/**
- * 启用/禁用用户
- */
-export function useToggleUserStatus() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
-      userService.toggleUserStatus(id, enabled),
     onSuccess: () => {
       // Service层已配置successMessage，不需要在这里显示
       queryClient.invalidateQueries({ queryKey: ['users'] });

@@ -3,6 +3,7 @@ import { Form, Input, Button, Card } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { appConfig } from '@/shared/config/app.config';
 
 interface LoginFormValues {
   account: string; // 与后端API字段名保持一致
@@ -41,7 +42,7 @@ export function LoginPage() {
       <Card className="w-full max-w-md shadow-lg">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-indigo-700 mb-2">
-            NestJS Starter Pro
+            {appConfig.title}
           </h1>
           <p className="text-gray-600">欢迎回来，请登录您的账户</p>
         </div>
@@ -82,10 +83,6 @@ export function LoginPage() {
             </Button>
           </Form.Item>
         </Form>
-
-        <div className="text-center text-gray-500 text-sm">
-          <p>默认账户：admin / admin123</p>
-        </div>
       </Card>
     </div>
   );

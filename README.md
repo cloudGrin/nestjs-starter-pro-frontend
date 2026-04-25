@@ -1,4 +1,4 @@
-# NestJS Starter Pro Web
+# home-web
 
 Frontend management console for `home-admin`, built with React 18, TypeScript 5.9, Vite 7, Ant Design 5, TanStack Query and Zustand.
 
@@ -80,7 +80,7 @@ After login, the app navigates to `/`. The default page is the first visible, ac
 ```bash
 VITE_API_URL=http://localhost:3000/api/v1
 VITE_WS_URL=http://localhost:3000
-VITE_APP_TITLE=NestJS Starter Pro
+VITE_APP_TITLE=home 管理后台
 ```
 
 ## API Contract

@@ -87,14 +87,6 @@ export interface ApiAppListResponse {
 }
 
 /**
- * API密钥列表响应
- */
-export interface ApiKeyListResponse {
-  items: ApiKey[];
-  total: number;
-}
-
-/**
  * 创建密钥响应
  */
 export interface CreateApiKeyResponse {

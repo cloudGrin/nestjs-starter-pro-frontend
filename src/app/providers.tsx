@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ConfigProvider, App, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
+import { appConfig } from '@/shared/config/app.config';
 import { queryClient } from '@/shared/config/query.config';
 import { RequestContextProvider } from './RequestContextProvider';
 import { useThemeStore } from '@/shared/stores';
@@ -19,6 +21,10 @@ interface AppProvidersProps {
  */
 export function AppProviders({ children }: AppProvidersProps) {
   const themeMode = useThemeStore((state) => state.mode);
+
+  useEffect(() => {
+    document.title = appConfig.title;
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

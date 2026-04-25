@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Layout, Menu, Spin } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { HomeOutlined } from '@ant-design/icons';
 import { useUserMenus } from '@/features/rbac/menu/hooks/useMenus';
 import type { MenuTreeNode } from '@/features/rbac/menu/types/menu.types';
 import type { MenuProps } from 'antd';
@@ -149,7 +150,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
               transition={{ duration: 0.3 }}
               className="text-3xl"
             >
-              🏠
+              <HomeOutlined />
             </motion.span>
           ) : (
             <motion.span

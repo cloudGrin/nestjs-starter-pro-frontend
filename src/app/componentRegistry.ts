@@ -50,10 +50,9 @@ const pageModules = import.meta.glob<{
   [key: string]: ComponentType<Record<string, never>>;
 }>([
   '../features/**/pages/*.tsx',
+  '!../features/auth/pages/LoginPage.tsx',
   '../features/file/components/FileList.tsx',
 ], { eager: false });
-
-const nonMenuComponents = new Set(['LoginPage']);
 
 const componentAliases: Record<string, string> = {
   Dashboard: 'DashboardPage',
@@ -118,9 +117,7 @@ for (const [path, loader] of Object.entries(pageModules)) {
     continue;
   }
 
-  if (!nonMenuComponents.has(componentName)) {
-    componentRegistry.set(componentName, loader as () => Promise<{ [key: string]: ComponentType<Record<string, never>> }>);
-  }
+  componentRegistry.set(componentName, loader as () => Promise<{ [key: string]: ComponentType<Record<string, never>> }>);
 }
 
 /**
@@ -198,12 +195,12 @@ function getRegistryStats() {
 
   // 按目录分组统计
   for (const [path] of Object.entries(pageModules)) {
-    const match = path.match(/\.\.\/(features|shared)\/([^/]+)/);
+    const match = path.match(/\.\.\/features\/([^/]+)/);
     if (match) {
-      const [, type, module] = match;
-      const key = type === 'shared' ? 'shared' : `features/${module}`;
+      const [, module] = match;
+      const key = `features/${module}`;
       const componentName = extractComponentName(path);
-      if (!componentName || nonMenuComponents.has(componentName)) {
+      if (!componentName) {
         continue;
       }
 
