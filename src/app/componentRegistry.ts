@@ -186,26 +186,11 @@ export function getComponentNames(): string[] {
 }
 
 /**
- * 检查组件是否已注册
- *
- * @param componentName 组件名
- * @returns 是否已注册
- *
- * @example
- * if (isComponentRegistered('UserListPage')) {
- *   console.log('组件已注册');
- * }
- */
-export function isComponentRegistered(componentName: string): boolean {
-  return componentRegistry.has(normalizeComponentName(componentName));
-}
-
-/**
  * 获取组件统计信息（调试用）
  *
  * @returns 统计信息
  */
-export function getRegistryStats() {
+function getRegistryStats() {
   const components = getComponentNames();
   const byDirectory: Record<string, string[]> = {};
 

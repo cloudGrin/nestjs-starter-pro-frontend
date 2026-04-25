@@ -18,7 +18,6 @@ vi.mock('../services/auth.service', () => ({
   authService: {
     login: vi.fn(),
     logout: vi.fn(),
-    refresh: vi.fn(),
   },
 }));
 
@@ -223,94 +222,6 @@ describe('authStore', () => {
       expect(state.token).toBeNull();
       expect(state.refreshToken).toBeNull();
       expect(state.user).toBeNull();
-    });
-  });
-
-  describe('refreshAccessToken', () => {
-    it('应该成功刷新 access token', async () => {
-      useAuthStore.setState({
-        token: 'old-access-token',
-        refreshToken: 'mock-refresh-token',
-        user: { id: 1, username: 'testuser', email: 'test@example.com' } as any,
-      });
-
-      vi.mocked(authService.refresh).mockResolvedValue({
-        accessToken: 'new-access-token',
-      });
-
-      const result = await useAuthStore.getState().refreshAccessToken();
-
-      expect(result).toBe(true);
-
-      const state = useAuthStore.getState();
-
-      // token 应该更新
-      expect(state.token).toBe('new-access-token');
-
-      // refreshToken 和 user 应该保持不变
-      expect(state.refreshToken).toBe('mock-refresh-token');
-      expect(state.user?.username).toBe('testuser');
-
-      // 检查 localStorage
-      expect(localStorage.getItem('test-token')).toBe('new-access-token');
-
-      // 检查 authService 被调用
-      expect(authService.refresh).toHaveBeenCalledWith({
-        refreshToken: 'mock-refresh-token',
-      });
-    });
-
-    it('应该在没有 refreshToken 时返回 false', async () => {
-      useAuthStore.setState({
-        token: null,
-        refreshToken: null,
-        user: null,
-      });
-
-      const result = await useAuthStore.getState().refreshAccessToken();
-
-      expect(result).toBe(false);
-
-      // authService 不应该被调用
-      expect(authService.refresh).not.toHaveBeenCalled();
-    });
-
-    it('应该在刷新失败时清除认证信息', async () => {
-      useAuthStore.setState({
-        token: 'old-access-token',
-        refreshToken: 'mock-refresh-token',
-        user: { id: 1, username: 'testuser', email: 'test@example.com' } as any,
-      });
-
-      vi.mocked(authService.refresh).mockRejectedValue(new Error('Refresh token expired'));
-
-      const result = await useAuthStore.getState().refreshAccessToken();
-
-      expect(result).toBe(false);
-
-      const state = useAuthStore.getState();
-
-      // 状态应该被清空
-      expect(state.token).toBeNull();
-      expect(state.refreshToken).toBeNull();
-      expect(state.user).toBeNull();
-    });
-  });
-
-  describe('setUser', () => {
-    it('应该更新用户信息', () => {
-      const newUser = {
-        id: 1,
-        username: 'updateduser',
-        email: 'updated@example.com',
-        permissions: ['user:read', 'user:create'],
-      } as any;
-
-      useAuthStore.getState().setUser(newUser);
-
-      const state = useAuthStore.getState();
-
-      expect(state.user).toEqual(newUser);
     });
   });
 

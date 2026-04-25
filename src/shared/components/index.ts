@@ -3,9 +3,7 @@
  */
 
 // 布局组件
-export { MainLayout } from './layouts/MainLayout';
 export { PageWrap } from './layouts/PageWrap';
-// PageHeader已废弃，请使用PageWrap替代
 
 // 搜索组件
 export { SearchForm } from './search/SearchForm';

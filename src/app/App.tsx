@@ -2,7 +2,7 @@ import { RouterProvider } from 'react-router-dom';
 import { Spin } from 'antd';
 import { AppProviders } from './providers';
 import { useAppRoutes } from './useAppRoutes';
-import { ErrorBoundary } from '@/shared/components';
+import { ErrorBoundary } from '@/shared/components/error/ErrorBoundary';
 
 /**
  * 全局加载组件

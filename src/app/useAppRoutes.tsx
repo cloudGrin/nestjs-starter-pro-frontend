@@ -102,11 +102,6 @@ export function useAppRoutes() {
       ]);
     }
 
-    // 菜单加载中，返回 null
-    if (isLoading || !userMenus) {
-      return null;
-    }
-
     // 菜单加载失败，返回基础路由（只有登录页）
     if (error) {
       console.error('[动态路由] 加载用户菜单失败', error);
@@ -120,6 +115,11 @@ export function useAppRoutes() {
           element: <Navigate to="/login" replace />,
         },
       ]);
+    }
+
+    // 菜单加载中，返回 null
+    if (isLoading || !userMenus) {
+      return null;
     }
 
     // 生成动态路由

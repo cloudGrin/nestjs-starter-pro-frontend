@@ -24,18 +24,3 @@ export interface LoginResponse {
     sessionId: string;
   };
 }
-
-/**
- * 刷新Token请求
- */
-export interface RefreshTokenDto {
-  refreshToken: string;
-}
-
-/**
- * 刷新Token响应
- */
-export interface RefreshTokenResponse {
-  accessToken: string;
-  expiresIn: number;
-}

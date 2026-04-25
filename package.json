@@ -3,6 +3,11 @@
   "private": false,
   "version": "2.0.0",
   "type": "module",
+  "packageManager": "pnpm@10.3.0",
+  "engines": {
+    "node": ">=20.19.0 || >=22.12.0",
+    "pnpm": ">=9"
+  },
   "description": "Frontend for NestJS Starter Pro - A lightweight, production-ready admin dashboard built with React 18 + TypeScript 5 + Ant Design 5",
   "author": "NestJS Starter Pro Team",
   "license": "MIT",

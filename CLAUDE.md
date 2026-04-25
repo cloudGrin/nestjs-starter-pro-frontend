@@ -123,7 +123,6 @@ permission.ts
 # 类型文件：camelCase
 user.types.ts
 auth.types.ts
-common.types.ts
 
 # Service文件：camelCase
 user.service.ts
@@ -420,16 +419,6 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         set({ token: null, refreshToken: null, user: null });
-      },
-
-      refreshToken: async () => {
-        try {
-          const { accessToken } = await authService.refresh(get().refreshToken!);
-          set({ token: accessToken });
-          return true;
-        } catch {
-          return false;
-        }
       },
 
       updateUser: (user) => set({ user }),
@@ -1158,20 +1147,9 @@ export const userService = {
 
 ### 中期改进措施（本月内）
 
-1. ⏳ **使用swagger-typescript-api自动生成前端API类型**
+1. ⏳ **基于本地 api-docs.json 复核手写 API 服务类型**
    ```bash
-   # 安装工具
-   npm install -D swagger-typescript-api
-
-   # package.json添加脚本
-   "scripts": {
-     "generate:api": "swagger-typescript-api -p http://localhost:3000/api-docs-json -o src/shared/api -n api.generated.ts"
-   }
-
-   # 使用流程
-   # 1. 后端修改API → 启动服务
-   # 2. 前端运行 npm run generate:api
-   # 3. 查看diff，更新调用代码
+   pnpm run api:check
    ```
 
 2. ⏳ **在后端添加更严格的数据验证**

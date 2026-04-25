@@ -8,9 +8,6 @@ export const appConfig = {
   // API 基础 URL
   apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1',
 
-  // 是否启用 Mock
-  enableMock: import.meta.env.VITE_ENABLE_MOCK === 'true',
-
   // Token 存储键名
   tokenKey: 'auth-token',
   refreshTokenKey: 'auth-refresh-token',
@@ -21,6 +18,4 @@ export const appConfig = {
   // 请求超时时间（毫秒）
   requestTimeout: 30000,
 
-  // Token 过期前多久刷新（毫秒）
-  tokenRefreshBeforeExpire: 5 * 60 * 1000, // 5分钟
 };

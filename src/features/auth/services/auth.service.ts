@@ -1,10 +1,5 @@
 import { request } from '@/shared/utils/request';
-import type {
-  LoginDto,
-  LoginResponse,
-  RefreshTokenDto,
-  RefreshTokenResponse,
-} from '../types/auth.types';
+import type { LoginDto, LoginResponse } from '../types/auth.types';
 import type { User } from '@/shared/types/user.types';
 
 /**
@@ -22,12 +17,6 @@ export const authService = {
         },
       },
     }),
-
-  /**
-   * 刷新Token
-   */
-  refresh: (data: RefreshTokenDto) =>
-    request.post<RefreshTokenResponse>('/auth/refresh', data),
 
   /**
    * 用户登出

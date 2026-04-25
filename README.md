@@ -5,8 +5,8 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![React](https://img.shields.io/badge/react-18.3-blue)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/typescript-5.8-blue)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/vite-6.0-646CFF)](https://vitejs.dev/)
+[![TypeScript](https://img.shields.io/badge/typescript-5.9-blue)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/vite-7.1-646CFF)](https://vitejs.dev/)
 [![Ant Design](https://img.shields.io/badge/antd-5.0-1890ff)](https://ant.design/)
 
 [English](#english) | [中文](#中文)
@@ -31,7 +31,7 @@ This is the frontend dashboard for **NestJS Starter Pro** - a lightweight backen
 - 🔐 **Complete RBAC System** - Permission guards, role-based access control
 - 📊 **Smart State Management** - Zustand (client state) + TanStack Query (server state)
 - 🎨 **Modern UI** - Ant Design 5 + Tailwind CSS + Dark Mode support
-- 🚀 **Blazing Fast** - Vite 6 + HMR + TypeScript
+- 🚀 **Blazing Fast** - Vite 7 + HMR + TypeScript
 - 📱 **Responsive Design** - PC-first, tablet-friendly
 - 🧪 **Complete Testing** - Vitest (unit) + Playwright (E2E)
 - 🌓 **Dark Mode** - Beautiful dark theme with smooth transitions
@@ -42,8 +42,8 @@ This is the frontend dashboard for **NestJS Starter Pro** - a lightweight backen
 
 ### Core Framework
 - **React 18.3** - UI framework
-- **TypeScript 5.8** - Type safety
-- **Vite 6** - Build tool
+- **TypeScript 5.9** - Type safety
+- **Vite 7** - Build tool
 
 ### UI & Styling
 - **Ant Design 5** - Component library
@@ -61,12 +61,11 @@ This is the frontend dashboard for **NestJS Starter Pro** - a lightweight backen
 ### Tools
 - **Axios 1** - HTTP client
 - **dayjs** - Date/time handling
-- **lodash-es** - Utilities
 
 ### Dev Tools
 - **ESLint 9** - Linting
 - **Prettier 3** - Code formatting
-- **Vitest 3** - Unit testing
+- **Vitest 4** - Unit testing
 - **Playwright 1** - E2E testing
 
 ---
@@ -75,18 +74,18 @@ This is the frontend dashboard for **NestJS Starter Pro** - a lightweight backen
 
 ### Prerequisites
 
-- Node.js >= 20.x
-- npm >= 10.x
+- Node.js >= 20.19 or >= 22.12
+- pnpm >= 9
 - Backend service running at `http://localhost:3000` (see [nestjs-starter-pro](../home-admin))
 
 ### Installation
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Start dev server
-npm run dev
+pnpm run dev
 ```
 
 **Access**: http://localhost:3001
@@ -101,33 +100,33 @@ Password: admin123
 
 ```bash
 # Build
-npm run build
+pnpm run build
 
 # Preview production build
-npm run preview
+pnpm run preview
 ```
 
 ### Code Quality
 
 ```bash
 # ESLint check
-npm run lint
+pnpm run lint
 
 # Type check
-npm run type-check
+pnpm run type-check
 
 # Format code
-npm run format
+pnpm run format
 ```
 
 ### Testing
 
 ```bash
 # Unit tests
-npm run test
+pnpm run test
 
 # E2E tests
-npm run test:e2e
+pnpm run test:e2e
 
 # Test coverage
 npm run test:coverage

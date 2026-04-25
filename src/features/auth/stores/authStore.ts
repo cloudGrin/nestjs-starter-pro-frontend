@@ -12,8 +12,6 @@ interface AuthState {
 
   login: (account: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshAccessToken: () => Promise<boolean>;
-  setUser: (user: User) => void;
   clearAuth: () => void;
 }
 
@@ -92,40 +90,6 @@ export const useAuthStore = create<AuthState>()(
           localStorage.removeItem(appConfig.tokenKey);
           localStorage.removeItem(appConfig.refreshTokenKey);
         }
-      },
-
-      /**
-       * 刷新 Access Token
-       */
-      refreshAccessToken: async () => {
-        const { refreshToken } = get();
-
-        if (!refreshToken) {
-          return false;
-        }
-
-        try {
-          const response = await authService.refresh({ refreshToken });
-
-          // 更新 token
-          set({ token: response.accessToken });
-
-          // 同步到 localStorage
-          localStorage.setItem(appConfig.tokenKey, response.accessToken);
-
-          return true;
-        } catch {
-          // 刷新失败，清除认证信息
-          get().clearAuth();
-          return false;
-        }
-      },
-
-      /**
-       * 更新用户信息
-       */
-      setUser: (user: User) => {
-        set({ user });
       },
 
       /**

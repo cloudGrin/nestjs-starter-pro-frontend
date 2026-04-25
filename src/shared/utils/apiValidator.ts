@@ -106,19 +106,6 @@ export function validateApiParams(config: AxiosRequestConfig): void {
 }
 
 /**
- * 检查登录参数
- */
-export function validateLoginParams(params: Record<string, unknown>): void {
-  if (!isDev) return;
-
-  if (params.username && !params.account) {
-    console.error('❌ 登录参数错误：请使用 "account" 字段而非 "username"');
-    console.warn('💡 LoginDto 定义: { account: string, password: string }');
-    console.warn('💡 参考: api-docs.json 中的 LoginDto');
-  }
-}
-
-/**
  * 添加到请求拦截器的验证函数
  */
 export function attachApiValidator() {

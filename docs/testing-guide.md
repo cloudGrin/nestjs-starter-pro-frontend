@@ -100,12 +100,9 @@
 | **用户管理** | `features/rbac/user/hooks/` | useUsers, useCreateUser, useUpdateUser, useDeleteUser | 高 |
 | **角色管理** | `features/rbac/role/hooks/` | useRoles, useAssignPermissions, useAssignMenus | 高 |
 | **菜单管理** | `features/rbac/menu/hooks/` | useMenus, useMenuTree, useUserMenus | 中 |
-| **权限管理** | `features/rbac/permission/hooks/` | usePermissions, usePermissionTree, useSyncPermissions | 中 |
-| **文件管理** | `features/file/hooks/` | useFiles, useUpload, useChunkUpload | 中 |
-| **任务调度** | `features/task/hooks/` | useTasks, useTriggerTask, useTaskLogs | 低 |
+| **权限管理** | `features/rbac/permission/hooks/` | usePermissions, usePermissionTree | 中 |
+| **文件管理** | `features/file/hooks/` | useFiles, useUploadFile, useDownloadFile | 中 |
 | **通知中心** | `features/notification/hooks/` | useNotifications, useMarkAsRead, useMarkAllAsRead | 低 |
-| **数据字典** | `features/dict/hooks/` | useDictTypes, useDictItems | 低 |
-| **系统配置** | `features/config/hooks/` | useConfigs, useBatchUpdateConfigs | 低 |
 | **API认证** | `features/api-auth/hooks/` | useApiApps, useApiKeys, useRevokeApiKey | 低 |
 
 ---
@@ -230,28 +227,26 @@ describe('request - Axios封装', () => {
 
   describe('响应拦截器 - 错误处理', () => {
     it('应该在 401 时自动刷新 Token 并重试', async () => {
-      const refreshSpy = vi.spyOn(useAuthStore.getState(), 'refreshAccessToken')
-        .mockResolvedValue(true);
-
       // 第一次请求返回 401
       mock.onGet('/test').replyOnce(401);
+      // refreshAxios 调用刷新接口
+      mock.onPost('/auth/refresh').replyOnce(200, {
+        success: true,
+        data: { accessToken: 'new-token' },
+      });
       // 刷新 Token 后重试成功
       mock.onGet('/test').replyOnce(200, { success: true, data: 'success' });
 
       const result = await request.get('/test');
 
-      expect(refreshSpy).toHaveBeenCalled();
       expect(result).toBe('success');
     });
 
     it('应该在 Token 刷新失败时重定向到登录页', async () => {
-      const refreshSpy = vi.spyOn(useAuthStore.getState(), 'refreshAccessToken')
-        .mockResolvedValue(false);
-
       mock.onGet('/test').reply(401);
+      mock.onPost('/auth/refresh').reply(401);
 
       await expect(request.get('/test')).rejects.toThrow();
-      expect(refreshSpy).toHaveBeenCalled();
       // 检查是否重定向到 /login
       // expect(window.location.href).toContain('/login');
     });

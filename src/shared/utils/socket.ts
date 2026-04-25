@@ -158,13 +158,6 @@ export function getSocket(): Socket | null {
 }
 
 /**
- * 获取连接状态
- */
-export function isSocketConnected(): boolean {
-  return socket?.connected ?? false;
-}
-
-/**
  * 启动心跳检测
  * 每25秒发送一次 ping，保持连接活跃
  */

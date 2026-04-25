@@ -99,10 +99,10 @@ Rebranded from "home Web" to **NestJS Starter Pro Web** - A lightweight, product
 - 安装TanStack Query 5（服务端状态管理）
 - 安装Axios 1（HTTP客户端）
 - 安装React Hook Form 7（表单管理）
-- 安装dayjs, lodash-es（工具库）
+- 安装dayjs（日期时间工具库）
 
 #### 开发工具
-- 配置Vitest 3（单元测试）
+- 配置Vitest（单元测试）
 - 配置Playwright 1（E2E测试）
 - 配置TypeScript严格模式
 - 添加npm脚本（dev, build, lint, format, test等）
@@ -136,7 +136,6 @@ Rebranded from "home Web" to **NestJS Starter Pro Web** - A lightweight, product
 - 显示当前用户信息
 
 #### 类型系统
-- 创建common.types.ts（分页、API响应等通用类型）
 - 创建user.types.ts（用户、角色、权限类型）
 - 创建auth.types.ts（登录、注册、Token相关类型）
 
