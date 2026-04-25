@@ -42,10 +42,6 @@ export default {
         'theme-md': 'var(--shadow-md)',
         'theme-lg': 'var(--shadow-lg)',
       },
-      // 自定义backdrop-filter
-      backdropBlur: {
-        theme: 'var(--backdrop-blur)',
-      },
     },
   },
 };

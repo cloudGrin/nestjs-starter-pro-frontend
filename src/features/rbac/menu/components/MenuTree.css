@@ -97,7 +97,7 @@
 }
 
 .dark .menu-tree-custom .ant-tree-indent-unit::before {
-  border-right-color: rgba(102, 126, 234, 0.2);
+  border-right-color: #334155;
 }
 
 /* 操作按钮hover效果 */

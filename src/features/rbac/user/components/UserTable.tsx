@@ -128,7 +128,7 @@ export function UserTable({
               label: '分配角色',
               icon: <TeamOutlined />,
               onClick: () => onAssignRoles(record),
-              permission: 'user:assign-roles',
+              permission: 'role:assign',
             },
             {
               label: '删除',

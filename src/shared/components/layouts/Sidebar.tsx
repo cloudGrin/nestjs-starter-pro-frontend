@@ -129,7 +129,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
       <div
         className="h-16 flex items-center justify-center text-xl font-bold border-b overflow-hidden relative sidebar-logo-bg transition-theme"
         style={{
-          borderColor: themeMode === 'dark' ? 'rgba(102, 126, 234, 0.2)' : '#e2e8f0',
+          borderColor: themeMode === 'dark' ? '#334155' : '#e2e8f0',
           paddingLeft: collapsed ? 0 : 16,
           paddingRight: collapsed ? 0 : 16,
         }}
