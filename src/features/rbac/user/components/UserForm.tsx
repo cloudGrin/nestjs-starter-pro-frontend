@@ -3,13 +3,12 @@
  */
 
 import { useEffect } from 'react';
-import { Modal, Form, Input, Select } from 'antd';
+import { App, Modal, Form, Input, Select } from 'antd';
 import { useForm, Controller } from 'react-hook-form';
 import type { User, UserStatus } from '@/shared/types/user.types';
 import type { CreateUserDto, UpdateUserDto } from '../types/user.types';
 import { useCreateUser, useUpdateUser } from '../hooks/useUsers';
 import { useActiveRoles } from '@/features/rbac/role/hooks/useRoles';
-import { useApp } from '@/shared/hooks';
 
 interface UserFormProps {
   visible: boolean;
@@ -33,7 +32,7 @@ interface UserFormData {
  */
 export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) {
   const isEditMode = !!user;
-  const { message } = useApp();
+  const { message } = App.useApp();
 
   // React Hook Form
   const {

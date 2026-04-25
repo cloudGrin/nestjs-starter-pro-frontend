@@ -35,17 +35,6 @@ export function usePermissionTree() {
 }
 
 /**
- * 获取权限详情
- */
-export function usePermission(id: number) {
-  return useQuery({
-    queryKey: ['permissions', id],
-    queryFn: () => permissionService.getPermission(id),
-    enabled: !!id,
-  });
-}
-
-/**
  * 创建权限（手动创建 - 一般不需要,权限通过扫描自动生成）
  */
 export function useCreatePermission() {
@@ -71,10 +60,9 @@ export function useUpdatePermission() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdatePermissionDto }) =>
       permissionService.updatePermission(id, data),
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       // Service层已配置successMessage，不需要在这里显示
       queryClient.invalidateQueries({ queryKey: ['permissions'] });
-      queryClient.invalidateQueries({ queryKey: ['permissions', variables.id] });
     },
     // onError已由axios拦截器统一处理
   });

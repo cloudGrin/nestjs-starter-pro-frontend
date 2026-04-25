@@ -101,16 +101,4 @@ export const roleService = {
    */
   getRoleMenus: (id: number) => request.get<Menu[]>(`/roles/${id}/menus`),
 
-  /**
-   * 移除菜单
-   */
-  revokeMenus: (id: number, menuIds: number[]) =>
-    request.delete(`/roles/${id}/menus`, {
-      data: { menuIds },
-      requestOptions: {
-        messageConfig: {
-          successMessage: '移除菜单成功',
-        },
-      },
-    }),
 };

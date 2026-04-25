@@ -1,12 +1,12 @@
 /**
- * 搜索表单组件（企业级设计）
+ * 搜索表单组件
  *
  * 用途：
  * 1. 列表页的搜索栏
- * 2. 支持展开/收起（超过指定数量自动折叠，带流畅动画）
+ * 2. 支持展开/收起（超过指定数量自动折叠）
  * 3. 响应式布局（桌面3列，平板2列，移动端1列）
  * 4. 支持导出按钮、刷新按钮
- * 5. 参考 ProComponents QueryFilter 实现，增强动画和交互
+ * 5. 参考 ProComponents QueryFilter 的常用布局
  *
  * 行为说明：
  * - **搜索**: 相同条件重复搜索不会触发请求（TanStack Query缓存机制）
@@ -82,7 +82,6 @@ import { useState, type ReactNode } from 'react';
 import { Form, Button, Row, Col, Space } from 'antd';
 import { SearchOutlined, ReloadOutlined, DownOutlined, ExportOutlined, SyncOutlined } from '@ant-design/icons';
 import type { FormInstance, ColProps } from 'antd';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface SearchFormProps {
   /** 表单实例 */
@@ -184,29 +183,17 @@ export function SearchForm({
             ))}
           </Row>
 
-          {/* 折叠的表单项（带动画） */}
-          <AnimatePresence initial={false}>
-            {expanded && shouldShowExpand && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{
-                  duration: 0.3,
-                  ease: [0.4, 0, 0.2, 1], // easeInOut
-                }}
-                className="overflow-hidden"
-              >
-                <Row gutter={gutter} className="mt-4">
-                  {childrenArray.slice(defaultCollapseCount).map((child, index) => (
-                    <Col key={index + defaultCollapseCount} {...colProps}>
-                      {child}
-                    </Col>
-                  ))}
-                </Row>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {expanded && shouldShowExpand && (
+            <div className="overflow-hidden">
+              <Row gutter={gutter} className="mt-4">
+                {childrenArray.slice(defaultCollapseCount).map((child, index) => (
+                  <Col key={index + defaultCollapseCount} {...colProps}>
+                    {child}
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          )}
         </div>
 
         {/* 右侧：操作按钮（固定在右边，垂直居中） */}
@@ -254,13 +241,12 @@ export function SearchForm({
                   className="px-0 group"
                 >
                   {expanded ? '收起' : '展开'}
-                  <motion.span
-                    animate={{ rotate: expanded ? 180 : 0 }}
-                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  <span
                     className="inline-block ml-1"
+                    style={{ transform: expanded ? 'rotate(180deg)' : undefined }}
                   >
                     <DownOutlined className="text-xs" />
-                  </motion.span>
+                  </span>
                 </Button>
               )}
             </Space>

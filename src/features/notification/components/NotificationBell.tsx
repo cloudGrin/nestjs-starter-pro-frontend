@@ -3,7 +3,13 @@
  */
 
 import { Badge, Dropdown, Button, List, Empty, Spin, Typography, Tooltip } from 'antd';
-import { BellOutlined, CheckOutlined } from '@ant-design/icons';
+import {
+  ArrowRightOutlined,
+  BellOutlined,
+  CheckOutlined,
+  ClockCircleOutlined,
+  MessageOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -12,7 +18,6 @@ import { useUnreadNotifications, useMarkAsRead, useMarkAllAsRead } from '../hook
 import { NotificationType, NotificationPriority } from '../types/notification.types';
 import type { Notification } from '../types/notification.types';
 import { useThemeStore } from '@/shared/stores';
-import { motion } from 'framer-motion';
 
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
@@ -35,11 +40,11 @@ const getPriorityColor = (priority: NotificationPriority): string => {
 /**
  * 获取通知类型图标
  */
-const getTypeIcon = (type: NotificationType): string => {
+const getTypeIcon = (type: NotificationType): React.ReactNode => {
   const icons = {
-    [NotificationType.SYSTEM]: '🔔',
-    [NotificationType.MESSAGE]: '💬',
-    [NotificationType.REMINDER]: '⏰',
+    [NotificationType.SYSTEM]: <BellOutlined />,
+    [NotificationType.MESSAGE]: <MessageOutlined />,
+    [NotificationType.REMINDER]: <ClockCircleOutlined />,
   };
   return icons[type] || icons[NotificationType.SYSTEM];
 };
@@ -92,32 +97,28 @@ export const NotificationBell: React.FC = () => {
    */
   const dropdownContent = (
     <div
-      className={`w-[400px] max-h-[520px] rounded-2xl overflow-hidden`}
+      className="w-[400px] max-h-[520px] rounded-lg overflow-hidden"
       style={{
         background:
           themeMode === 'dark'
-            ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%)'
+            ? 'rgb(15, 23, 42)'
             : '#ffffff',
-        backdropFilter: themeMode === 'dark' ? 'blur(20px)' : 'none',
-        boxShadow:
-          themeMode === 'dark'
-            ? '0 12px 40px rgba(0, 0, 0, 0.6), 0 1px 8px rgba(102, 126, 234, 0.2), inset 0 1px 0 rgba(102, 126, 234, 0.1)'
-            : '0 12px 40px rgba(0, 0, 0, 0.12)',
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.12)',
         border:
           themeMode === 'dark'
-            ? '1px solid rgba(102, 126, 234, 0.25)'
+            ? '1px solid rgba(71, 85, 105, 0.8)'
             : '1px solid rgba(0, 0, 0, 0.06)',
       }}
     >
-      {/* 头部 - 渐变背景 */}
       <div
         className="flex items-center justify-between p-5"
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: themeMode === 'dark' ? '#1e293b' : '#1677ff',
         }}
       >
         <div className="font-bold text-lg text-white flex items-center gap-2">
-          🔔 通知中心
+          <BellOutlined />
+          通知中心
           {unreadCount > 0 && (
             <span className="bg-white/30 text-white text-xs px-2 py-0.5 rounded-full">
               {unreadCount}
@@ -165,21 +166,21 @@ export const NotificationBell: React.FC = () => {
                 style={{
                   background:
                     themeMode === 'dark'
-                      ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)'
-                      : 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
+                      ? 'rgba(30, 41, 59, 0.9)'
+                      : '#f8fafc',
                   border:
                     themeMode === 'dark'
-                      ? '1px solid rgba(102, 126, 234, 0.18)'
-                      : '1px solid rgba(102, 126, 234, 0.1)',
+                      ? '1px solid rgba(71, 85, 105, 0.8)'
+                      : '1px solid rgba(226, 232, 240, 1)',
                 }}
                 onClick={() => handleNotificationClick(notification)}
               >
                 <div className="flex items-start gap-3">
-                  {/* 类型图标 - 渐变背景 */}
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
                     style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: themeMode === 'dark' ? '#334155' : '#e6f4ff',
+                      color: themeMode === 'dark' ? '#93c5fd' : '#1677ff',
                     }}
                   >
                     {getTypeIcon(notification.type)}
@@ -230,9 +231,9 @@ export const NotificationBell: React.FC = () => {
             type="link"
             onClick={handleViewAll}
             className={`w-full font-medium ${themeMode === 'dark' ? 'hover:text-blue-400' : ''}`}
-            style={{ color: themeMode === 'dark' ? '#818cf8' : '#667eea' }}
+            style={{ color: '#1677ff' }}
           >
-            查看全部通知 →
+            查看全部通知 <ArrowRightOutlined />
           </Button>
         </div>
       )}
@@ -246,29 +247,26 @@ export const NotificationBell: React.FC = () => {
           count={unreadCount}
           offset={[-4, 4]}
           style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            boxShadow: '0 2px 6px rgba(102, 126, 234, 0.4)',
+            background: '#1677ff',
           }}
         >
-          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-            <Button
-              type="text"
-              icon={<BellOutlined style={{ fontSize: '20px' }} />}
-              style={{
-                width: 40,
-                height: 40,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: themeMode === 'dark' ? '#a3a3a3' : '#64748b',
-              }}
-              className={
-                themeMode === 'dark'
-                  ? 'hover:bg-gray-700 hover:text-blue-400 transition-all rounded-lg'
-                  : 'hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-600 transition-all rounded-lg'
-              }
-            />
-          </motion.div>
+          <Button
+            type="text"
+            icon={<BellOutlined style={{ fontSize: '20px' }} />}
+            style={{
+              width: 40,
+              height: 40,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: themeMode === 'dark' ? '#a3a3a3' : '#64748b',
+            }}
+            className={
+              themeMode === 'dark'
+                ? 'hover:bg-gray-700 hover:text-blue-400 transition-all rounded-lg'
+                : 'hover:bg-blue-50 hover:text-blue-600 transition-all rounded-lg'
+            }
+          />
         </Badge>
       </Tooltip>
     </Dropdown>

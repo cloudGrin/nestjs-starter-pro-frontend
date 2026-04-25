@@ -5,7 +5,7 @@
  * 1. 基础渲染（5种状态类型）
  * 2. 图标显示（默认圆点、隐藏图标、自定义图标）
  * 3. 深色模式支持
- * 4. 样式和动画
+ * 4. 样式
  * 5. 边界情况
  */
 import { act, render, screen } from '@testing-library/react';
@@ -80,8 +80,7 @@ describe('StatusBadge 组件', () => {
     it('应该默认显示圆点指示器（showIcon=true）', () => {
       const { container } = render(<StatusBadge status="success" text="成功" />);
 
-      // 查找脉冲圆点（w-2 h-2 rounded-full animate-pulse）
-      const dot = container.querySelector('.animate-pulse');
+      const dot = container.querySelector('.rounded-full.bg-green-500');
       expect(dot).toBeInTheDocument();
       expectHasClass(dot as HTMLElement, 'w-2');
       expectHasClass(dot as HTMLElement, 'h-2');
@@ -104,7 +103,7 @@ describe('StatusBadge 组件', () => {
       expect(starIcon).toBeInTheDocument();
 
       // 自定义图标时不显示圆点
-      const dot = container.querySelector('.animate-pulse');
+      const dot = container.querySelector('.w-2.h-2.rounded-full');
       expect(dot).not.toBeInTheDocument();
     });
 
@@ -121,7 +120,7 @@ describe('StatusBadge 组件', () => {
       const starIcon = screen.getByTestId('star-icon');
       expect(starIcon).toBeInTheDocument();
 
-      const dot = container.querySelector('.animate-pulse');
+      const dot = container.querySelector('.w-2.h-2.rounded-full');
       expect(dot).not.toBeInTheDocument();
     });
   });
@@ -166,9 +165,9 @@ describe('StatusBadge 组件', () => {
     });
   });
 
-  // ==================== 样式和动画测试 ====================
+  // ==================== 样式测试 ====================
 
-  describe('样式和动画', () => {
+  describe('样式', () => {
     it('应该包含正确的基础样式类', () => {
       render(<StatusBadge status="success" text="成功" />);
 
@@ -184,18 +183,17 @@ describe('StatusBadge 组件', () => {
       expectHasClass(badge, 'whitespace-nowrap');
     });
 
-    it('应该包含 hover 放大效果', () => {
+    it('应该包含状态过渡样式', () => {
       render(<StatusBadge status="success" text="成功" />);
 
       const badge = screen.getByText('成功');
-      expectHasClass(badge, 'hover:scale-105');
       expectHasClass(badge, 'transition-all');
     });
 
-    it('应该包含脉冲动画的圆点', () => {
+    it('应该包含状态圆点', () => {
       const { container } = render(<StatusBadge status="processing" text="进行中" />);
 
-      const dot = container.querySelector('.animate-pulse');
+      const dot = container.querySelector('.bg-blue-500');
       expect(dot).toBeInTheDocument();
       expectHasClass(dot as HTMLElement, 'bg-blue-500');
     });
@@ -210,7 +208,7 @@ describe('StatusBadge 组件', () => {
       const badge = document.querySelector('.inline-flex');
       expect(badge).toBeInTheDocument();
       // 验证有圆点但无文本
-      const dot = document.querySelector('.animate-pulse');
+      const dot = document.querySelector('.w-2.h-2.rounded-full');
       expect(dot).toBeInTheDocument();
     });
 

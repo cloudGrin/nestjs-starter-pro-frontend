@@ -221,8 +221,8 @@ function getRegistryStats() {
 // 开发环境输出统计信息
 if (import.meta.env.DEV) {
   const stats = getRegistryStats();
-  console.log('[ComponentRegistry] 自动扫描完成');
-  console.log(`[ComponentRegistry] 共找到 ${stats.total} 个页面组件`);
-  console.log('[ComponentRegistry] 组件列表:', stats.components);
-  console.log('[ComponentRegistry] 按模块分布:', stats.byDirectory);
+  console.debug('[ComponentRegistry] 自动扫描完成');
+  console.debug(`[ComponentRegistry] 共找到 ${stats.total} 个页面组件`);
+  console.debug('[ComponentRegistry] 组件列表:', stats.components);
+  console.debug('[ComponentRegistry] 按模块分布:', stats.byDirectory);
 }

@@ -21,11 +21,6 @@ export const apiAuthService = {
     request.get<ApiAppListResponse>('/api-apps', { params }),
 
   /**
-   * 获取API应用详情
-   */
-  getApiApp: (appId: number) => request.get<ApiApp>(`/api-apps/${appId}`),
-
-  /**
    * 创建API应用
    */
   createApiApp: (data: CreateApiAppDto) =>

@@ -319,7 +319,7 @@ describe('PageWrap 组件', () => {
       expectHasClass(wrapper, 'h-full');
     });
 
-    it('应该包含毛玻璃效果（backdrop-blur）', () => {
+    it('应该包含头部背景和边框样式', () => {
       const { container } = render(
         <PageWrap title="用户管理">
           <div>内容</div>
@@ -327,7 +327,8 @@ describe('PageWrap 组件', () => {
       );
 
       const header = container.querySelector('.page-wrap-header');
-      expectHasClass(header as HTMLElement, 'backdrop-blur-xl');
+      expectHasClass(header as HTMLElement, 'bg-white');
+      expectHasClass(header as HTMLElement, 'border-b');
     });
 
     it('应该包含内容区域的 padding 和 overflow', () => {

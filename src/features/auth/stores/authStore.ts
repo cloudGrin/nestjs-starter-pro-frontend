@@ -5,6 +5,12 @@ import { appConfig } from '@/shared/config/app.config';
 import { connectSocket, disconnectSocket } from '@/shared/utils/socket';
 import type { User } from '@/shared/types/user.types';
 
+function debugAuth(...args: unknown[]) {
+  if (import.meta.env.DEV) {
+    console.debug(...args);
+  }
+}
+
 interface AuthState {
   token: string | null;
   refreshToken: string | null;
@@ -63,9 +69,9 @@ export const useAuthStore = create<AuthState>()(
         // 登录成功后，连接 WebSocket
         try {
           connectSocket();
-          console.log('[Auth] WebSocket connected after login');
+          debugAuth('[Auth] WebSocket connected after login');
         } catch (error) {
-          console.error('[Auth] Failed to connect WebSocket:', error);
+          debugAuth('[Auth] Failed to connect WebSocket:', error);
         }
       },
 
@@ -130,7 +136,7 @@ if (typeof window !== 'undefined') {
       disconnectSocket();
       connectSocket();
     } catch (error) {
-      console.error('[Auth] Failed to reconnect WebSocket after token refresh:', error);
+      debugAuth('[Auth] Failed to reconnect WebSocket after token refresh:', error);
     }
   });
 

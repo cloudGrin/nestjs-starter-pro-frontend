@@ -4,15 +4,14 @@
  * 说明：
  * - 使用CSS变量统一管理颜色，避免硬编码
  * - 支持深色模式（通过.dark类切换）
- * - 保持原有的视觉效果（渐变、毛玻璃、品牌色等）
  */
 
 @layer base {
   :root {
     /* ===== 品牌色 ===== */
-    --brand-primary: 102 126 234;           /* #667eea - 蓝紫色 */
-    --brand-secondary: 118 75 162;          /* #764ba2 - 紫色 */
-    --brand-link: 145 209 255;              /* #91d1ff - 亮蓝色（深色模式链接） */
+    --brand-primary: 22 119 255;            /* #1677ff - Ant Design 蓝 */
+    --brand-secondary: 64 150 255;          /* #4096ff */
+    --brand-link: 22 119 255;               /* #1677ff */
 
     /* ===== 基础背景色（浅色模式） ===== */
     --bg-primary: 255 255 255;              /* #ffffff - 主背景（Header、Card等） */
@@ -34,8 +33,6 @@
     --shadow-md: 2px 0 12px rgba(0, 0, 0, 0.04);                   /* 中阴影（Sidebar） */
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);                   /* 大阴影 */
 
-    /* ===== 毛玻璃效果 ===== */
-    --backdrop-blur: none;                  /* 浅色模式不需要毛玻璃 */
   }
 
   /* ===== 深色模式 ===== */
@@ -50,76 +47,51 @@
     --text-secondary: 203 213 225;          /* slate-300 - 次要文字 */
     --text-tertiary: 163 163 163;           /* #a3a3a3 - 辅助文字 */
 
-    /* 边框色（深色模式 - 使用品牌色半透明） */
-    --border-primary: 102 126 234 / 0.2;    /* 品牌色20%透明度 */
-    --border-secondary: 102 126 234 / 0.1;  /* 品牌色10%透明度 */
+    /* 边框色（深色模式） */
+    --border-primary: 71 85 105;            /* slate-600 */
+    --border-secondary: 51 65 85;           /* slate-700 */
 
-    /* 阴影（深色模式 - 使用品牌色发光） */
-    --shadow-sm: 0 1px 8px rgba(102, 126, 234, 0.15), inset 0 1px 0 rgba(102, 126, 234, 0.1);
-    --shadow-md: 2px 0 24px rgba(102, 126, 234, 0.1), inset -1px 0 0 rgba(102, 126, 234, 0.15);
-    --shadow-lg: 0 12px 48px rgba(102, 126, 234, 0.15);
-
-    /* 毛玻璃效果（深色模式） */
-    --backdrop-blur: blur(20px);            /* 20px模糊 */
+    /* 阴影（深色模式） */
+    --shadow-sm: 0 1px 8px rgba(0, 0, 0, 0.2);
+    --shadow-md: 2px 0 16px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.28);
   }
 }
 
-/* ===== 渐变背景类（无法用Tailwind实现的复杂渐变） ===== */
+/* ===== 应用布局背景 ===== */
 
-/* Header渐变背景 */
 .header-bg {
   background: #ffffff !important;
-  border-bottom-color: #e2e8f0 !important; /* 浅色模式：slate-200 */
+  border-bottom-color: #e2e8f0 !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
 }
 
 .dark .header-bg {
-  background: linear-gradient(
-    135deg,
-    rgba(15, 23, 42, 0.9) 0%,
-    rgba(15, 23, 42, 0.95) 100%
-  ) !important;
-  backdrop-filter: blur(20px) !important;
-  border-bottom-color: rgba(102, 126, 234, 0.2) !important; /* 深色模式：品牌色半透明 */
-  box-shadow: 0 1px 8px rgba(102, 126, 234, 0.15), inset 0 1px 0 rgba(102, 126, 234, 0.1) !important;
+  background: #0f172a !important;
+  border-bottom-color: #334155 !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Sidebar渐变背景 */
 .sidebar-bg {
-  background: linear-gradient(
-    180deg,
-    #f8fafc 0%,
-    #f1f5f9 100%
-  ) !important;
-  border-right-color: #e2e8f0 !important; /* 浅色模式：slate-200 */
+  background: #f8fafc !important;
+  border-right-color: #e2e8f0 !important;
   box-shadow: 2px 0 12px rgba(0, 0, 0, 0.04) !important;
 }
 
 .dark .sidebar-bg {
-  background: linear-gradient(
-    180deg,
-    rgba(15, 23, 42, 0.95) 0%,
-    rgba(15, 23, 42, 0.98) 100%
-  ) !important;
-  backdrop-filter: blur(20px) !important;
-  border-right-color: rgba(102, 126, 234, 0.2) !important; /* 深色模式：品牌色半透明 */
-  box-shadow: 2px 0 24px rgba(102, 126, 234, 0.1), inset -1px 0 0 rgba(102, 126, 234, 0.15) !important;
+  background: #0f172a !important;
+  border-right-color: #334155 !important;
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Sidebar Logo区域渐变背景 */
 .sidebar-logo-bg {
   background: transparent !important;
 }
 
 .dark .sidebar-logo-bg {
-  background: linear-gradient(
-    135deg,
-    rgba(102, 126, 234, 0.08) 0%,
-    rgba(118, 75, 162, 0.08) 100%
-  ) !important;
+  background: #0f172a !important;
 }
 
-/* MainLayout Content区域背景 */
 .content-bg {
   background: #f9fafb !important;
 }
@@ -130,9 +102,8 @@
 
 /* ===== 工具类 ===== */
 
-/* 品牌色渐变文字 */
 .text-brand-gradient {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1677ff 0%, #4096ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -22,17 +22,6 @@ export function useApiApps(params: QueryApiAppDto) {
 }
 
 /**
- * 获取API应用详情
- */
-export function useApiApp(appId: number | null) {
-  return useQuery({
-    queryKey: ['api-apps', appId],
-    queryFn: () => apiAuthService.getApiApp(appId as number),
-    enabled: appId !== null,
-  });
-}
-
-/**
  * 创建API应用
  */
 export function useCreateApiApp() {

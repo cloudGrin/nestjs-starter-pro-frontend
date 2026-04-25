@@ -5,7 +5,6 @@ import { HomeOutlined } from '@ant-design/icons';
 import { useUserMenus } from '@/features/rbac/menu/hooks/useMenus';
 import type { MenuTreeNode } from '@/features/rbac/menu/types/menu.types';
 import type { MenuProps } from 'antd';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useThemeStore } from '@/shared/stores';
 import { getMenuIcon } from '@/shared/components/icons/menuIcons';
 
@@ -16,7 +15,7 @@ interface SidebarProps {
 }
 
 /**
- * 侧边栏组件（企业级设计 - 动态菜单 + 流畅动画）
+ * 侧边栏组件
  */
 export function Sidebar({ collapsed }: SidebarProps) {
   const navigate = useNavigate();
@@ -127,59 +126,28 @@ export function Sidebar({ collapsed }: SidebarProps) {
       theme={themeMode === 'dark' ? 'dark' : 'light'}
       className="sidebar-bg border-r transition-theme"
     >
-      {/* Logo区域 - 添加动画 */}
-      <motion.div
+      <div
         className="h-16 flex items-center justify-center text-xl font-bold border-b overflow-hidden relative sidebar-logo-bg transition-theme"
         style={{
           borderColor: themeMode === 'dark' ? 'rgba(102, 126, 234, 0.2)' : '#e2e8f0',
+          paddingLeft: collapsed ? 0 : 16,
+          paddingRight: collapsed ? 0 : 16,
         }}
-        initial={false}
-        animate={{
-          paddingLeft: collapsed ? '0px' : '16px',
-          paddingRight: collapsed ? '0px' : '16px',
-        }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
-        <AnimatePresence mode="wait">
-          {collapsed ? (
-            <motion.span
-              key="collapsed-logo"
-              initial={{ scale: 0.8, opacity: 0, rotate: -180 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              exit={{ scale: 0.8, opacity: 0, rotate: 180 }}
-              transition={{ duration: 0.3 }}
-              className="text-3xl"
-            >
-              <HomeOutlined />
-            </motion.span>
-          ) : (
-            <motion.span
-              key="expanded-logo"
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 20, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="text-brand-gradient"
-            >
-              Home Admin
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </motion.div>
+        {collapsed ? (
+          <span className="text-3xl">
+            <HomeOutlined />
+          </span>
+        ) : (
+          <span className="text-brand-gradient">Home Admin</span>
+        )}
+      </div>
       {menusLoading ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex justify-center items-center p-8"
-        >
+        <div className="flex justify-center items-center p-8">
           <Spin />
-        </motion.div>
+        </div>
       ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
+        <div>
           <Menu
             theme={themeMode === 'dark' ? 'dark' : 'light'}
             mode="inline"
@@ -188,7 +156,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
             items={menuItems}
             className="sidebar-menu border-r-0 bg-transparent"
           />
-        </motion.div>
+        </div>
       )}
     </Sider>
   );

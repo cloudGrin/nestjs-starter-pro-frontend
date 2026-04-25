@@ -16,12 +16,10 @@ describe('apiAuthService', () => {
     vi.clearAllMocks();
   });
 
-  it('uses numeric app ids for app detail endpoints', () => {
-    apiAuthService.getApiApp(12);
+  it('uses numeric app ids for app mutation endpoints', () => {
     apiAuthService.updateApiApp(12, { name: 'Updated' });
     apiAuthService.deleteApiApp(12);
 
-    expect(request.get).toHaveBeenCalledWith('/api-apps/12');
     expect(request.put).toHaveBeenCalledWith('/api-apps/12', { name: 'Updated' }, expect.any(Object));
     expect(request.delete).toHaveBeenCalledWith('/api-apps/12', expect.any(Object));
   });

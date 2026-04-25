@@ -20,7 +20,7 @@ interface ComponentSelectorProps {
  * @example
  * <ComponentSelector
  *   value="UserListPage"
- *   onChange={(value) => console.log(value)}
+ *   onChange={setComponent}
  * />
  */
 export function ComponentSelector({ value, onChange, disabled }: ComponentSelectorProps) {

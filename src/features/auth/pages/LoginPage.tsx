@@ -27,18 +27,14 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(values.account, values.password);
-
-      console.log('[登录] 登录成功，跳转到首页');
       navigate('/', { replace: true });
-    } catch (error) {
-      console.error('[登录] 登录失败', error);
-      // 错误消息已经在 request.ts 中处理
+    } catch {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 transition-colors duration-300">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 transition-colors duration-300">
       <Card className="w-full max-w-md shadow-lg">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-indigo-700 mb-2">

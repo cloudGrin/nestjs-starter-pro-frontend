@@ -18,12 +18,18 @@ let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 let reconnectAttempts = 0;
 let isFirstConnection = true; // 首次连接不显示提示
 
+function debugSocket(...args: unknown[]) {
+  if (import.meta.env.DEV) {
+    console.debug(...args);
+  }
+}
+
 /**
  * 连接 WebSocket
  */
 export function connectSocket(): Socket {
   if (socket?.connected) {
-    console.log('[WebSocket] Already connected');
+    debugSocket('[WebSocket] Already connected');
     return socket;
   }
 
@@ -34,7 +40,7 @@ export function connectSocket(): Socket {
 
   const socketUrl = import.meta.env.VITE_WS_URL || 'http://localhost:3000';
 
-  console.log(`[WebSocket] Connecting to ${socketUrl}/notifications...`);
+  debugSocket(`[WebSocket] Connecting to ${socketUrl}/notifications...`);
 
   socket = io(`${socketUrl}/notifications`, {
     auth: {
@@ -54,7 +60,7 @@ export function connectSocket(): Socket {
    * 连接成功
    */
   socket.on('connect', () => {
-    console.log('[WebSocket] ✅ Connected to notification server');
+    debugSocket('[WebSocket] Connected to notification server');
     reconnectAttempts = 0; // 重置重连计数
 
     // 首次连接不显示提示，重连成功才显示
@@ -71,7 +77,7 @@ export function connectSocket(): Socket {
    * 连接失败
    */
   socket.on('connect_error', (error) => {
-    console.error('[WebSocket] ❌ Connection error:', error.message);
+    debugSocket('[WebSocket] Connection error:', error.message);
     reconnectAttempts++;
 
     // 首次连接失败或重连失败时提示
@@ -86,7 +92,7 @@ export function connectSocket(): Socket {
    * 断开连接
    */
   socket.on('disconnect', (reason) => {
-    console.warn('[WebSocket] ⚠️  Disconnected:', reason);
+    debugSocket('[WebSocket] Disconnected:', reason);
     stopHeartbeat();
 
     // 区分主动断开和异常断开
@@ -95,7 +101,7 @@ export function connectSocket(): Socket {
       message.error('通知推送已断开，请重新登录', 5);
     } else if (reason === 'io client disconnect') {
       // 客户端主动断开（正常登出）
-      console.log('[WebSocket] Client disconnected normally');
+      debugSocket('[WebSocket] Client disconnected normally');
     } else {
       // 网络异常等其他原因
       message.warning('通知推送已断开，正在重连...', 3);
@@ -106,14 +112,14 @@ export function connectSocket(): Socket {
    * 重连尝试
    */
   socket.io.on('reconnect_attempt', (attempt) => {
-    console.log(`[WebSocket] 🔄 Reconnecting... (${attempt}/5)`);
+    debugSocket(`[WebSocket] Reconnecting... (${attempt}/5)`);
   });
 
   /**
    * 重连失败
    */
   socket.io.on('reconnect_failed', () => {
-    console.error('[WebSocket] ❌ Reconnection failed after 5 attempts');
+    debugSocket('[WebSocket] Reconnection failed after 5 attempts');
     message.error('通知推送重连失败，请刷新页面', 0); // 不自动关闭
   });
 
@@ -121,7 +127,7 @@ export function connectSocket(): Socket {
    * 认证失败
    */
   socket.on('error', (error) => {
-    console.error('[WebSocket] ❌ Error:', error);
+    debugSocket('[WebSocket] Error:', error);
     message.error('通知推送认证失败，请重新登录', 5);
   });
 
@@ -131,7 +137,7 @@ export function connectSocket(): Socket {
    * Pong 响应（心跳回应）
    */
   socket.on('pong', () => {
-    console.log('[WebSocket] 💓 Heartbeat received');
+    debugSocket('[WebSocket] Heartbeat received');
   });
 
   return socket;
@@ -146,7 +152,7 @@ export function disconnectSocket(): void {
     socket.disconnect();
     socket = null;
     isFirstConnection = true; // 重置首次连接标志
-    console.log('[WebSocket] Disconnected by client');
+    debugSocket('[WebSocket] Disconnected by client');
   }
 }
 
@@ -166,12 +172,12 @@ function startHeartbeat(): void {
 
   heartbeatInterval = setInterval(() => {
     if (socket?.connected) {
-      console.log('[WebSocket] 💓 Sending heartbeat...');
+      debugSocket('[WebSocket] Sending heartbeat...');
       socket.emit('ping');
     }
   }, 25000); // 25秒
 
-  console.log('[WebSocket] Heartbeat started (every 25s)');
+  debugSocket('[WebSocket] Heartbeat started (every 25s)');
 }
 
 /**
@@ -181,6 +187,6 @@ function stopHeartbeat(): void {
   if (heartbeatInterval) {
     clearInterval(heartbeatInterval);
     heartbeatInterval = null;
-    console.log('[WebSocket] Heartbeat stopped');
+    debugSocket('[WebSocket] Heartbeat stopped');
   }
 }

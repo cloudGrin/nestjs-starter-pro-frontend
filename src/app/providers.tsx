@@ -33,43 +33,37 @@ export function AppProviders({ children }: AppProvidersProps) {
         theme={{
           algorithm: themeMode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {
-            colorPrimary: '#667eea', // 品牌色（蓝紫色）
-            colorInfo: '#667eea',
-            colorLink: '#91d1ff', // 深色模式下的链接色更亮
-            borderRadius: 8, // 增加圆角
-            // 深色模式下的玻璃拟态配色
+            colorPrimary: '#1677ff',
+            colorInfo: '#1677ff',
+            colorLink: '#1677ff',
+            borderRadius: 8,
             ...(themeMode === 'dark' && {
-              colorBgContainer: 'rgba(30, 41, 59, 0.6)', // Card/Modal背景：半透明深色
-              colorBgElevated: 'rgba(30, 41, 59, 0.8)', // Dropdown/Popover背景：更不透明
-              colorBorder: 'rgba(102, 126, 234, 0.2)', // 边框：品牌色
-              colorBorderSecondary: 'rgba(102, 126, 234, 0.1)',
+              colorBgContainer: '#1e293b',
+              colorBgElevated: '#1e293b',
+              colorBorder: '#475569',
+              colorBorderSecondary: '#334155',
             }),
           },
           components: {
-            // Card 玻璃拟态样式
             Card: themeMode === 'dark'
               ? {
-                  headerBg: 'rgba(30, 41, 59, 0.4)',
-                  colorBgContainer: 'rgba(30, 41, 59, 0.6)',
-                  colorBorderSecondary: 'rgba(102, 126, 234, 0.2)',
-                  boxShadow: '0 8px 32px rgba(102, 126, 234, 0.08)',
+                  headerBg: '#1e293b',
+                  colorBgContainer: '#1e293b',
+                  colorBorderSecondary: '#334155',
                 }
               : {},
-            // Table 玻璃拟态样式
             Table: themeMode === 'dark'
               ? {
-                  headerBg: 'rgba(30, 41, 59, 0.5)',
+                  headerBg: '#1e293b',
                   headerColor: '#cbd5e1',
-                  colorBgContainer: 'rgba(30, 41, 59, 0.4)',
-                  colorBorderSecondary: 'rgba(102, 126, 234, 0.15)',
+                  colorBgContainer: '#1e293b',
+                  colorBorderSecondary: '#334155',
                 }
               : {},
-            // Modal 玻璃拟态样式
             Modal: themeMode === 'dark'
               ? {
-                  contentBg: 'rgba(30, 41, 59, 0.9)',
-                  headerBg: 'rgba(30, 41, 59, 0.95)',
-                  boxShadow: '0 12px 48px rgba(102, 126, 234, 0.15)',
+                  contentBg: '#1e293b',
+                  headerBg: '#1e293b',
                 }
               : {},
           },

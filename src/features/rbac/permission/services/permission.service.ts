@@ -26,12 +26,6 @@ export const permissionService = {
     request.get<PermissionTreeNode[]>('/permissions/tree'),
 
   /**
-   * 获取权限详情
-   */
-  getPermission: (id: number) =>
-    request.get<Permission>(`/permissions/${id}`),
-
-  /**
    * 创建权限（手动创建 - 一般不需要,权限通过扫描自动生成）
    */
   createPermission: (data: CreatePermissionDto) =>

@@ -3,4 +3,3 @@
  */
 
 export { usePermission } from './usePermission';
-export { useApp } from './useApp';

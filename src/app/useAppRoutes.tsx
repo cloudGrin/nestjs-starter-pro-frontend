@@ -114,11 +114,13 @@ export function useAppRoutes() {
     // 生成动态路由
     const dynamicRoutes = generateRoutesWithDefault(userMenus);
 
-    console.log('[动态路由] 生成路由配置', {
-      menuCount: userMenus.length,
-      routeCount: dynamicRoutes.length,
-      routes: dynamicRoutes,
-    });
+    if (import.meta.env.DEV) {
+      console.debug('[动态路由] 生成路由配置', {
+        menuCount: userMenus.length,
+        routeCount: dynamicRoutes.length,
+        routes: dynamicRoutes,
+      });
+    }
 
     // 创建完整的路由配置
     return createBrowserRouter([

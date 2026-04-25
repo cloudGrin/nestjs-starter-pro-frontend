@@ -325,7 +325,7 @@ export function MenuTree({
             }
           />
         ) : (
-          <div className="bg-white dark:bg-slate-800/40 rounded-lg border border-gray-200 dark:border-blue-500/20 shadow-sm overflow-hidden transition-theme backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden transition-theme">
             <Tree
               draggable
               blockNode

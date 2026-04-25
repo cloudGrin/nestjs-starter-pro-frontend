@@ -140,7 +140,7 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
         duration: 8,
       });
       if (isDev) {
-        console.error('💡 提示：请确认后端服务已启动（默认端口3000）');
+        console.error('提示：请确认后端服务已启动（默认端口3000）');
       }
     } else if (error.code === 'ECONNABORTED') {
       notification.error({
@@ -183,7 +183,7 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
       // 开发环境：额外提示检查字段名
       if (isDev && messages) {
         console.warn(
-          '💡 提示：请检查请求参数字段名是否与后端API一致（参考 Swagger 文档或 api-docs.json）'
+          '提示：请检查请求参数字段名是否与后端API一致（参考 Swagger 文档或 api-docs.json）'
         );
       }
       break;
@@ -200,8 +200,8 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
 
       // 开发环境：提示权限代码
       if (isDev && requiredPermissions) {
-        console.warn('💡 所需权限:', requiredPermissions);
-        console.warn('💡 请检查后端菜单权限配置，或联系管理员分配权限');
+        console.warn('所需权限:', requiredPermissions);
+        console.warn('请检查后端菜单权限配置，或联系管理员分配权限');
       }
       break;
     }
@@ -228,7 +228,7 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
 
       // 开发环境：提示查看后端日志
       if (isDev) {
-        console.error('💡 提示：请查看后端控制台日志以获取详细错误信息');
+        console.error('提示：请查看后端控制台日志以获取详细错误信息');
       }
       break;
     }
