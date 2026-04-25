@@ -12,6 +12,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore } from './authStore';
 import { authService } from '../services/auth.service';
+import { connectSocket, disconnectSocket } from '@/shared/utils/socket';
 
 // Mock authService
 vi.mock('../services/auth.service', () => ({
@@ -45,6 +46,58 @@ describe('authStore', () => {
 
     // 重置所有 mock
     vi.clearAllMocks();
+  });
+
+  describe('token lifecycle events', () => {
+    it('应该在请求层刷新 Token 后同步 store 和 localStorage', () => {
+      useAuthStore.setState({
+        token: 'old-access-token',
+        refreshToken: 'mock-refresh-token',
+        user: {
+          id: 1,
+          username: 'testuser',
+          email: 'test@example.com',
+          roles: [],
+          permissions: [],
+        },
+      });
+
+      window.dispatchEvent(
+        new CustomEvent('auth:token-refreshed', {
+          detail: { accessToken: 'new-access-token' },
+        })
+      );
+
+      expect(useAuthStore.getState().token).toBe('new-access-token');
+      expect(localStorage.getItem('test-token')).toBe('new-access-token');
+      expect(disconnectSocket).toHaveBeenCalled();
+      expect(connectSocket).toHaveBeenCalled();
+    });
+
+    it('应该在请求层判定会话过期后清理认证状态', () => {
+      useAuthStore.setState({
+        token: 'old-access-token',
+        refreshToken: 'mock-refresh-token',
+        user: {
+          id: 1,
+          username: 'testuser',
+          email: 'test@example.com',
+          roles: [],
+          permissions: [],
+        },
+      });
+      localStorage.setItem('test-token', 'old-access-token');
+      localStorage.setItem('test-refresh-token', 'mock-refresh-token');
+
+      window.dispatchEvent(new Event('auth:session-expired'));
+
+      expect(useAuthStore.getState().token).toBeNull();
+      expect(useAuthStore.getState().refreshToken).toBeNull();
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(localStorage.getItem('test-token')).toBeNull();
+      expect(localStorage.getItem('test-refresh-token')).toBeNull();
+      expect(disconnectSocket).toHaveBeenCalled();
+    });
   });
 
   describe('login', () => {

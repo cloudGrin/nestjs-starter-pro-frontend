@@ -1,19 +1,14 @@
 import { useMemo } from 'react';
 import { Layout, Menu, Spin } from 'antd';
-import * as Icons from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserMenus } from '@/features/rbac/menu/hooks/useMenus';
 import type { MenuTreeNode } from '@/features/rbac/menu/types/menu.types';
 import type { MenuProps } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useThemeStore } from '@/shared/stores';
+import { getMenuIcon } from '@/shared/components/icons/menuIcons';
 
 const { Sider } = Layout;
-
-type IconComponentType = React.ComponentType<{
-  className?: string;
-  style?: React.CSSProperties;
-}>;
 
 interface SidebarProps {
   collapsed: boolean;
@@ -36,9 +31,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
         .filter((menu) => menu.isVisible && menu.isActive)
         .map((menu) => {
           // 动态获取图标组件
-          const IconComponent = menu.icon
-            ? (Icons as unknown as Record<string, IconComponentType>)[menu.icon]
-            : null;
+          const IconComponent = getMenuIcon(menu.icon);
 
           if (menu.type === 'directory') {
             // 目录类型（有子菜单）

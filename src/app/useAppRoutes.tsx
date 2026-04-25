@@ -15,8 +15,8 @@
 
 import { useMemo, lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { Spin } from 'antd';
 import { generateRoutesWithDefault } from './generateRoutes';
+import { PageLoading } from './routeFallbacks';
 import { useUserMenus } from '@/features/rbac/menu/hooks/useMenus';
 import { ProtectedRoute } from '@/shared/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -51,21 +51,10 @@ const NotFoundPage = lazy(() =>
 );
 
 /**
- * 全局加载页面
- */
-// eslint-disable-next-line react-refresh/only-export-components
-const GlobalLoading = () => (
-  <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-    <Spin size="large" />
-    <div className="text-gray-500">正在加载应用...</div>
-  </div>
-);
-
-/**
  * Suspense 包装器
  */
 const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType>) => (
-  <Suspense fallback={<GlobalLoading />}>
+  <Suspense fallback={<PageLoading text="正在加载应用..." />}>
     <Component />
   </Suspense>
 );

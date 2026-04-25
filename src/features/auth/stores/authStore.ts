@@ -114,3 +114,27 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('auth:token-refreshed', (event) => {
+    const accessToken = (event as CustomEvent<{ accessToken?: string }>).detail?.accessToken;
+    if (!accessToken) return;
+
+    const currentUser = useAuthStore.getState().user;
+    useAuthStore.setState({ token: accessToken });
+    localStorage.setItem(appConfig.tokenKey, accessToken);
+
+    if (!currentUser) return;
+
+    try {
+      disconnectSocket();
+      connectSocket();
+    } catch (error) {
+      console.error('[Auth] Failed to reconnect WebSocket after token refresh:', error);
+    }
+  });
+
+  window.addEventListener('auth:session-expired', () => {
+    useAuthStore.getState().clearAuth();
+  });
+}

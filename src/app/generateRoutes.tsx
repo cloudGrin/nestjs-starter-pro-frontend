@@ -13,21 +13,10 @@
 import { Suspense } from 'react';
 import { Navigate } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
-import { Spin } from 'antd';
 import { getComponent } from './componentRegistry';
+import { NoAvailableMenuPage, PageLoading } from './routeFallbacks';
 import { ProtectedRoute } from '@/shared/components/auth/ProtectedRoute';
 import type { MenuTreeNode } from '@/features/rbac/menu/types/menu.types';
-
-/**
- * 页面加载中组件
- */
-// eslint-disable-next-line react-refresh/only-export-components
-const PageLoading = () => (
-  <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-    <Spin size="large" />
-    <div className="text-gray-500">加载中...</div>
-  </div>
-);
 
 /**
  * 动态路由生成函数
@@ -147,12 +136,11 @@ export function generateRoutesWithDefault(
   defaultPath?: string
 ): RouteObject[] {
   const routes = generateRoutes(menus);
-  const fallbackPath = defaultPath || findFirstMenuPath(menus) || '/';
+  const fallbackPath = defaultPath || findFirstMenuPath(menus);
 
-  // 添加首页重定向
   routes.unshift({
     index: true,
-    element: <Navigate to={fallbackPath} replace />,
+    element: fallbackPath ? <Navigate to={fallbackPath} replace /> : <NoAvailableMenuPage />,
   });
 
   return routes;

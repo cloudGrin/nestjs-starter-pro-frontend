@@ -4,4 +4,3 @@
 
 export { ProtectedRoute } from './ProtectedRoute';
 export { PermissionGuard } from './PermissionGuard';
-export { RoleGuard } from './RoleGuard';

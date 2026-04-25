@@ -6,12 +6,7 @@
 import { useState, useEffect } from 'react';
 import { Input } from 'antd';
 import { QuestionOutlined } from '@ant-design/icons';
-import * as Icons from '@ant-design/icons';
-
-type IconComponentType = React.ComponentType<{
-  className?: string;
-  style?: React.CSSProperties;
-}>;
+import { getMenuIcon } from '@/shared/components/icons/menuIcons';
 
 interface IconSelectorProps {
   value?: string;
@@ -37,9 +32,7 @@ export function IconSelector({
   };
 
   // 动态获取图标组件
-  const IconComponent = iconName
-    ? (Icons as unknown as Record<string, IconComponentType>)[iconName]
-    : null;
+  const IconComponent = getMenuIcon(iconName);
 
   return (
     <Input

@@ -13,17 +13,9 @@ export { TableActions } from './table/TableActions';
 
 // 反馈组件
 export { EmptyState } from './feedback/EmptyState';
-export {
-  TableSkeleton,
-  CardSkeleton,
-  FormSkeleton,
-  ListSkeleton,
-  StatCardSkeleton,
-  Detailskeleton,
-} from './feedback/Skeleton';
 
 // 显示组件
-export { StatusBadge, BooleanBadge, EnabledBadge } from './display/StatusBadge';
+export { StatusBadge } from './display/StatusBadge';
 
 // 插画组件
 export {
@@ -39,7 +31,6 @@ export {
 
 // 认证组件
 export { PermissionGuard } from './auth/PermissionGuard';
-export { RoleGuard } from './auth/RoleGuard';
 export { ProtectedRoute } from './auth/ProtectedRoute';
 
 // 错误处理组件

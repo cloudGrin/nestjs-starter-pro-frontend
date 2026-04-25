@@ -5,20 +5,15 @@
 import { useState, useMemo } from 'react';
 import { Tree, Input, Button, Tag, Space, App } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
-import * as Icons from '@ant-design/icons';
 import type { DataNode, TreeProps } from 'antd/es/tree';
 import { PermissionGuard } from '@/shared/components/auth/PermissionGuard';
 import { EmptyState } from '@/shared/components';
+import { getMenuIcon } from '@/shared/components/icons/menuIcons';
 import { MenuTypeTag } from './MenuTypeTag';
 import type { MenuTreeNode, Menu } from '../types/menu.types';
 import './MenuTree.css';
 
 const { Search } = Input;
-
-type IconComponentType = React.ComponentType<{
-  className?: string;
-  style?: React.CSSProperties;
-}>;
 
 interface MenuTreeProps {
   treeData?: MenuTreeNode[];
@@ -57,9 +52,7 @@ export function MenuTree({
    */
   const renderMenuNode = (node: Menu) => {
     // 动态获取图标组件
-    const IconComponent = node.icon
-      ? (Icons as unknown as Record<string, IconComponentType>)[node.icon]
-      : null;
+    const IconComponent = getMenuIcon(node.icon);
 
     return (
       <div className="menu-tree-node group flex items-center justify-between w-full pr-4 py-1">

@@ -5,22 +5,13 @@
  * 1. 基础渲染（5种状态类型）
  * 2. 图标显示（默认圆点、隐藏图标、自定义图标）
  * 3. 深色模式支持
- * 4. BooleanBadge 简化组件
- * 5. EnabledBadge 简化组件
- * 6. 样式和动画
- * 7. 边界情况
+ * 4. 样式和动画
+ * 5. 边界情况
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { StatusBadge, BooleanBadge, EnabledBadge } from '../StatusBadge';
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  ExclamationCircleOutlined,
-  ClockCircleOutlined,
-  MinusCircleOutlined,
-  StarOutlined,
-} from '@ant-design/icons';
+import { StatusBadge } from '../StatusBadge';
+import { StarOutlined } from '@ant-design/icons';
 import { useThemeStore } from '@/shared/stores';
 
 // 测试辅助函数
@@ -165,65 +156,13 @@ describe('StatusBadge 组件', () => {
       expectHasClass(badge, 'bg-red-50');
 
       // 切换到深色模式
-      useThemeStore.getState().setTheme('dark');
+      act(() => {
+        useThemeStore.getState().setTheme('dark');
+      });
       rerender(<StatusBadge status="error" text="失败" />);
 
       badge = screen.getByText('失败');
       expectHasClass(badge, 'bg-red-900/30');
-    });
-  });
-
-  // ==================== BooleanBadge 测试 ====================
-
-  describe('BooleanBadge 简化组件', () => {
-    it('应该在 value=true 时显示 success 状态', () => {
-      render(<BooleanBadge value={true} />);
-
-      const badge = screen.getByText('是');
-      expect(badge).toBeInTheDocument();
-      expectHasClass(badge, 'bg-green-50');
-    });
-
-    it('应该在 value=false 时显示 default 状态', () => {
-      render(<BooleanBadge value={false} />);
-
-      const badge = screen.getByText('否');
-      expect(badge).toBeInTheDocument();
-      expectHasClass(badge, 'bg-gray-50');
-    });
-
-    it('应该支持自定义文本', () => {
-      render(<BooleanBadge value={true} trueText="开启" falseText="关闭" />);
-
-      const badge = screen.getByText('开启');
-      expect(badge).toBeInTheDocument();
-    });
-
-    it('应该在 value=false 时显示自定义文本', () => {
-      render(<BooleanBadge value={false} trueText="开启" falseText="关闭" />);
-
-      const badge = screen.getByText('关闭');
-      expect(badge).toBeInTheDocument();
-    });
-  });
-
-  // ==================== EnabledBadge 测试 ====================
-
-  describe('EnabledBadge 简化组件', () => {
-    it('应该在 enabled=true 时显示"已启用"', () => {
-      render(<EnabledBadge enabled={true} />);
-
-      const badge = screen.getByText('已启用');
-      expect(badge).toBeInTheDocument();
-      expectHasClass(badge, 'bg-green-50');
-    });
-
-    it('应该在 enabled=false 时显示"已禁用"', () => {
-      render(<EnabledBadge enabled={false} />);
-
-      const badge = screen.getByText('已禁用');
-      expect(badge).toBeInTheDocument();
-      expectHasClass(badge, 'bg-red-50');
     });
   });
 
@@ -315,7 +254,10 @@ describe('StatusBadge 组件', () => {
               <tr key={user.id}>
                 <td>{user.name}</td>
                 <td>
-                  <EnabledBadge enabled={user.isActive} />
+                  <StatusBadge
+                    status={user.isActive ? 'success' : 'error'}
+                    text={user.isActive ? '已启用' : '已禁用'}
+                  />
                 </td>
               </tr>
             ))}

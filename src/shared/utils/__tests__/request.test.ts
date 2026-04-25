@@ -357,6 +357,8 @@ describe('request - Axios封装', () => {
     it('401 错误应该自动刷新 Token 并重试', async () => {
       localStorage.setItem(appConfig.tokenKey, 'expired-token');
       localStorage.setItem(appConfig.refreshTokenKey, 'valid-refresh-token');
+      const tokenRefreshedListener = vi.fn();
+      window.addEventListener('auth:token-refreshed', tokenRefreshedListener);
 
       // Mock refresh 接口 - 使用 refreshMock
       refreshMock.onPost('/auth/refresh').reply(200, {
@@ -381,6 +383,12 @@ describe('request - Axios封装', () => {
 
       // 应该保存新的 Token
       expect(localStorage.getItem(appConfig.tokenKey)).toBe('new-access-token');
+      expect(tokenRefreshedListener).toHaveBeenCalledWith(
+        expect.objectContaining({
+          detail: { accessToken: 'new-access-token' },
+        })
+      );
+      window.removeEventListener('auth:token-refreshed', tokenRefreshedListener);
     });
 
     it('没有 refreshToken 时应该跳转登录页', async () => {
@@ -399,6 +407,8 @@ describe('request - Axios封装', () => {
     it('Token 刷新失败应该清除认证信息并跳转登录', async () => {
       localStorage.setItem(appConfig.tokenKey, 'expired-token');
       localStorage.setItem(appConfig.refreshTokenKey, 'invalid-refresh-token');
+      const sessionExpiredListener = vi.fn();
+      window.addEventListener('auth:session-expired', sessionExpiredListener);
 
       // Mock refresh 接口返回 401
       mock.onPost('/auth/refresh').reply(401);
@@ -409,6 +419,8 @@ describe('request - Axios封装', () => {
       // 应该清除 Token
       expect(localStorage.getItem(appConfig.tokenKey)).toBeNull();
       expect(localStorage.getItem(appConfig.refreshTokenKey)).toBeNull();
+      expect(sessionExpiredListener).toHaveBeenCalled();
+      window.removeEventListener('auth:session-expired', sessionExpiredListener);
     });
   });
 

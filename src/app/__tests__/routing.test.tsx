@@ -50,4 +50,11 @@ describe('dynamic routing', () => {
     expect(routes[0]).toMatchObject({ index: true });
     expect((routes[0].element as React.ReactElement).props.to).toBe('/system/users');
   });
+
+  it('does not redirect the index route to itself when no menu can be resolved', () => {
+    const routes = generateRoutesWithDefault([]);
+
+    expect(routes[0]).toMatchObject({ index: true });
+    expect((routes[0].element as React.ReactElement).props.to).toBeUndefined();
+  });
 });

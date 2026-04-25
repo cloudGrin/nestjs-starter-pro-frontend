@@ -323,6 +323,17 @@ function onRefreshed(token: string) {
   refreshSubscribers = [];
 }
 
+function dispatchAuthEvent<T>(name: string, detail?: T) {
+  window.dispatchEvent(new CustomEvent(name, { detail }));
+}
+
+function expireSession() {
+  localStorage.removeItem(appConfig.tokenKey);
+  localStorage.removeItem(appConfig.refreshTokenKey);
+  dispatchAuthEvent('auth:session-expired');
+  window.location.href = '/login';
+}
+
 /**
  * 响应拦截器：处理成功提示、错误和 Token 刷新
  */
@@ -385,6 +396,7 @@ axiosInstance.interceptors.response.use(
 
           // 保存新的 Token
           localStorage.setItem(appConfig.tokenKey, accessToken);
+          dispatchAuthEvent('auth:token-refreshed', { accessToken });
 
           // 更新原请求的 Token
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
@@ -395,10 +407,7 @@ axiosInstance.interceptors.response.use(
           // 重试原请求
           return axiosInstance(originalRequest);
         } catch (refreshError) {
-          // 刷新失败，清除 Token 并跳转登录
-          localStorage.removeItem(appConfig.tokenKey);
-          localStorage.removeItem(appConfig.refreshTokenKey);
-          window.location.href = '/login';
+          expireSession();
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
@@ -406,7 +415,7 @@ axiosInstance.interceptors.response.use(
       } else {
         // 没有 refreshToken，直接跳转登录
         isRefreshing = false;
-        window.location.href = '/login';
+        expireSession();
         return Promise.reject(error);
       }
     }

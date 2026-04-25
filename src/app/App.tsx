@@ -1,18 +1,8 @@
 import { RouterProvider } from 'react-router-dom';
-import { Spin } from 'antd';
 import { AppProviders } from './providers';
+import { PageLoading } from './routeFallbacks';
 import { useAppRoutes } from './useAppRoutes';
 import { ErrorBoundary } from '@/shared/components/error/ErrorBoundary';
-
-/**
- * 全局加载组件
- */
-const GlobalLoading = () => (
-  <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-    <Spin size="large" />
-    <div className="text-gray-500">正在加载应用...</div>
-  </div>
-);
 
 /**
  * 应用路由组件
@@ -26,7 +16,7 @@ function AppRouter() {
 
   // 路由加载中
   if (!router) {
-    return <GlobalLoading />;
+    return <PageLoading text="正在加载应用..." />;
   }
 
   return <RouterProvider router={router} />;

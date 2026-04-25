@@ -6,19 +6,14 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Modal, Tree, Input, Space, Tag, Spin, Empty } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
-import * as Icons from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
+import { getMenuIcon } from '@/shared/components/icons/menuIcons';
 import { useMenuTree } from '../../menu/hooks/useMenus';
 import { useRoleMenus, useAssignMenus } from '../hooks/useRoles';
 import type { Role } from '../types/role.types';
 import type { MenuTreeNode, Menu } from '../../menu/types/menu.types';
 
 const { Search } = Input;
-
-type IconComponentType = React.ComponentType<{
-  className?: string;
-  style?: React.CSSProperties;
-}>;
 
 interface RoleMenuModalProps {
   open: boolean;
@@ -61,9 +56,7 @@ export function RoleMenuModal({
    * 渲染菜单标题
    */
   const renderMenuTitle = (menu: Menu) => {
-    const IconComponent = menu.icon
-      ? (Icons as unknown as Record<string, IconComponentType>)[menu.icon]
-      : null;
+    const IconComponent = getMenuIcon(menu.icon);
 
     return (
       <div className="flex items-center gap-2">

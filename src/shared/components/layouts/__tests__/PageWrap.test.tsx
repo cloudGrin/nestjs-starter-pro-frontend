@@ -10,7 +10,7 @@
  * 6. 样式类
  * 7. 组合使用
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PageWrap } from '../PageWrap';
 import { Button } from 'antd';
@@ -214,7 +214,9 @@ describe('PageWrap 组件', () => {
       expectHasClass(wrapper, 'bg-gray-50');
 
       // 切换到深色模式
-      useThemeStore.getState().setTheme('dark');
+      act(() => {
+        useThemeStore.getState().setTheme('dark');
+      });
       rerender(
         <PageWrap title="用户管理">
           <div>内容</div>

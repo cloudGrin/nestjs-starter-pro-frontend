@@ -115,31 +115,3 @@ export function StatusBadge({
     </span>
   );
 }
-
-/**
- * 布尔状态徽章（简化版）
- */
-export function BooleanBadge({ value, trueText = '是', falseText = '否' }: {
-  value: boolean;
-  trueText?: string;
-  falseText?: string;
-}) {
-  return (
-    <StatusBadge
-      status={value ? 'success' : 'default'}
-      text={value ? trueText : falseText}
-    />
-  );
-}
-
-/**
- * 启用状态徽章（简化版）
- */
-export function EnabledBadge({ enabled }: { enabled: boolean }) {
-  return (
-    <StatusBadge
-      status={enabled ? 'success' : 'error'}
-      text={enabled ? '已启用' : '已禁用'}
-    />
-  );
-}
