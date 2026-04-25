@@ -42,15 +42,18 @@ export function Sidebar({ collapsed }: SidebarProps) {
               children: menu.children ? render(menu.children) : [],
             };
           } else if (menu.type === 'menu') {
+            if (!menu.path || menu.isExternal) {
+              return null;
+            }
+            const path = menu.path;
+
             // 菜单类型（对应具体页面）
             return {
-              key: menu.path || menu.id.toString(),
+              key: path,
               icon: IconComponent ? <IconComponent /> : null,
               label: menu.name,
               onClick: () => {
-                if (menu.path) {
-                  navigate(menu.path);
-                }
+                navigate(path);
               },
             };
           }

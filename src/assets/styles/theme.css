@@ -139,42 +139,6 @@
     ) !important;
 }
 
-/* ===== Ant Design组件深色模式样式覆盖 ===== */
-
-/* Card玻璃拟态样式 */
-.dark .ant-card {
-  background: rgba(30, 41, 59, 0.6) !important;
-  border-color: rgba(102, 126, 234, 0.2) !important;
-  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.08) !important;
-}
-
-.dark .ant-card-head {
-  background: rgba(30, 41, 59, 0.4) !important;
-  border-color: rgba(102, 126, 234, 0.2) !important;
-}
-
-/* Table玻璃拟态样式 */
-.dark .ant-table {
-  background: rgba(30, 41, 59, 0.4) !important;
-}
-
-.dark .ant-table-thead > tr > th {
-  background: rgba(30, 41, 59, 0.5) !important;
-  color: rgb(var(--text-secondary)) !important;
-  border-color: rgba(102, 126, 234, 0.15) !important;
-}
-
-/* Modal玻璃拟态样式 */
-.dark .ant-modal-content {
-  background: rgba(30, 41, 59, 0.9) !important;
-  box-shadow: 0 12px 48px rgba(102, 126, 234, 0.15) !important;
-}
-
-.dark .ant-modal-header {
-  background: rgba(30, 41, 59, 0.95) !important;
-  border-color: rgba(102, 126, 234, 0.2) !important;
-}
-
 /* ===== 工具类 ===== */
 
 /* 品牌色渐变文字 */

@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { createElement, useMemo } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useUserMenus } from '@/features/rbac/menu/hooks/useMenus';
 import type { MenuTreeNode } from '@/features/rbac/menu/types/menu.types';
 import type { BreadcrumbItemType } from 'antd/es/breadcrumb/Breadcrumb';
@@ -42,8 +42,7 @@ export function useBreadcrumb(): BreadcrumbItemType[] {
     // 始终包含首页（使用 Ant Design 的图标字符串）
     const items: BreadcrumbItemType[] = [
       {
-        href: '/',
-        title: '首页',
+        title: createElement(Link, { to: '/' }, '首页'),
       },
     ];
 
@@ -59,10 +58,10 @@ export function useBreadcrumb(): BreadcrumbItemType[] {
     if (menuPath && menuPath.length > 0) {
       menuPath.forEach((menu) => {
         items.push({
-          title: menu.name,
-          // 只有菜单类型（非目录类型）且有path的才可点击
-          // 目录类型仅用于侧边栏分组，不对应实际路由页面
-          ...(menu.type === 'menu' && menu.path ? { href: menu.path } : {}),
+          title:
+            menu.type === 'menu' && menu.path
+              ? createElement(Link, { to: menu.path }, menu.name)
+              : menu.name,
         });
       });
     }

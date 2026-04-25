@@ -11,7 +11,6 @@
  * - 所有页面组件必须放在以下目录：
  *   - features/[module]/pages/[ComponentName].tsx
  *   - features/file/components/FileList.tsx（文件模块历史兼容）
- *   - shared/pages/[ComponentName].tsx
  * - 组件名通常与文件名一致（如 UserListPage.tsx 导出 UserListPage）
  * - 组件必须使用命名导出（export function UserListPage）
  *
@@ -39,7 +38,6 @@ import type { ComponentType } from 'react';
  * 扫描范围：
  * - features/[module]/pages/[ComponentName].tsx
  * - features/file/components/FileList.tsx（历史菜单兼容）
- * - shared/pages/*.tsx
  *
  * 返回格式：
  * {
@@ -53,8 +51,9 @@ const pageModules = import.meta.glob<{
 }>([
   '../features/**/pages/*.tsx',
   '../features/file/components/FileList.tsx',
-  '../shared/pages/*.tsx',
 ], { eager: false });
+
+const nonMenuComponents = new Set(['LoginPage']);
 
 const componentAliases: Record<string, string> = {
   Dashboard: 'DashboardPage',
@@ -114,10 +113,13 @@ const componentRegistry = new Map<string, () => Promise<{ [key: string]: Compone
 // 构建组件注册表
 for (const [path, loader] of Object.entries(pageModules)) {
   const componentName = extractComponentName(path);
-  if (componentName) {
-    componentRegistry.set(componentName, loader as () => Promise<{ [key: string]: ComponentType<Record<string, never>> }>);
-  } else {
+  if (!componentName) {
     console.warn(`[ComponentRegistry] 无法从路径提取组件名: ${path}`);
+    continue;
+  }
+
+  if (!nonMenuComponents.has(componentName)) {
+    componentRegistry.set(componentName, loader as () => Promise<{ [key: string]: ComponentType<Record<string, never>> }>);
   }
 }
 
@@ -143,7 +145,7 @@ export function getComponent(componentName: string): ComponentType<Record<string
     console.error(
       `[ComponentRegistry] 组件 "${componentName}" 未找到。\n` +
       `请确认：\n` +
-      `1. 文件是否存在于 features/[module]/pages/、features/file/components/FileList.tsx 或 shared/pages/ 目录\n` +
+      `1. 文件是否存在于 features/[module]/pages/ 或 features/file/components/FileList.tsx\n` +
       `2. 组件名是否与文件名一致，或已在 componentAliases 中配置\n` +
       `3. 组件是否使用命名导出（export function ${normalizedName}）`
     );
@@ -201,6 +203,9 @@ function getRegistryStats() {
       const [, type, module] = match;
       const key = type === 'shared' ? 'shared' : `features/${module}`;
       const componentName = extractComponentName(path);
+      if (!componentName || nonMenuComponents.has(componentName)) {
+        continue;
+      }
 
       if (!byDirectory[key]) {
         byDirectory[key] = [];

@@ -54,6 +54,11 @@ export function generateRoutes(menus: MenuTreeNode[]): RouteObject[] {
 
     // 处理菜单类型（对应实际页面）
     if (menu.type === 'menu') {
+      if (!menu.path || menu.isExternal) {
+        console.warn(`[动态路由] 菜单 "${menu.name}" 不是可用的内部路由，跳过`, menu);
+        continue;
+      }
+
       // 1. 获取组件
       if (!menu.component) {
         console.warn(`[动态路由] 菜单 "${menu.name}" 缺少 component 字段，跳过`, menu);
@@ -85,7 +90,7 @@ export function generateRoutes(menus: MenuTreeNode[]): RouteObject[] {
 
       // 3. 生成路由配置
       const route: RouteObject = {
-        path: menu.path || undefined,
+        path: menu.path,
         element: permissions && permissions.length > 0 ? (
           // 需要权限验证
           <ProtectedRoute permissions={permissions as [string, ...string[]]}>
@@ -152,7 +157,13 @@ function findFirstMenuPath(menus: MenuTreeNode[]): string | null {
       continue;
     }
 
-    if (menu.type === 'menu' && menu.path && menu.component && getComponent(menu.component)) {
+    if (
+      menu.type === 'menu' &&
+      !menu.isExternal &&
+      menu.path &&
+      menu.component &&
+      getComponent(menu.component)
+    ) {
       return menu.path;
     }
 

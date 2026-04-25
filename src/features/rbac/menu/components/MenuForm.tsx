@@ -54,8 +54,6 @@ export function MenuForm({
           sort: menu.sort,
           isActive: menu.isActive,
           isVisible: menu.isVisible,
-          isExternal: menu.isExternal,
-          isCache: menu.isCache,
           remark: menu.remark,
         });
       } else {
@@ -66,8 +64,6 @@ export function MenuForm({
           sort: 0,
           isActive: true,
           isVisible: true,
-          isExternal: false,
-          isCache: true,
         });
       }
     }
@@ -146,6 +142,14 @@ export function MenuForm({
           label="路由路径"
           name="path"
           rules={[
+            {
+              validator: (_, value?: string) => {
+                if (menuType === 'menu' && !value?.trim()) {
+                  return Promise.reject(new Error('菜单类型必须填写路由路径'));
+                }
+                return Promise.resolve();
+              },
+            },
             { pattern: /^\/[a-zA-Z0-9/_-]*$/, message: '路径必须以/开头，只能包含字母、数字、/、-、_' },
           ]}
         >
@@ -160,6 +164,7 @@ export function MenuForm({
           <Form.Item
             label="页面组件"
             name="component"
+            preserve={false}
             rules={[
               { required: menuType === 'menu', message: '菜单类型必须选择页面组件' },
             ]}
@@ -180,14 +185,6 @@ export function MenuForm({
 
           <Form.Item label="显示菜单" name="isVisible" valuePropName="checked">
             <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
-          </Form.Item>
-
-          <Form.Item label="外部链接" name="isExternal" valuePropName="checked">
-            <Switch checkedChildren="是" unCheckedChildren="否" />
-          </Form.Item>
-
-          <Form.Item label="缓存组件" name="isCache" valuePropName="checked">
-            <Switch checkedChildren="缓存" unCheckedChildren="不缓存" />
           </Form.Item>
         </div>
 

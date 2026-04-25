@@ -1,7 +1,11 @@
-import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
+import axios, {
+  AxiosError,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 import { notification } from 'antd';
 import { appConfig } from '../config/app.config';
-import { validateApiParams, attachApiValidator } from './apiValidator';
 import { getGlobalMessage, getGlobalModal } from '@/app/RequestContextProvider';
 
 /**
@@ -52,6 +56,18 @@ export class UserCancelError extends Error {
     super('用户取消操作');
     this.name = 'UserCancelError';
   }
+}
+
+function unwrapApiData(responseData: unknown): unknown {
+  if (
+    responseData &&
+    typeof responseData === 'object' &&
+    Object.prototype.hasOwnProperty.call(responseData, 'data')
+  ) {
+    return (responseData as { data: unknown }).data;
+  }
+
+  return responseData;
 }
 
 // 扩展 axios 类型
@@ -262,9 +278,6 @@ export const refreshAxios = axios.create({
  */
 axiosInstance.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    // 开发环境：验证API参数
-    validateApiParams(config);
-
     // 1. 先添加 Token（放在confirmConfig之前）
     const token = localStorage.getItem(appConfig.tokenKey);
     if (token && config.headers) {
@@ -298,9 +311,6 @@ axiosInstance.interceptors.request.use(
     return Promise.reject(error);
   }
 );
-
-// 初始化API验证器
-attachApiValidator();
 
 /**
  * RefreshToken 并发控制
@@ -361,9 +371,7 @@ axiosInstance.interceptors.response.use(
       getGlobalMessage().success(successMsg);
     }
 
-    // 后端统一响应格式：{ success, data, timestamp, path, method }
-    // 直接返回 data 字段，简化调用
-    return response.data?.data || response.data;
+    return unwrapApiData(response.data) as AxiosResponse;
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
@@ -403,7 +411,7 @@ axiosInstance.interceptors.response.use(
             refreshToken,
           });
 
-          const { accessToken } = response.data.data || response.data;
+          const { accessToken } = unwrapApiData(response.data) as { accessToken: string };
 
           // 保存新的 Token
           localStorage.setItem(appConfig.tokenKey, accessToken);

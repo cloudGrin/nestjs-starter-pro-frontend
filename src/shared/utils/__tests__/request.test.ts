@@ -43,12 +43,6 @@ vi.mock('antd', () => ({
   },
 }));
 
-// Mock apiValidator
-vi.mock('../apiValidator', () => ({
-  validateApiParams: vi.fn(),
-  attachApiValidator: vi.fn(),
-}));
-
 // 现在可以安全导入 request
 import { request, UserCancelError, axiosInstance, refreshAxios } from '../request';
 import { getGlobalMessage, getGlobalModal } from '@/app/RequestContextProvider';
