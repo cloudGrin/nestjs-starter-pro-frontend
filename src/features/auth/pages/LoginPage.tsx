@@ -13,7 +13,7 @@ interface LoginFormValues {
  * 登录页面
  *
  * ⚠️ 设计原则：
- * 1. 登录成功后立即跳转到Dashboard，不要等待菜单加载
+ * 1. 登录成功后立即跳转到首页，由动态路由重定向到第一个可用菜单
  * 2. 菜单加载由 useAppRoutes 和 Sidebar 负责
  * 3. 避免多个地方调用 useUserMenus 导致时序问题
  */
@@ -27,11 +27,8 @@ export function LoginPage() {
     try {
       await login(values.account, values.password);
 
-      // ✅ 登录成功：立即跳转到Dashboard
-      // useAppRoutes会等待菜单加载完成后创建路由
-      // Sidebar会显示菜单加载状态
-      console.log('[登录] 登录成功，跳转到Dashboard');
-      navigate('/dashboard', { replace: true });
+      console.log('[登录] 登录成功，跳转到首页');
+      navigate('/', { replace: true });
     } catch (error) {
       console.error('[登录] 登录失败', error);
       // 错误消息已经在 request.ts 中处理

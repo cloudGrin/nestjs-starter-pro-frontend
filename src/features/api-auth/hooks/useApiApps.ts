@@ -8,7 +8,6 @@ import type {
   UpdateApiAppDto,
   CreateApiKeyDto,
   QueryApiAppDto,
-  QueryStatisticsDto,
 } from '../types/api-auth.types';
 
 /**
@@ -25,11 +24,11 @@ export function useApiApps(params: QueryApiAppDto) {
 /**
  * 获取API应用详情
  */
-export function useApiApp(appId: string) {
+export function useApiApp(appId: number | null) {
   return useQuery({
     queryKey: ['api-apps', appId],
-    queryFn: () => apiAuthService.getApiApp(appId),
-    enabled: !!appId,
+    queryFn: () => apiAuthService.getApiApp(appId as number),
+    enabled: appId !== null,
   });
 }
 
@@ -54,7 +53,7 @@ export function useUpdateApiApp() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ appId, data }: { appId: string; data: UpdateApiAppDto }) =>
+    mutationFn: ({ appId, data }: { appId: number; data: UpdateApiAppDto }) =>
       apiAuthService.updateApiApp(appId, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['api-apps'] });
@@ -70,7 +69,7 @@ export function useDeleteApiApp() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (appId: string) => apiAuthService.deleteApiApp(appId),
+    mutationFn: (appId: number) => apiAuthService.deleteApiApp(appId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['api-apps'] });
     },
@@ -80,11 +79,11 @@ export function useDeleteApiApp() {
 /**
  * 获取应用的密钥列表
  */
-export function useApiKeys(appId: string) {
+export function useApiKeys(appId: number | null) {
   return useQuery({
     queryKey: ['api-keys', appId],
-    queryFn: () => apiAuthService.getApiKeys(appId),
-    enabled: !!appId,
+    queryFn: () => apiAuthService.getApiKeys(appId as number),
+    enabled: appId !== null,
     staleTime: 2 * 60 * 1000, // 2分钟
   });
 }
@@ -96,7 +95,7 @@ export function useCreateApiKey() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ appId, data }: { appId: string; data: CreateApiKeyDto }) =>
+    mutationFn: ({ appId, data }: { appId: number; data: CreateApiKeyDto }) =>
       apiAuthService.createApiKey(appId, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['api-keys', variables.appId] });
@@ -115,17 +114,5 @@ export function useRevokeApiKey() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['api-keys'] });
     },
-  });
-}
-
-/**
- * 获取API使用统计
- */
-export function useApiStatistics(appId: string, params: QueryStatisticsDto) {
-  return useQuery({
-    queryKey: ['api-statistics', appId, params],
-    queryFn: () => apiAuthService.getStatistics(appId, params),
-    enabled: !!appId,
-    staleTime: 1 * 60 * 1000, // 1分钟
   });
 }

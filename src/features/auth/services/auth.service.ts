@@ -2,7 +2,6 @@ import { request } from '@/shared/utils/request';
 import type {
   LoginDto,
   LoginResponse,
-  RegisterDto,
   RefreshTokenDto,
   RefreshTokenResponse,
 } from '../types/auth.types';
@@ -25,11 +24,6 @@ export const authService = {
     }),
 
   /**
-   * 用户注册
-   */
-  register: (data: RegisterDto) => request.post<User>('/auth/register', data),
-
-  /**
    * 刷新Token
    */
   refresh: (data: RefreshTokenDto) =>
@@ -44,11 +38,5 @@ export const authService = {
   /**
    * 获取当前用户信息
    */
-  getProfile: () => request.get<User>('/auth/profile'),
-
-  /**
-   * 检查认证状态
-   */
-  checkAuth: () =>
-    request.get<{ authenticated: boolean; user: User }>('/auth/check'),
+  getProfile: () => request.get<User>('/users/profile'),
 };

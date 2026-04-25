@@ -2,7 +2,7 @@
  * API应用列表组件
  */
 import { useState } from 'react';
-import { Card, Table, Button, Space, Tag, Modal, Form, Input, InputNumber } from 'antd';
+import { Card, Table, Button, Space, Tag, Modal, Form, Input } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, KeyOutlined } from '@ant-design/icons';
 import { useForm, Controller } from 'react-hook-form';
 import {
@@ -23,8 +23,6 @@ interface FormData {
   name: string;
   description?: string;
   scopes: string;
-  rateLimit: number;
-  rateLimitPeriod: number;
 }
 
 interface ApiAppListProps {
@@ -53,8 +51,6 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
       name: '',
       description: '',
       scopes: '',
-      rateLimit: 1000,
-      rateLimitPeriod: 3600,
     },
   });
 
@@ -67,8 +63,6 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
       name: '',
       description: '',
       scopes: '',
-      rateLimit: 1000,
-      rateLimitPeriod: 3600,
     });
     setIsModalOpen(true);
   };
@@ -81,9 +75,7 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
     reset({
       name: app.name,
       description: app.description,
-      scopes: app.scopes.join(', '),
-      rateLimit: app.rateLimit,
-      rateLimitPeriod: app.rateLimitPeriod,
+      scopes: (app.scopes || []).join(', '),
     });
     setIsModalOpen(true);
   };
@@ -103,18 +95,14 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
         name: formData.name,
         description: formData.description,
         scopes,
-        rateLimit: formData.rateLimit,
-        rateLimitPeriod: formData.rateLimitPeriod,
       };
-      await updateMutation.mutateAsync({ appId: editingApp.appId, data: dto });
+      await updateMutation.mutateAsync({ appId: editingApp.id, data: dto });
     } else {
       // 创建
       const dto: CreateApiAppDto = {
         name: formData.name,
         description: formData.description,
         scopes,
-        rateLimit: formData.rateLimit,
-        rateLimitPeriod: formData.rateLimitPeriod,
       };
       await createMutation.mutateAsync(dto);
     }
@@ -126,7 +114,7 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
   /**
    * 删除应用
    */
-  const handleDelete = (appId: string) => {
+  const handleDelete = (appId: number) => {
     deleteMutation.mutate(appId);
   };
 
@@ -163,22 +151,13 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
       width: 200,
       render: (scopes: string[]) => (
         <Space wrap>
-          {scopes.slice(0, 2).map((scope) => (
+          {(scopes || []).slice(0, 2).map((scope) => (
             <Tag key={scope} color="blue">
               {scope}
             </Tag>
           ))}
-          {scopes.length > 2 && <Tag>+{scopes.length - 2}</Tag>}
+          {(scopes || []).length > 2 && <Tag>+{(scopes || []).length - 2}</Tag>}
         </Space>
-      ),
-    },
-    {
-      title: '速率限制',
-      width: 120,
-      render: (_, record) => (
-        <span className="text-xs">
-          {record.rateLimit} / {record.rateLimitPeriod}s
-        </span>
       ),
     },
     {
@@ -207,20 +186,20 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
               label: '密钥',
               icon: <KeyOutlined />,
               onClick: () => handleViewKeys(record),
-              permission: 'api-auth:key:read',
+              permission: 'api-app:key:read',
             },
             {
               label: '编辑',
               icon: <EditOutlined />,
               onClick: () => handleEdit(record),
-              permission: 'api-auth:update',
+              permission: 'api-app:update',
             },
             {
               label: '删除',
               icon: <DeleteOutlined />,
-              onClick: () => handleDelete(record.appId),
+              onClick: () => handleDelete(record.id),
               danger: true,
-              permission: 'api-auth:delete',
+              permission: 'api-app:delete',
             },
           ]}
         />
@@ -321,58 +300,6 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
               }}
               render={({ field }) => (
                 <Input {...field} placeholder="finance:read, finance:create" />
-              )}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="速率限制（次数）"
-            required
-            validateStatus={errors.rateLimit ? 'error' : ''}
-            help={errors.rateLimit?.message}
-          >
-            <Controller
-              name="rateLimit"
-              control={control}
-              rules={{
-                required: '请输入速率限制',
-                min: { value: 1, message: '速率限制至少为1' },
-                max: { value: 100000, message: '速率限制最多为100000' },
-              }}
-              render={({ field }) => (
-                <InputNumber
-                  {...field}
-                  placeholder="1000"
-                  style={{ width: '100%' }}
-                  min={1}
-                  max={100000}
-                />
-              )}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="速率限制周期（秒）"
-            required
-            validateStatus={errors.rateLimitPeriod ? 'error' : ''}
-            help={errors.rateLimitPeriod?.message}
-          >
-            <Controller
-              name="rateLimitPeriod"
-              control={control}
-              rules={{
-                required: '请输入速率限制周期',
-                min: { value: 1, message: '周期至少为1秒' },
-                max: { value: 86400, message: '周期最多为86400秒（1天）' },
-              }}
-              render={({ field }) => (
-                <InputNumber
-                  {...field}
-                  placeholder="3600"
-                  style={{ width: '100%' }}
-                  min={1}
-                  max={86400}
-                />
               )}
             />
           </Form.Item>

@@ -18,7 +18,7 @@ interface PermissionListProps {
     pageSize: number;
   };
   onEdit?: (permission: Permission) => void;
-  onDelete?: (id: string) => void; // 修正：ID类型为string
+  onDelete?: (id: number) => void;
   onPageChange?: (page: number, pageSize: number) => void;
 }
 

@@ -25,11 +25,11 @@
  * // 结果：{ name: 'John', status: 0, isActive: false }
  * ```
  */
-export function filterEmptyParams<T extends Record<string, any>>(
+export function filterEmptyParams<T extends Record<string, unknown>>(
   params: T
 ): Partial<T> {
   return Object.fromEntries(
-    Object.entries(params).filter(([_, value]) => {
+    Object.entries(params).filter(([, value]) => {
       // 保留 0 和 false（它们是有效值）
       if (value === 0 || value === false) return true;
 
@@ -54,7 +54,7 @@ export function filterEmptyParams<T extends Record<string, any>>(
  * // 结果：'name=John&page=1'
  * ```
  */
-export function buildQueryString<T extends Record<string, any>>(
+export function buildQueryString<T extends Record<string, unknown>>(
   params: T
 ): string {
   const filtered = filterEmptyParams(params);

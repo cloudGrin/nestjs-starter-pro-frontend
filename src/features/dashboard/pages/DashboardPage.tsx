@@ -8,11 +8,10 @@ import {
 import { StatCard } from '../components/StatCard';
 import { QuickActions } from '../components/QuickActions';
 import { RecentActivities } from '../components/RecentActivities';
-import { UserGrowthChart } from '../components/UserGrowthChart';
-import { RoleDistributionChart } from '../components/RoleDistributionChart';
 import { useUsers } from '@/features/rbac/user/hooks/useUsers';
 import { useRoles } from '@/features/rbac/role/hooks/useRoles';
 import { useMenus } from '@/features/rbac/menu/hooks/useMenus';
+import { useUnreadNotifications } from '@/features/notification/hooks/useNotifications';
 
 /**
  * Dashboard主页面
@@ -31,6 +30,7 @@ export function DashboardPage() {
   });
 
   const { data: menusData, isLoading: menusLoading } = useMenus();
+  const { data: unreadNotifications, isLoading: notificationsLoading } = useUnreadNotifications();
 
   return (
     <PageWrap title="仪表盘">
@@ -62,21 +62,16 @@ export function DashboardPage() {
         />
         <StatCard
           title="未读通知"
-          value={0}
+          value={unreadNotifications?.length || 0}
           icon={<BellOutlined />}
           color="#ff85c0"
+          loading={notificationsLoading}
           suffix="条"
         />
       </div>
 
       {/* 快捷操作 */}
       <QuickActions />
-
-      {/* 数据可视化图表 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <UserGrowthChart />
-        <RoleDistributionChart />
-      </div>
 
       {/* 最近活动 */}
       <RecentActivities />

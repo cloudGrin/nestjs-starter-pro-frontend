@@ -1,14 +1,17 @@
 /**
  * 图标选择器组件（简化版）
  * 输入Ant Design图标名称，右侧预览
- *
- * TODO: 后期可优化为图标网格选择面板
  */
 
 import { useState, useEffect } from 'react';
 import { Input } from 'antd';
 import { QuestionOutlined } from '@ant-design/icons';
 import * as Icons from '@ant-design/icons';
+
+type IconComponentType = React.ComponentType<{
+  className?: string;
+  style?: React.CSSProperties;
+}>;
 
 interface IconSelectorProps {
   value?: string;
@@ -34,7 +37,9 @@ export function IconSelector({
   };
 
   // 动态获取图标组件
-  const IconComponent = iconName ? (Icons as Record<string, React.ComponentType>)[iconName] : null;
+  const IconComponent = iconName
+    ? (Icons as unknown as Record<string, IconComponentType>)[iconName]
+    : null;
 
   return (
     <Input

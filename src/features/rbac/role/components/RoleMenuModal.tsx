@@ -15,6 +15,11 @@ import type { MenuTreeNode, Menu } from '../../menu/types/menu.types';
 
 const { Search } = Input;
 
+type IconComponentType = React.ComponentType<{
+  className?: string;
+  style?: React.CSSProperties;
+}>;
+
 interface RoleMenuModalProps {
   open: boolean;
   role?: Role;
@@ -56,7 +61,9 @@ export function RoleMenuModal({
    * 渲染菜单标题
    */
   const renderMenuTitle = (menu: Menu) => {
-    const IconComponent = menu.icon ? (Icons as any)[menu.icon] : null;
+    const IconComponent = menu.icon
+      ? (Icons as unknown as Record<string, IconComponentType>)[menu.icon]
+      : null;
 
     return (
       <div className="flex items-center gap-2">
@@ -110,6 +117,8 @@ export function RoleMenuModal({
   const treeData = useMemo(() => {
     if (!filteredTreeData) return [];
     return convertToDataNode(filteredTreeData);
+    // convertToDataNode uses render helpers bound to the current component render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredTreeData]);
 
   /**
@@ -117,7 +126,7 @@ export function RoleMenuModal({
    */
   useEffect(() => {
     if (open && roleMenus) {
-      const menuIds = roleMenus.map((m: Menu) => m.id);
+      const menuIds = roleMenus.map((menu) => menu.id);
       setCheckedKeys(menuIds);
     }
   }, [open, roleMenus]);

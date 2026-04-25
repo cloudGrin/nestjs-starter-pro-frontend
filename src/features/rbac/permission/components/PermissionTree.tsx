@@ -172,6 +172,8 @@ export function PermissionTree({ treeData, loading, onEdit, onDelete }: Permissi
   const dataNodes = useMemo(() => {
     if (!filteredTreeData) return [];
     return convertToDataNode(filteredTreeData);
+    // convertToDataNode uses render helpers bound to the current component render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredTreeData]);
 
   if (loading) {

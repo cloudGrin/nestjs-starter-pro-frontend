@@ -31,6 +31,7 @@
 import { Button, Dropdown, Space, Switch, Divider, Tooltip } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
 import { usePermission } from '@/shared/hooks';
+import type { NonEmptyArray } from '@/shared/hooks/usePermission';
 import type { MenuProps } from 'antd';
 import { cn } from '@/shared/utils/cn';
 
@@ -99,10 +100,11 @@ export function TableActions({ actions, maxVisible = 3 }: TableActionsProps) {
   const checkPermission = (action: Action): boolean => {
     if (action.type === 'divider') return true;
     if (!action.permission) return true;
-    const permissions = Array.isArray(action.permission)
+    const permissions: string[] = Array.isArray(action.permission)
       ? action.permission
       : [action.permission];
-    return hasPermission(permissions);
+    if (permissions.length === 0) return false;
+    return hasPermission(permissions as NonEmptyArray<string>);
   };
 
   /**

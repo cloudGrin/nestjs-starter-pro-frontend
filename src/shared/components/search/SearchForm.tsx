@@ -83,7 +83,6 @@ import { Form, Button, Row, Col, Space } from 'antd';
 import { SearchOutlined, ReloadOutlined, DownOutlined, ExportOutlined, SyncOutlined } from '@ant-design/icons';
 import type { FormInstance, ColProps } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/shared/utils/cn';
 
 interface SearchFormProps {
   /** 表单实例 */

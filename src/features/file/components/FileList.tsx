@@ -15,7 +15,6 @@ import {
   Upload,
   Form,
   message as antdMessage,
-  Alert,
 } from 'antd';
 import {
   UploadOutlined,
@@ -34,7 +33,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { formatDate } from '@/shared/utils';
-import { useFiles, useDeleteFile, useDeleteFiles, useDownloadFile, useUploadFile } from '../hooks/useFiles';
+import { useFiles, useDeleteFile, useDownloadFile, useUploadFile } from '../hooks/useFiles';
 import type { FileEntity, FileModule } from '../types/file.types';
 import { FILE_SIZE_LIMITS } from '../types/file.types';
 import { PermissionGuard } from '@/shared/components/auth/PermissionGuard';
@@ -78,9 +77,6 @@ export const FileList: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [module, setModule] = useState<FileModule | undefined>(undefined);
 
-  // 批量选择
-  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
-
   // 查询文件列表
   const { data, isLoading, refetch } = useFiles({
     page,
@@ -91,7 +87,6 @@ export const FileList: React.FC = () => {
 
   // Mutations
   const { mutate: deleteFile, isPending: isDeleting } = useDeleteFile();
-  const { mutate: deleteFiles, isPending: isBatchDeleting } = useDeleteFiles();
   const { mutate: downloadFile } = useDownloadFile();
   const { mutate: uploadFile, isPending: isUploading } = useUploadFile();
 
@@ -122,21 +117,6 @@ export const FileList: React.FC = () => {
    */
   const handleDelete = (id: number) => {
     deleteFile(id);
-  };
-
-  /**
-   * 处理批量删除
-   */
-  const handleBatchDelete = () => {
-    if (selectedRowKeys.length === 0) {
-      antdMessage.warning('请先选择要删除的文件');
-      return;
-    }
-    deleteFiles(selectedRowKeys, {
-      onSuccess: () => {
-        setSelectedRowKeys([]);
-      },
-    });
   };
 
   /**
@@ -316,34 +296,6 @@ export const FileList: React.FC = () => {
         </SearchForm>
       }
     >
-      {/* 批量操作提示 */}
-      {selectedRowKeys.length > 0 && (
-        <Alert
-          message={
-            <Space>
-              <span>已选择 {selectedRowKeys.length} 个文件</span>
-              <PermissionGuard permissions={['file:delete']}>
-                <Button
-                  type="link"
-                  size="small"
-                  danger
-                  onClick={handleBatchDelete}
-                  loading={isBatchDeleting}
-                >
-                  批量删除
-                </Button>
-              </PermissionGuard>
-              <Button type="link" size="small" onClick={() => setSelectedRowKeys([])}>
-                取消选择
-              </Button>
-            </Space>
-          }
-          type="info"
-          showIcon
-          className="mb-4"
-        />
-      )}
-
       {/* 表格 */}
       <Table
         columns={columns}
@@ -351,11 +303,6 @@ export const FileList: React.FC = () => {
         rowKey="id"
         loading={isLoading}
         scroll={{ x: 1200 }}
-        rowSelection={{
-          selectedRowKeys,
-          onChange: (keys) => setSelectedRowKeys(keys as number[]),
-          preserveSelectedRowKeys: true,
-        }}
         pagination={{
           current: page,
           pageSize: pageSize,

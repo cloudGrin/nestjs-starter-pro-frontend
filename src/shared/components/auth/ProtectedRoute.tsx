@@ -21,6 +21,10 @@ interface ProtectedRouteProps {
    * 无权限时显示的内容
    */
   fallback?: React.ReactNode;
+  /**
+   * 直接包裹的页面内容；未传时渲染子路由 Outlet
+   */
+  children?: React.ReactNode;
 }
 
 /**
@@ -39,7 +43,7 @@ interface ProtectedRouteProps {
  * @example
  * // 1. 只验证登录
  * <Route path="/" element={<ProtectedRoute />}>
- *   <Route path="dashboard" element={<Dashboard />} />
+ *   <Route path="system/users" element={<UserListPage />} />
  * </Route>
  *
  * // 2. 验证登录 + 权限
@@ -63,6 +67,7 @@ export function ProtectedRoute({
   roles,
   redirectTo = '/login',
   fallback,
+  children,
 }: ProtectedRouteProps) {
   const { token, user } = useAuthStore();
   const { hasPermission } = usePermission(); // ← 使用 usePermission Hook
@@ -115,6 +120,6 @@ export function ProtectedRoute({
     }
   }
 
-  // 4. 通过所有检查，渲染子路由
-  return <Outlet />;
+  // 4. 通过所有检查，渲染包裹内容或子路由
+  return children ? <>{children}</> : <Outlet />;
 }

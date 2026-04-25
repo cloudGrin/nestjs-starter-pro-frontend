@@ -38,57 +38,19 @@ export interface UploadFileDto {
 }
 
 /**
- * 文件分片上传参数
- */
-export interface UploadChunkDto {
-  chunk: Blob;
-  uploadId: string;
-  chunkIndex: number;
-  totalChunks: number;
-  chunkSize: number;
-  totalSize: number;
-  filename: string;
-  hash: string;
-  module?: string;
-  tags?: string;
-  isPublic?: boolean;
-  remark?: string;
-}
-
-/**
- * 分片上传响应
- */
-export interface ChunkUploadResponse {
-  uploadId: string;
-  chunkIndex: number;
-  totalChunks: number;
-  uploadedChunks: number[];
-  progress: number;
-  completed: boolean;
-  file?: FileEntity;
-}
-
-/**
- * 分片上传进度
- */
-export interface ChunkUploadProgress {
-  uploadId: string;
-  totalChunks: number;
-  uploadedChunks: number[];
-  progress: number;
-  completed: boolean;
-}
-
-/**
  * 文件查询参数
  */
 export interface QueryFileDto {
   page?: number;
   limit?: number; // 后端期望limit，不是pageSize
-  module?: string;
-  uploaderId?: number;
-  mimeType?: string;
+  sort?: string;
+  order?: 'ASC' | 'DESC';
   keyword?: string;
+  storage?: 'local' | 'oss';
+  status?: 'uploading' | 'available' | 'processing' | 'failed';
+  category?: string;
+  module?: string;
+  isPublic?: boolean;
 }
 
 /**
@@ -100,15 +62,6 @@ export interface FileListResponse {
   page: number;
   pageSize: number;
   totalPages: number;
-}
-
-/**
- * 签名URL响应
- */
-export interface SignedUrlResponse {
-  url: string;
-  expiresIn: number;
-  expiresAt: string;
 }
 
 /**
@@ -152,8 +105,3 @@ export const FILE_SIZE_LIMITS = {
   document: 50 * 1024 * 1024, // 50MB
   default: 100 * 1024 * 1024, // 100MB
 } as const;
-
-/**
- * 分片大小（10MB）
- */
-export const CHUNK_SIZE = 10 * 1024 * 1024;

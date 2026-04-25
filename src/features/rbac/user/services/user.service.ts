@@ -103,5 +103,11 @@ export const userService = {
    * 启用/禁用用户
    */
   toggleUserStatus: (id: number, enabled: boolean) =>
-    request.patch(`/users/${id}/status`, { enabled }),
+    request.put(`/users/${id}/${enabled ? 'enable' : 'disable'}`, undefined, {
+      requestOptions: {
+        messageConfig: {
+          successMessage: enabled ? '用户已启用' : '用户已禁用',
+        },
+      },
+    }),
 };

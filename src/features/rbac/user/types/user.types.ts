@@ -11,7 +11,14 @@ export interface CreateUserDto {
   username: string;
   email: string;
   password: string;
+  realName?: string;
   nickname?: string;
+  phone?: string;
+  gender?: 'male' | 'female' | 'unknown';
+  birthday?: string;
+  address?: string;
+  bio?: string;
+  avatar?: string;
   status?: UserStatus;
   roleIds?: number[]; // 角色ID列表
 }
@@ -21,7 +28,14 @@ export interface CreateUserDto {
  */
 export interface UpdateUserDto {
   email?: string;
+  realName?: string;
   nickname?: string;
+  phone?: string;
+  gender?: 'male' | 'female' | 'unknown';
+  birthday?: string;
+  address?: string;
+  bio?: string;
+  avatar?: string;
   status?: UserStatus;
   roleIds?: number[];
 }
@@ -39,6 +53,7 @@ export interface QueryUserDto {
   phone?: string; // 手机号模糊查询
   realName?: string; // 真实姓名模糊查询
   status?: UserStatus; // 状态筛选
+  gender?: 'male' | 'female' | 'unknown'; // 性别筛选
   roleId?: number; // 按角色筛选
 }
 

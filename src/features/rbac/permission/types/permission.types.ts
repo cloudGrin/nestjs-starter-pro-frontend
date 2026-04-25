@@ -97,6 +97,7 @@ export interface CreatePermissionDto {
   httpMeta?: HttpMeta[]; // HTTP元数据
   sort?: number; // 排序值
   isActive?: boolean; // 是否启用
+  isSystem?: boolean; // 是否为系统内置
   description?: string; // 权限描述
   extra?: PermissionExtra; // 扩展配置
 }
@@ -112,19 +113,7 @@ export interface UpdatePermissionDto {
   httpMeta?: HttpMeta[];
   sort?: number;
   isActive?: boolean;
+  isSystem?: boolean;
   description?: string;
   extra?: PermissionExtra;
-}
-
-/**
- * 权限同步响应
- */
-export interface PermissionSyncResponse {
-  message: string;
-  data: {
-    scanned: number; // 扫描到的权限数量
-    created: number; // 新增的权限数量
-    updated: number; // 更新的权限数量
-    unchanged: number; // 未变更的权限数量
-  };
 }

@@ -7,10 +7,7 @@ import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationService } from '../services/notification.service';
 import { getSocket } from '@/shared/utils/socket';
-import type {
-  QueryNotificationDto,
-  CreateNotificationDto,
-} from '../types/notification.types';
+import type { QueryNotificationDto } from '../types/notification.types';
 
 /**
  * Query Keys
@@ -80,7 +77,7 @@ export const useUnreadNotifications = () => {
     const registered = tryRegisterEvents();
 
     // 如果未注册成功，设置定时器等待连接
-    let retryTimer: NodeJS.Timeout | null = null;
+    let retryTimer: ReturnType<typeof setInterval> | null = null;
     if (!registered) {
       retryTimer = setInterval(() => {
         if (tryRegisterEvents()) {
@@ -116,25 +113,6 @@ export const useUnreadNotifications = () => {
     queryFn: () => notificationService.getUnreadList(),
     // ❌ 不再使用轮询，改用 WebSocket 推送
     // refetchInterval: 30000,
-  });
-};
-
-/**
- * 创建通知
- */
-export const useCreateNotification = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CreateNotificationDto) =>
-      notificationService.create(data),
-    onSuccess: () => {
-      // Service层已配置successMessage，不需要在这里显示
-      // 刷新通知列表和未读通知
-      queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: notificationKeys.unread() });
-    },
-    // onError已由axios拦截器统一处理
   });
 };
 

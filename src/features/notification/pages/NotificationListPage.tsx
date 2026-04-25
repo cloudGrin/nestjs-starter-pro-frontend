@@ -85,7 +85,7 @@ export const NotificationListPage: React.FC = () => {
   const markAsReadMutation = useMarkAsRead();
   const markAllAsReadMutation = useMarkAllAsRead();
 
-  // 拦截器已经提取了data字段，这里直接使用PaginatedResponse结构
+  // 拦截器已经提取了 data 字段，这里直接使用列表响应结构
   const notifications = data?.items || [];
   const total = data?.total || 0;
 

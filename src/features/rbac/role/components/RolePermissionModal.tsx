@@ -8,7 +8,7 @@ import { Modal, Tree, Input, Space, Tag, Spin, Empty } from 'antd';
 import { SearchOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
 import { usePermissionTree } from '../../permission/hooks/usePermissions';
-import { useEffectivePermissions, useAssignPermissions } from '../hooks/useRoles';
+import { useAssignPermissions, useRole } from '../hooks/useRoles';
 import type { Role } from '../types/role.types';
 import type { PermissionTreeNode, Permission, PermissionType } from '../../permission/types/permission.types';
 
@@ -43,8 +43,7 @@ export function RolePermissionModal({
   const { data: permissionTree, isLoading: treeLoading } = usePermissionTree();
 
   // 获取角色已有权限
-  const { data: effectivePermissions, isLoading: permissionsLoading } =
-    useEffectivePermissions(role?.id || 0);
+  const { data: roleDetail, isLoading: permissionsLoading } = useRole(role?.id || 0);
 
   // 分配权限Mutation
   const { mutate: assignPermissions, isPending } = useAssignPermissions();
@@ -132,30 +131,19 @@ export function RolePermissionModal({
   const treeData = useMemo(() => {
     if (!filteredTreeData) return [];
     return convertToDataNode(filteredTreeData);
+    // convertToDataNode uses render helpers bound to the current component render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredTreeData]);
 
   /**
    * 初始化已选中的权限
-   * 后端返回的是权限代码数组，需要转换为权限ID数组
+   * 后端角色详情直接返回权限实体数组
    */
   useEffect(() => {
-    if (open && effectivePermissions && permissionTree) {
-      // 1. 构建权限代码到权限ID的映射
-      const codeToIdMap = new Map<string, number>();
-      permissionTree.forEach((module) => {
-        module.permissions?.forEach((permission) => {
-          codeToIdMap.set(permission.code, permission.id);
-        });
-      });
-
-      // 2. 将权限代码转换为权限ID
-      const permissionIds = effectivePermissions.permissions
-        .map((code) => codeToIdMap.get(code))
-        .filter((id): id is number => id !== undefined);
-
-      setCheckedKeys(permissionIds);
+    if (open && roleDetail) {
+      setCheckedKeys(roleDetail.permissions?.map((permission) => permission.id) || []);
     }
-  }, [open, effectivePermissions, permissionTree]);
+  }, [open, roleDetail]);
 
   /**
    * 搜索时自动展开所有节点
@@ -197,7 +185,7 @@ export function RolePermissionModal({
    */
   const handleCheck = (checked: React.Key[] | { checked: React.Key[]; halfChecked: React.Key[] }) => {
     const keys = Array.isArray(checked) ? checked : checked.checked;
-    setCheckedKeys(keys as string[]);
+    setCheckedKeys(keys);
   };
 
   return (

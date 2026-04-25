@@ -32,7 +32,7 @@ export function useCopyToClipboard() {
       }, 2000);
 
       return true;
-    } catch (error) {
+    } catch {
       message.error('复制失败，请手动复制');
       return false;
     }

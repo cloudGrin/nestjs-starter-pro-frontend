@@ -108,18 +108,6 @@ export function useAssignPermissions() {
 }
 
 /**
- * 获取角色的有效权限
- */
-export function useEffectivePermissions(id: number) {
-  return useQuery({
-    queryKey: ['roles', id, 'permissions'],
-    queryFn: () => roleService.getEffectivePermissions(id),
-    enabled: !!id,
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-/**
  * 分配菜单
  */
 export function useAssignMenus() {

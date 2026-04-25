@@ -1,4 +1,4 @@
-import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import { notification } from 'antd';
 import { appConfig } from '../config/app.config';
 import { validateApiParams, attachApiValidator } from './apiValidator';
@@ -7,7 +7,7 @@ import { getGlobalMessage, getGlobalModal } from '@/app/RequestContextProvider';
 /**
  * 后端统一响应格式
  */
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
@@ -167,7 +167,7 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
       // 开发环境：额外提示检查字段名
       if (isDev && messages) {
         console.warn(
-          '💡 提示：请检查请求参数字段名是否与后端API一致（参考 Swagger 文档或 src/shared/api/generated）'
+          '💡 提示：请检查请求参数字段名是否与后端API一致（参考 Swagger 文档或 api-docs.json）'
         );
       }
       break;
@@ -185,7 +185,7 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
       // 开发环境：提示权限代码
       if (isDev && requiredPermissions) {
         console.warn('💡 所需权限:', requiredPermissions);
-        console.warn('💡 请在 router.tsx 中配置正确的权限守卫，或联系管理员分配权限');
+        console.warn('💡 请检查后端菜单权限配置，或联系管理员分配权限');
       }
       break;
     }
@@ -428,18 +428,18 @@ axiosInstance.interceptors.response.use(
  * 响应拦截器已经提取了data字段，所以直接返回T类型
  */
 export const request = {
-  get: <T = any>(url: string, config?: any) =>
+  get: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
     axiosInstance.get<T>(url, config) as unknown as Promise<T>,
 
-  post: <T = any>(url: string, data?: any, config?: any) =>
+  post: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
     axiosInstance.post<T>(url, data, config) as unknown as Promise<T>,
 
-  put: <T = any>(url: string, data?: any, config?: any) =>
+  put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
     axiosInstance.put<T>(url, data, config) as unknown as Promise<T>,
 
-  patch: <T = any>(url: string, data?: any, config?: any) =>
+  patch: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
     axiosInstance.patch<T>(url, data, config) as unknown as Promise<T>,
 
-  delete: <T = any>(url: string, config?: any) =>
+  delete: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
     axiosInstance.delete<T>(url, config) as unknown as Promise<T>,
 };

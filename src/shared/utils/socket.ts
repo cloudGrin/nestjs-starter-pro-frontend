@@ -14,7 +14,7 @@ import { message } from 'antd';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 
 let socket: Socket | null = null;
-let heartbeatInterval: NodeJS.Timeout | null = null;
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 let reconnectAttempts = 0;
 let isFirstConnection = true; // 首次连接不显示提示
 

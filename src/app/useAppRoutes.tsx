@@ -123,7 +123,7 @@ export function useAppRoutes() {
     }
 
     // 生成动态路由
-    const dynamicRoutes = generateRoutesWithDefault(userMenus, '/dashboard');
+    const dynamicRoutes = generateRoutesWithDefault(userMenus);
 
     console.log('[动态路由] 生成路由配置', {
       menuCount: userMenus.length,

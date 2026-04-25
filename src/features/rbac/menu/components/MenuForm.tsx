@@ -11,6 +11,12 @@ import type { Menu, MenuTreeNode, CreateMenuDto, UpdateMenuDto } from '../types/
 const { TextArea } = Input;
 const { Option } = Select;
 
+interface TreeSelectNode {
+  value: number;
+  title: string;
+  children?: TreeSelectNode[];
+}
+
 interface MenuFormProps {
   open: boolean;
   mode: 'create' | 'edit';
@@ -80,7 +86,7 @@ export function MenuForm({
    * 将MenuTreeNode转换为TreeSelect DataNode
    * 过滤当前节点及其子节点（避免循环引用）
    */
-  const convertToTreeSelectData = (nodes: MenuTreeNode[], excludeId?: number): Array<{ value: number; title: string; children?: unknown }> => {
+  const convertToTreeSelectData = (nodes: MenuTreeNode[], excludeId?: number): TreeSelectNode[] => {
     return nodes
       .filter((node) => node.id !== excludeId)
       .map((node) => ({
@@ -157,7 +163,7 @@ export function MenuForm({
             rules={[
               { required: menuType === 'menu', message: '菜单类型必须选择页面组件' },
             ]}
-            extra="自动扫描 features/*/pages/ 和 features/*/components/ 目录下的所有组件"
+            extra="自动扫描 features/[module]/pages/，并兼容文件模块 FileList 入口"
           >
             <ComponentSelector />
           </Form.Item>

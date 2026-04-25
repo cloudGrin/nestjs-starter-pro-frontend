@@ -13,6 +13,7 @@ import {
   DatePicker,
   Alert,
   Typography,
+  Select,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, CopyOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useForm, Controller } from 'react-hook-form';
@@ -30,12 +31,13 @@ const { Text, Paragraph } = Typography;
  */
 interface FormData {
   name: string;
+  environment: 'production' | 'test';
   scopes?: string;
   expiresAt?: string;
 }
 
 interface ApiKeyListProps {
-  appId: string;
+  appId: number;
 }
 
 export function ApiKeyList({ appId }: ApiKeyListProps) {
@@ -56,6 +58,7 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
   } = useForm<FormData>({
     defaultValues: {
       name: '',
+      environment: 'production',
       scopes: '',
       expiresAt: undefined,
     },
@@ -75,6 +78,7 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
   const onSubmit = async (formData: FormData) => {
     const dto: CreateApiKeyDto = {
       name: formData.name,
+      environment: formData.environment,
     };
 
     // 可选字段
@@ -185,7 +189,7 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
               icon: <DeleteOutlined />,
               onClick: () => handleRevoke(record.id),
               danger: true,
-              permission: 'api-auth:key:revoke',
+              permission: 'api-app:key:delete',
             },
           ]}
         />
@@ -247,6 +251,23 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
                 maxLength: { value: 50, message: '密钥名称最多50个字符' },
               }}
               render={({ field }) => <Input {...field} placeholder="如：生产环境密钥" />}
+            />
+          </Form.Item>
+
+          <Form.Item label="环境" required>
+            <Controller
+              name="environment"
+              control={control}
+              rules={{ required: '请选择环境' }}
+              render={({ field }) => (
+                <Select
+                  {...field}
+                  options={[
+                    { label: '生产', value: 'production' },
+                    { label: '测试', value: 'test' },
+                  ]}
+                />
+              )}
             />
           </Form.Item>
 

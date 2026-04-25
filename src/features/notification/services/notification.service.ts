@@ -5,7 +5,6 @@
 import { request } from '@/shared/utils/request';
 import type {
   Notification,
-  CreateNotificationDto,
   QueryNotificationDto,
   MarkReadAllResponse,
 } from '../types/notification.types';
@@ -23,19 +22,6 @@ interface NotificationListResponse {
  * 通知服务
  */
 export const notificationService = {
-  /**
-   * 创建通知
-   */
-  create: (data: CreateNotificationDto) => {
-    return request.post<Notification[]>(BASE_URL, data, {
-      requestOptions: {
-        messageConfig: {
-          successMessage: '通知发送成功',
-        },
-      },
-    });
-  },
-
   /**
    * 获取通知列表（分页）
    */

@@ -15,6 +15,11 @@ import './MenuTree.css';
 
 const { Search } = Input;
 
+type IconComponentType = React.ComponentType<{
+  className?: string;
+  style?: React.CSSProperties;
+}>;
+
 interface MenuTreeProps {
   treeData?: MenuTreeNode[];
   loading?: boolean;
@@ -53,7 +58,7 @@ export function MenuTree({
   const renderMenuNode = (node: Menu) => {
     // 动态获取图标组件
     const IconComponent = node.icon
-      ? (Icons as Record<string, React.ComponentType>)[node.icon]
+      ? (Icons as unknown as Record<string, IconComponentType>)[node.icon]
       : null;
 
     return (
@@ -252,7 +257,7 @@ export function MenuTree({
     }
 
     // 调用API
-    onDrop?.(dragNodeId, targetParentId);
+    onDrop?.(dragNodeId, targetParentId ?? null);
   };
 
   /**

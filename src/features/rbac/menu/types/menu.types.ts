@@ -22,7 +22,7 @@ export interface Menu {
   path?: string;
   type: MenuType;
   icon?: string; // Ant Design图标名称（如 'UserOutlined'）
-  component?: string; // 组件路径（如 '@/pages/UserList'）
+  component?: string; // 组件名或约定别名（如 'UserListPage' 或 'system/users'）
   parentId?: number | null;
   sort: number;
   isActive: boolean;
@@ -68,6 +68,7 @@ export interface CreateMenuDto {
   isVisible?: boolean;
   isExternal?: boolean;
   isCache?: boolean;
+  meta?: Record<string, unknown>;
   remark?: string;
 }
 
@@ -77,6 +78,7 @@ export interface CreateMenuDto {
 export interface UpdateMenuDto {
   name?: string;
   path?: string;
+  type?: MenuType;
   icon?: string;
   component?: string;
   parentId?: number | null;
@@ -85,6 +87,7 @@ export interface UpdateMenuDto {
   isVisible?: boolean;
   isExternal?: boolean;
   isCache?: boolean;
+  meta?: Record<string, unknown>;
   remark?: string;
 }
 

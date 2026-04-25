@@ -119,7 +119,7 @@ export const validators = {
 export const customValidators = {
   /** 验证两次密码是否一致 */
   confirmPassword: (password: string) => ({
-    validator(_: any, value: string) {
+    validator(_: unknown, value: string) {
       if (!value || password === value) {
         return Promise.resolve();
       }
@@ -129,7 +129,7 @@ export const customValidators = {
 
   /** 验证数字范围 */
   range: (min: number, max: number, fieldName: string = '值') => ({
-    validator(_: any, value: number) {
+    validator(_: unknown, value: number) {
       if (value >= min && value <= max) {
         return Promise.resolve();
       }
@@ -139,7 +139,7 @@ export const customValidators = {
 
   /** 验证文件大小（单位：MB） */
   fileSize: (maxSizeMB: number) => ({
-    validator(_: any, file: File) {
+    validator(_: unknown, file: File) {
       if (!file) return Promise.resolve();
       const sizeMB = file.size / 1024 / 1024;
       if (sizeMB <= maxSizeMB) {
@@ -151,7 +151,7 @@ export const customValidators = {
 
   /** 验证文件类型 */
   fileType: (allowedTypes: string[]) => ({
-    validator(_: any, file: File) {
+    validator(_: unknown, file: File) {
       if (!file) return Promise.resolve();
       const fileType = file.type;
       if (allowedTypes.some((type) => fileType.includes(type))) {

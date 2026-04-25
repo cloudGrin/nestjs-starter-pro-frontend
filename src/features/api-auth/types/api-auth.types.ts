@@ -12,8 +12,6 @@ export interface ApiApp {
   description?: string;
   ownerId: number;
   scopes: string[];
-  rateLimit: number;
-  rateLimitPeriod: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -40,37 +38,12 @@ export interface ApiKey {
 }
 
 /**
- * API使用统计
- */
-export interface ApiStatistics {
-  appId: number;
-  period: 'hour' | 'day' | 'month';
-  totalCalls: number;
-  successCalls: number;
-  errorCalls: number;
-  avgResponseTime: number;
-  data: ApiStatisticsDataPoint[];
-}
-
-/**
- * API统计数据点
- */
-export interface ApiStatisticsDataPoint {
-  date: string;
-  calls: number;
-  success: number;
-  error: number;
-}
-
-/**
  * 创建API应用DTO
  */
 export interface CreateApiAppDto {
   name: string;
   description?: string;
-  scopes: string[];
-  rateLimit?: number;
-  rateLimitPeriod?: number;
+  scopes?: string[];
 }
 
 /**
@@ -80,9 +53,6 @@ export interface UpdateApiAppDto {
   name?: string;
   description?: string;
   scopes?: string[];
-  rateLimit?: number;
-  rateLimitPeriod?: number;
-  isActive?: boolean;
 }
 
 /**
@@ -90,6 +60,7 @@ export interface UpdateApiAppDto {
  */
 export interface CreateApiKeyDto {
   name: string;
+  environment: 'production' | 'test';
   scopes?: string[];
   expiresAt?: string;
 }
@@ -100,17 +71,8 @@ export interface CreateApiKeyDto {
 export interface QueryApiAppDto {
   page?: number;
   limit?: number;
-  name?: string;
-  isActive?: boolean;
-}
-
-/**
- * 查询API统计DTO
- */
-export interface QueryStatisticsDto {
-  period: 'hour' | 'day' | 'month';
-  startDate?: string;
-  endDate?: string;
+  sort?: string;
+  order?: 'ASC' | 'DESC';
 }
 
 /**

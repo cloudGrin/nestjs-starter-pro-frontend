@@ -10,6 +10,11 @@ import { useThemeStore } from '@/shared/stores';
 
 const { Sider } = Layout;
 
+type IconComponentType = React.ComponentType<{
+  className?: string;
+  style?: React.CSSProperties;
+}>;
+
 interface SidebarProps {
   collapsed: boolean;
 }
@@ -32,7 +37,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
         .map((menu) => {
           // 动态获取图标组件
           const IconComponent = menu.icon
-            ? (Icons as any)[menu.icon]
+            ? (Icons as unknown as Record<string, IconComponentType>)[menu.icon]
             : null;
 
           if (menu.type === 'directory') {

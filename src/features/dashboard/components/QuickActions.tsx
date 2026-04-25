@@ -3,7 +3,7 @@ import {
   UserAddOutlined,
   TeamOutlined,
   MenuOutlined,
-  SettingOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { PermissionGuard } from '@/shared/components';
@@ -29,30 +29,30 @@ export function QuickActions() {
   const actions: QuickAction[] = [
     {
       label: '创建用户',
-      path: '/rbac/users',
+      path: '/system/users',
       icon: <UserAddOutlined />,
       permission: 'user:create',
       color: '#69b1ff',
     },
     {
       label: '创建角色',
-      path: '/rbac/roles',
+      path: '/system/roles',
       icon: <TeamOutlined />,
       permission: 'role:create',
       color: '#95de64',
     },
     {
       label: '创建菜单',
-      path: '/rbac/menus',
+      path: '/system/menus',
       icon: <MenuOutlined />,
       permission: 'menu:create',
       color: '#ffd666',
     },
     {
-      label: '系统配置',
-      path: '/system/config',
-      icon: <SettingOutlined />,
-      permission: 'config:read',
+      label: '权限管理',
+      path: '/system/permissions',
+      icon: <SafetyCertificateOutlined />,
+      permission: 'permission:read',
       color: '#b37feb',
     },
   ];

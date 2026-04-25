@@ -4,24 +4,15 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
 import { useUsers } from '@/features/rbac/user/hooks/useUsers';
+import { useNotifications } from '@/features/notification/hooks/useNotifications';
 import { useThemeStore } from '@/shared/stores';
 import { cn } from '@/shared/utils/cn';
 import { UserStatus } from '@/shared/types/user.types';
-// TODO: 等待实现notification模块
-// import { useNotifications } from '@/features/notification/hooks/useNotifications';
+import { NotificationPriority, NotificationStatus } from '@/features/notification/types/notification.types';
 
 // 配置dayjs
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
-
-// 临时通知类型定义
-interface TempNotification {
-  id: number;
-  title: string;
-  level: 'error' | 'warning' | 'success' | 'info';
-  isRead: boolean;
-  createdAt: string;
-}
 
 /**
  * 最近活动组件（已适配深色模式）
@@ -36,17 +27,14 @@ export function RecentActivities() {
     limit: 5,
   });
 
-  // TODO: 等待实现notification模块
-  // // 获取最近5条通知
-  // const { data: notificationsData, isLoading: notificationsLoading } = useNotifications({
-  //   page: 1,
-  //   pageSize: 5,
-  // });
+  // 获取最近5条通知
+  const { data: notificationsData, isLoading: notificationsLoading } = useNotifications({
+    page: 1,
+    limit: 5,
+  });
 
   const users = usersData?.items || [];
-  // const notifications = notificationsData?.items || [];
-  const notifications: TempNotification[] = []; // 临时空数组
-  const notificationsLoading = false;
+  const notifications = notificationsData?.items || [];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -125,11 +113,11 @@ export function RecentActivities() {
                     <Avatar
                       style={{
                         backgroundColor:
-                          notification.level === 'error'
+                          notification.priority === NotificationPriority.URGENT
                             ? '#f5222d'
-                            : notification.level === 'warning'
+                            : notification.priority === NotificationPriority.HIGH
                               ? '#faad14'
-                              : notification.level === 'success'
+                              : notification.priority === NotificationPriority.NORMAL
                                 ? '#52c41a'
                                 : '#1890ff',
                       }}
@@ -139,7 +127,7 @@ export function RecentActivities() {
                   title={
                     <div className="flex items-center gap-2">
                       <span>{notification.title}</span>
-                      {!notification.isRead && <Tag color="red">未读</Tag>}
+                      {notification.status === NotificationStatus.UNREAD && <Tag color="red">未读</Tag>}
                     </div>
                   }
                   description={

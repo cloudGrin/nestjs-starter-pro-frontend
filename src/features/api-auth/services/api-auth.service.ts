@@ -6,12 +6,10 @@ import type {
   ApiApp,
   ApiAppListResponse,
   ApiKey,
-  ApiStatistics,
   CreateApiAppDto,
   UpdateApiAppDto,
   CreateApiKeyDto,
   QueryApiAppDto,
-  QueryStatisticsDto,
   CreateApiKeyResponse,
 } from '../types/api-auth.types';
 
@@ -25,7 +23,7 @@ export const apiAuthService = {
   /**
    * 获取API应用详情
    */
-  getApiApp: (appId: string) => request.get<ApiApp>(`/api-apps/${appId}`),
+  getApiApp: (appId: number) => request.get<ApiApp>(`/api-apps/${appId}`),
 
   /**
    * 创建API应用
@@ -42,7 +40,7 @@ export const apiAuthService = {
   /**
    * 更新API应用
    */
-  updateApiApp: (appId: string, data: UpdateApiAppDto) =>
+  updateApiApp: (appId: number, data: UpdateApiAppDto) =>
     request.put<ApiApp>(`/api-apps/${appId}`, data, {
       requestOptions: {
         messageConfig: {
@@ -54,7 +52,7 @@ export const apiAuthService = {
   /**
    * 删除API应用
    */
-  deleteApiApp: (appId: string) =>
+  deleteApiApp: (appId: number) =>
     request.delete(`/api-apps/${appId}`, {
       requestOptions: {
         confirmConfig: {
@@ -70,12 +68,12 @@ export const apiAuthService = {
   /**
    * 获取应用的密钥列表
    */
-  getApiKeys: (appId: string) => request.get<ApiKey[]>(`/api-apps/${appId}/keys`),
+  getApiKeys: (appId: number) => request.get<ApiKey[]>(`/api-apps/${appId}/keys`),
 
   /**
    * 生成API密钥
    */
-  createApiKey: (appId: string, data: CreateApiKeyDto) =>
+  createApiKey: (appId: number, data: CreateApiKeyDto) =>
     request.post<CreateApiKeyResponse>(`/api-apps/${appId}/keys`, data, {
       requestOptions: {
         messageConfig: {
@@ -100,9 +98,4 @@ export const apiAuthService = {
       },
     }),
 
-  /**
-   * 获取API使用统计
-   */
-  getStatistics: (appId: string, params: QueryStatisticsDto) =>
-    request.get<ApiStatistics>(`/api-apps/${appId}/statistics`, { params }),
 };

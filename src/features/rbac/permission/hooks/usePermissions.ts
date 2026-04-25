@@ -37,7 +37,7 @@ export function usePermissionTree() {
 /**
  * 获取权限详情
  */
-export function usePermission(id: string) {
+export function usePermission(id: number) {
   return useQuery({
     queryKey: ['permissions', id],
     queryFn: () => permissionService.getPermission(id),
@@ -69,7 +69,7 @@ export function useUpdatePermission() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdatePermissionDto }) =>
+    mutationFn: ({ id, data }: { id: number; data: UpdatePermissionDto }) =>
       permissionService.updatePermission(id, data),
     onSuccess: (_, variables) => {
       // Service层已配置successMessage，不需要在这里显示
@@ -87,24 +87,7 @@ export function useDeletePermission() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => permissionService.deletePermission(id),
-    onSuccess: () => {
-      // Service层已配置successMessage，不需要在这里显示
-      queryClient.invalidateQueries({ queryKey: ['permissions'] });
-    },
-    // onError已由axios拦截器统一处理
-  });
-}
-
-/**
- * 同步权限（从后端扫描@RequirePermissions装饰器）
- * 这是最常用的功能,用于自动同步权限到数据库
- */
-export function useSyncPermissions() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => permissionService.syncPermissions(),
+    mutationFn: (id: number) => permissionService.deletePermission(id),
     onSuccess: () => {
       // Service层已配置successMessage，不需要在这里显示
       queryClient.invalidateQueries({ queryKey: ['permissions'] });

@@ -73,7 +73,7 @@ export function NotFoundPage() {
           type="primary"
           size="large"
           icon={<HomeOutlined />}
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/')}
           className="px-8 py-6 h-auto text-base font-medium shadow-lg hover:shadow-xl transition-all"
         >
           返回首页

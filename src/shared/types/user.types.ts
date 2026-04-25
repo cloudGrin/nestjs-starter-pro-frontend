@@ -11,7 +11,7 @@ export interface Permission {
   name: string;
   description?: string;
   module: string;
-  type: 'API' | 'FEATURE';
+  type: 'api' | 'feature';
   isActive: boolean;
 }
 
@@ -49,6 +49,12 @@ export interface User {
   email: string;
   nickname?: string;
   realName?: string; // 真实姓名
+  phone?: string;
+  gender?: 'male' | 'female' | 'unknown';
+  birthday?: string;
+  address?: string;
+  bio?: string;
+  avatar?: string;
   status: UserStatus;
   roles: Role[];
   permissions: string[]; // 权限代码数组，如 ['user:create', 'user:read']

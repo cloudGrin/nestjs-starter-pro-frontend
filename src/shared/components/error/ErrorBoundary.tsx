@@ -14,6 +14,7 @@
 import { ErrorBoundary as ReactErrorBoundary } from 'react-error-boundary';
 import { Button, Result } from 'antd';
 import type { ReactNode } from 'react';
+import type { FallbackProps } from 'react-error-boundary';
 
 interface ErrorBoundaryProps {
   /** 子元素 */
@@ -25,10 +26,9 @@ interface ErrorBoundaryProps {
 /**
  * 错误回退页面
  */
-function ErrorFallback({ error, resetErrorBoundary }: {
-  error: Error;
-  resetErrorBoundary: () => void;
-}) {
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  const currentError = error instanceof Error ? error : new Error(String(error));
+
   return (
     <div className="flex items-center justify-center min-h-[400px]">
       <Result
@@ -52,9 +52,9 @@ function ErrorFallback({ error, resetErrorBoundary }: {
                 错误详情（仅开发环境可见）
               </summary>
               <pre className="mt-2 text-sm text-red-600 overflow-auto">
-                {error.message}
+                {currentError.message}
                 {'\n\n'}
-                {error.stack}
+                {currentError.stack}
               </pre>
             </details>
           </div>
@@ -67,7 +67,7 @@ function ErrorFallback({ error, resetErrorBoundary }: {
 /**
  * 错误处理函数
  */
-function onError(error: Error, errorInfo: React.ErrorInfo) {
+function onError(error: unknown, errorInfo: React.ErrorInfo) {
   // 开发环境：打印错误到控制台
   if (import.meta.env.DEV) {
     console.groupCollapsed('🚨 ErrorBoundary caught an error');
@@ -75,12 +75,6 @@ function onError(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Error Info:', errorInfo);
     console.groupEnd();
   }
-
-  // 生产环境：上报错误到监控平台
-  // TODO: 接入错误监控（Sentry、阿里云ARMS 等）
-  // if (import.meta.env.PROD) {
-  //   Sentry.captureException(error, { extra: errorInfo });
-  // }
 }
 
 /**

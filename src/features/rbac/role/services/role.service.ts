@@ -5,13 +5,15 @@
 import { request } from '@/shared/utils/request';
 import type {
   Role,
+  RoleWithRelations,
   RoleListResponse,
   QueryRoleDto,
   CreateRoleDto,
   UpdateRoleDto,
+  AssignPermissionsDto,
   AssignMenusDto,
-  EffectivePermissionsResponse,
 } from '../types/role.types';
+import type { Menu } from '../../menu/types/menu.types';
 
 export const roleService = {
   /**
@@ -28,7 +30,7 @@ export const roleService = {
   /**
    * 获取角色详情
    */
-  getRole: (id: number) => request.get<Role>(`/roles/${id}`),
+  getRole: (id: number) => request.get<RoleWithRelations>(`/roles/${id}`),
 
   /**
    * 创建角色
@@ -72,22 +74,15 @@ export const roleService = {
 
   /**
    * 分配权限
-   * 注意：后端期望的请求体是权限ID数组，不是对象
    */
   assignPermissions: (id: number, permissionIds: number[]) =>
-    request.put(`/roles/${id}/permissions`, permissionIds, {
+    request.put(`/roles/${id}/permissions`, { permissionIds } satisfies AssignPermissionsDto, {
       requestOptions: {
         messageConfig: {
           successMessage: '分配权限成功',
         },
       },
     }),
-
-  /**
-   * 获取角色的有效权限
-   */
-  getEffectivePermissions: (id: number) =>
-    request.get<EffectivePermissionsResponse>(`/roles/${id}/effective-permissions`),
 
   /**
    * 分配菜单
@@ -104,7 +99,7 @@ export const roleService = {
   /**
    * 获取角色的菜单
    */
-  getRoleMenus: (id: number) => request.get<any[]>(`/roles/${id}/menus`),
+  getRoleMenus: (id: number) => request.get<Menu[]>(`/roles/${id}/menus`),
 
   /**
    * 移除菜单

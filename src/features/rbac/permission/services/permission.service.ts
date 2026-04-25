@@ -10,7 +10,6 @@ import type {
   QueryPermissionDto,
   CreatePermissionDto,
   UpdatePermissionDto,
-  PermissionSyncResponse,
 } from '../types/permission.types';
 
 export const permissionService = {
@@ -29,7 +28,7 @@ export const permissionService = {
   /**
    * 获取权限详情
    */
-  getPermission: (id: string) =>
+  getPermission: (id: number) =>
     request.get<Permission>(`/permissions/${id}`),
 
   /**
@@ -47,7 +46,7 @@ export const permissionService = {
   /**
    * 更新权限
    */
-  updatePermission: (id: string, data: UpdatePermissionDto) =>
+  updatePermission: (id: number, data: UpdatePermissionDto) =>
     request.put<Permission>(`/permissions/${id}`, data, {
       requestOptions: {
         messageConfig: {
@@ -59,7 +58,7 @@ export const permissionService = {
   /**
    * 删除权限
    */
-  deletePermission: (id: string) =>
+  deletePermission: (id: number) =>
     request.delete(`/permissions/${id}`, {
       requestOptions: {
         confirmConfig: {
@@ -72,15 +71,4 @@ export const permissionService = {
       },
     }),
 
-  /**
-   * 同步权限（从后端扫描@RequirePermissions装饰器）
-   */
-  syncPermissions: () =>
-    request.post<PermissionSyncResponse>('/permissions/sync', undefined, {
-      requestOptions: {
-        messageConfig: {
-          successMessage: '同步权限成功',
-        },
-      },
-    }),
 };

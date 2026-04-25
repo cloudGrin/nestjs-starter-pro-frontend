@@ -10,7 +10,6 @@ import { PageWrap, PermissionGuard } from '@/shared/components';
 import { PermissionList } from '../components/PermissionList';
 import { PermissionTree } from '../components/PermissionTree';
 import { PermissionForm } from '../components/PermissionForm';
-import { PermissionSyncButton } from '../components/PermissionSyncButton';
 import {
   usePermissions,
   usePermissionTree,
@@ -110,7 +109,7 @@ export function PermissionListPage() {
   /**
    * 删除权限处理
    */
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     deletePermission(id);
   };
 
@@ -119,7 +118,6 @@ export function PermissionListPage() {
       title="权限管理"
       titleRight={
         <Space>
-          <PermissionSyncButton />
           <PermissionGuard permissions={['permission:create']}>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
               创建权限

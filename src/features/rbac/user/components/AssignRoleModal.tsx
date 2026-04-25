@@ -8,7 +8,6 @@ import type { TransferProps } from 'antd';
 import type { User } from '@/shared/types/user.types';
 import { useActiveRoles } from '@/features/rbac/role/hooks/useRoles';
 import { useAssignRoles } from '../hooks/useUsers';
-import { useApp } from '@/shared/hooks';
 
 interface AssignRoleModalProps {
   visible: boolean;
@@ -33,8 +32,6 @@ export function AssignRoleModal({
   onCancel,
   onSuccess,
 }: AssignRoleModalProps) {
-  const { message } = useApp();
-
   // 获取所有活跃角色
   const { data: roles } = useActiveRoles();
 

@@ -2,7 +2,7 @@
  * 动态组件注册系统
  *
  * 核心特性：
- * 1. ✅ 使用 import.meta.glob 自动扫描所有页面组件
+ * 1. ✅ 使用 import.meta.glob 自动扫描入口页面组件
  * 2. ✅ 支持懒加载（React.lazy）
  * 3. ✅ 类型安全（自动推断组件名）
  * 4. ✅ 无需手动注册（新建页面文件后自动可用）
@@ -10,36 +10,36 @@
  * 约定式路由规范：
  * - 所有页面组件必须放在以下目录：
  *   - features/[module]/pages/[ComponentName].tsx
- *   - features/[module]/components/[ComponentName].tsx（特殊组件）
+ *   - features/file/components/FileList.tsx（文件模块历史兼容）
  *   - shared/pages/[ComponentName].tsx
- * - 组件名必须与文件名一致（如 UserListPage.tsx 导出 UserListPage）
+ * - 组件名通常与文件名一致（如 UserListPage.tsx 导出 UserListPage）
  * - 组件必须使用命名导出（export function UserListPage）
  *
  * 使用示例：
  * ```typescript
- * // 后端菜单表的 component 字段存储组件名
- * { component: 'UserListPage' }
+ * // 后端菜单表的 component 字段可存储组件名或约定别名
+ * { component: 'system/users' }
  *
  * // 动态路由系统自动查找并加载组件
- * const Component = getComponent('UserListPage'); // ✅ 自动找到 features/rbac/user/pages/UserListPage.tsx
+ * const Component = getComponent('system/users'); // 自动映射到 UserListPage
  * ```
  *
  * 新增页面流程：
  * 1. 创建页面文件（如 features/finance/pages/AccountListPage.tsx）
- * 2. 后端数据库插入菜单记录（component 字段填 'AccountListPage'）
- * 3. 完成！前端会自动生成路由
+ * 2. 后端数据库插入菜单记录（component 字段填组件名或在此维护别名）
+ * 3. 前端根据菜单自动生成路由
  */
 
 import { lazy } from 'react';
 import type { ComponentType } from 'react';
 
 /**
- * Vite import.meta.glob 自动扫描所有页面组件
+ * Vite import.meta.glob 自动扫描可作为动态路由入口的页面组件
  *
  * 扫描范围：
- * - features/星/pages/星.tsx
- * - features/星/components/星.tsx（特殊组件如 FileList、TaskList）
- * - shared/pages/星.tsx
+ * - features/[module]/pages/[ComponentName].tsx
+ * - features/file/components/FileList.tsx（历史菜单兼容）
+ * - shared/pages/*.tsx
  *
  * 返回格式：
  * {
@@ -52,9 +52,33 @@ const pageModules = import.meta.glob<{
   [key: string]: ComponentType<Record<string, never>>;
 }>([
   '../features/**/pages/*.tsx',
-  '../features/**/components/*.tsx', // 支持特殊组件（如 FileList、TaskList）
+  '../features/file/components/FileList.tsx',
   '../shared/pages/*.tsx',
 ], { eager: false });
+
+const componentAliases: Record<string, string> = {
+  Dashboard: 'DashboardPage',
+  dashboard: 'DashboardPage',
+  FileList: 'FileList',
+  files: 'FileList',
+  'system/users': 'UserListPage',
+  'system/roles': 'RoleListPage',
+  'system/menus': 'MenuListPage',
+  'system/permissions': 'PermissionListPage',
+  'system/files': 'FileList',
+  'system/notifications': 'NotificationListPage',
+  'system/api-apps': 'ApiAuthPage',
+  UserListPage: 'UserListPage',
+  RoleListPage: 'RoleListPage',
+  MenuListPage: 'MenuListPage',
+  PermissionListPage: 'PermissionListPage',
+  NotificationListPage: 'NotificationListPage',
+  ApiAuthPage: 'ApiAuthPage',
+};
+
+function normalizeComponentName(componentName: string): string {
+  return componentAliases[componentName] ?? componentName;
+}
 
 /**
  * 从文件路径提取组件名
@@ -112,15 +136,16 @@ for (const [path, loader] of Object.entries(pageModules)) {
  * }
  */
 export function getComponent(componentName: string): ComponentType<Record<string, never>> | null {
-  const loader = componentRegistry.get(componentName);
+  const normalizedName = normalizeComponentName(componentName);
+  const loader = componentRegistry.get(normalizedName);
 
   if (!loader) {
     console.error(
       `[ComponentRegistry] 组件 "${componentName}" 未找到。\n` +
       `请确认：\n` +
-      `1. 文件是否存在于 features/*/pages/ 或 features/*/components/ 或 shared/pages/ 目录\n` +
-      `2. 组件名是否与文件名一致\n` +
-      `3. 组件是否使用命名导出（export function ${componentName}）`
+      `1. 文件是否存在于 features/[module]/pages/、features/file/components/FileList.tsx 或 shared/pages/ 目录\n` +
+      `2. 组件名是否与文件名一致，或已在 componentAliases 中配置\n` +
+      `3. 组件是否使用命名导出（export function ${normalizedName}）`
     );
     return null;
   }
@@ -131,14 +156,14 @@ export function getComponent(componentName: string): ComponentType<Record<string
       // 支持两种导出方式：
       // 1. 命名导出：export function UserListPage
       // 2. 默认导出：export default UserListPage
-      if (componentName in module) {
-        return { default: module[componentName] };
+      if (normalizedName in module) {
+        return { default: module[normalizedName] };
       } else if ('default' in module) {
         return { default: module.default };
       } else {
         throw new Error(
           `组件 "${componentName}" 导出格式错误。\n` +
-          `请使用命名导出：export function ${componentName}`
+          `请使用命名导出：export function ${normalizedName}`
         );
       }
     })
@@ -154,7 +179,7 @@ export function getComponent(componentName: string): ComponentType<Record<string
  *
  * @example
  * const componentNames = getComponentNames();
- * // → ['ApiAuthPage', 'ConfigListPage', 'DashboardPage', ...]
+ * // → ['ApiAuthPage', 'DashboardPage', ...]
  */
 export function getComponentNames(): string[] {
   return Array.from(componentRegistry.keys()).sort();
@@ -172,7 +197,7 @@ export function getComponentNames(): string[] {
  * }
  */
 export function isComponentRegistered(componentName: string): boolean {
-  return componentRegistry.has(componentName);
+  return componentRegistry.has(normalizeComponentName(componentName));
 }
 
 /**

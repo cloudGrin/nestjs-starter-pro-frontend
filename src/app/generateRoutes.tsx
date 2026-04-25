@@ -99,7 +99,7 @@ export function generateRoutes(menus: MenuTreeNode[]): RouteObject[] {
         path: menu.path || undefined,
         element: permissions && permissions.length > 0 ? (
           // 需要权限验证
-          <ProtectedRoute permissions={permissions}>
+          <ProtectedRoute permissions={permissions as [string, ...string[]]}>
             <Suspense fallback={<PageLoading />}>
               <Component />
             </Suspense>
@@ -136,7 +136,7 @@ export function generateRoutes(menus: MenuTreeNode[]): RouteObject[] {
  * 生成带默认首页重定向的路由
  *
  * @param menus 菜单树数据
- * @param defaultPath 默认首页路径（默认 '/dashboard'）
+ * @param defaultPath 默认首页路径（未传时使用首个可访问菜单）
  * @returns RouteObject[] 包含首页重定向的路由配置
  *
  * @example
@@ -144,17 +144,39 @@ export function generateRoutes(menus: MenuTreeNode[]): RouteObject[] {
  */
 export function generateRoutesWithDefault(
   menus: MenuTreeNode[],
-  defaultPath: string = '/dashboard'
+  defaultPath?: string
 ): RouteObject[] {
   const routes = generateRoutes(menus);
+  const fallbackPath = defaultPath || findFirstMenuPath(menus) || '/';
 
   // 添加首页重定向
   routes.unshift({
     index: true,
-    element: <Navigate to={defaultPath} replace />,
+    element: <Navigate to={fallbackPath} replace />,
   });
 
   return routes;
+}
+
+function findFirstMenuPath(menus: MenuTreeNode[]): string | null {
+  for (const menu of menus) {
+    if (!menu.isVisible || !menu.isActive) {
+      continue;
+    }
+
+    if (menu.type === 'menu' && menu.path && menu.component && getComponent(menu.component)) {
+      return menu.path;
+    }
+
+    if (menu.children) {
+      const childPath = findFirstMenuPath(menu.children);
+      if (childPath) {
+        return childPath;
+      }
+    }
+  }
+
+  return null;
 }
 
 /**

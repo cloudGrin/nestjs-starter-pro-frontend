@@ -3,6 +3,7 @@
  */
 
 import type { Permission } from '../../permission/types/permission.types';
+import type { Menu } from '../../menu/types/menu.types';
 
 /**
  * 角色实体
@@ -24,7 +25,7 @@ export interface Role {
  */
 export interface RoleWithRelations extends Role {
   permissions?: Permission[];
-  menus?: any[]; // 后续菜单模块完成后改为Menu[]
+  menus?: Menu[];
 }
 
 /**
@@ -58,6 +59,7 @@ export interface CreateRoleDto {
   code: string;
   name: string;
   description?: string;
+  sort?: number;
   isActive?: boolean;
   permissionIds?: number[];
 }
@@ -66,10 +68,12 @@ export interface CreateRoleDto {
  * 更新角色DTO
  */
 export interface UpdateRoleDto {
+  code?: string;
   name?: string;
   description?: string;
   isActive?: boolean;
   sort?: number;
+  permissionIds?: number[];
 }
 
 /**
@@ -84,13 +88,4 @@ export interface AssignPermissionsDto {
  */
 export interface AssignMenusDto {
   menuIds: number[];
-}
-
-/**
- * 角色有效权限响应
- */
-export interface EffectivePermissionsResponse {
-  roleId: number;
-  permissions: string[]; // 权限代码数组，如 ['user:create', 'user:read']
-  count: number;
 }

@@ -59,10 +59,12 @@ export interface CreateNotificationDto {
   content: string;
   type: NotificationType;
   priority: NotificationPriority;
-  targetUserIds?: number[]; // 指定接收用户
-  broadcast?: boolean; // true表示广播给所有用户
-  link?: string;
+  recipientIds?: number[]; // 指定接收用户
+  isBroadcast?: boolean; // true表示广播给所有用户
+  channels?: Array<'internal' | 'bark' | 'feishu'>;
+  sendExternalWhenOffline?: boolean;
   metadata?: Record<string, unknown>;
+  expireAt?: string;
 }
 
 /**
