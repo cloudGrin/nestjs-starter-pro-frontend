@@ -78,13 +78,15 @@ export function usePermission() {
       return true;
     }
 
+    const userPermissions = user.permissions;
+
     // 普通用户检查权限数组
-    if (user.permissions.length === 0) {
+    if (userPermissions.length === 0) {
       return false;
     }
 
     // OR逻辑：只要拥有任一所需权限即可
-    return permissions.some((p) => user.permissions.includes(p));
+    return permissions.some((p) => userPermissions.includes(p));
   };
 
   /**
@@ -126,12 +128,14 @@ export function usePermission() {
       return true;
     }
 
-    if (user.permissions.length === 0) {
+    const userPermissions = user.permissions;
+
+    if (userPermissions.length === 0) {
       return false;
     }
 
     // AND逻辑：必须拥有所有所需权限
-    return permissions.every((p) => user.permissions.includes(p));
+    return permissions.every((p) => userPermissions.includes(p));
   };
 
   /**

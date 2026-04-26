@@ -79,7 +79,6 @@ After login, the app navigates to `/`. The default page is the first visible, ac
 
 ```bash
 VITE_API_URL=http://localhost:3000/api/v1
-VITE_WS_URL=http://localhost:3000
 VITE_APP_TITLE=home 管理后台
 ```
 

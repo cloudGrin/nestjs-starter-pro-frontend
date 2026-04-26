@@ -57,10 +57,9 @@ src/features/api-auth      API 应用和密钥管理
 ## API 约定
 
 - API 基础地址：`VITE_API_URL`，默认 `http://localhost:3000/api/v1`
-- WebSocket 地址：`VITE_WS_URL`，默认 `http://localhost:3000`
 - 所有服务层接口需对照 `api-docs.json`。
 - 统一请求封装在 `src/shared/utils/request.ts`。
-- access token 刷新成功后通过 `auth:token-refreshed` 事件同步 auth store 和 WebSocket。
+- access token 刷新成功后通过 `auth:token-refreshed` 事件同步 auth store。
 - refresh token 失效后通过 `auth:session-expired` 事件清理认证状态。
 
 ## 代码约定

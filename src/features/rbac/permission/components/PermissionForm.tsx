@@ -77,8 +77,8 @@ export function PermissionForm({
           rules={[
             { required: true, message: '请输入权限代码' },
             {
-              pattern: /^[a-z_:]+$/,
-              message: '权限代码只能包含小写字母、下划线和冒号',
+              pattern: /^[a-z0-9_:-]+$/,
+              message: '权限代码只能包含小写字母、数字、下划线、连字符和冒号',
             },
             {
               min: 3,
@@ -115,8 +115,8 @@ export function PermissionForm({
           rules={[
             { required: true, message: '请输入所属模块' },
             {
-              pattern: /^[a-z_]+$/,
-              message: '模块名只能包含小写字母和下划线',
+              pattern: /^[a-z0-9_-]+$/,
+              message: '模块名只能包含小写字母、数字、下划线和连字符',
             },
             {
               min: 2,

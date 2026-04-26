@@ -82,7 +82,7 @@ export const NotificationBell: React.FC = () => {
    * 查看全部通知
    */
   const handleViewAll = () => {
-    navigate('/notifications');
+    navigate('/system/notifications');
   };
 
   /**

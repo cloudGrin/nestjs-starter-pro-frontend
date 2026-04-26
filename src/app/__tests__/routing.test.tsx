@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateRoutesWithDefault } from '../generateRoutes';
-import { getComponent } from '../componentRegistry';
+import { getComponent, getComponentNames } from '../componentRegistry';
 import { MenuType, type MenuTreeNode } from '@/features/rbac/menu/types/menu.types';
 
 describe('dynamic routing', () => {
@@ -9,6 +9,11 @@ describe('dynamic routing', () => {
     expect(getComponent('system/users')).not.toBeNull();
     expect(getComponent('system/roles')).not.toBeNull();
     expect(getComponent('system/menus')).not.toBeNull();
+  });
+
+  it('does not register test files as dynamic route components', () => {
+    expect(getComponentNames().some((name) => name.includes('.test'))).toBe(false);
+    expect(getComponentNames().some((name) => name.includes('.spec'))).toBe(false);
   });
 
   it('uses the first visible backend menu as the default route', () => {

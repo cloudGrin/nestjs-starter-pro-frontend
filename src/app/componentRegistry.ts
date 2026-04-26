@@ -50,6 +50,8 @@ const pageModules = import.meta.glob<{
   [key: string]: ComponentType<Record<string, never>>;
 }>([
   '../features/**/pages/*.tsx',
+  '!../features/**/pages/*.test.tsx',
+  '!../features/**/pages/*.spec.tsx',
   '!../features/auth/pages/LoginPage.tsx',
   '../features/file/components/FileList.tsx',
 ], { eager: false });
