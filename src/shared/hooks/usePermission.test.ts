@@ -79,6 +79,17 @@ describe('usePermission', () => {
 
       expect(result.current.hasPermission(['user:create'])).toBe(false);
     });
+
+    it('普通用户未下发权限清单时应该被拒绝', () => {
+      setMockUser({
+        ...mockUsers.user,
+        permissions: undefined,
+      });
+
+      const { result } = renderHook(() => usePermission());
+
+      expect(result.current.hasPermission(['notification:read'])).toBe(false);
+    });
   });
 
   describe('hasAllPermissions (AND 逻辑)', () => {
@@ -113,6 +124,17 @@ describe('usePermission', () => {
       const { result } = renderHook(() => usePermission());
 
       expect(result.current.hasAllPermissions(['user:create'])).toBe(false);
+    });
+
+    it('普通用户未下发权限清单时应该不通过全部权限检查', () => {
+      setMockUser({
+        ...mockUsers.user,
+        permissions: undefined,
+      });
+
+      const { result } = renderHook(() => usePermission());
+
+      expect(result.current.hasAllPermissions(['user:read'])).toBe(false);
     });
   });
 

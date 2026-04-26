@@ -48,13 +48,16 @@ import type { ComponentType } from 'react';
  */
 const pageModules = import.meta.glob<{
   [key: string]: ComponentType<Record<string, never>>;
-}>([
-  '../features/**/pages/*.tsx',
-  '!../features/**/pages/*.test.tsx',
-  '!../features/**/pages/*.spec.tsx',
-  '!../features/auth/pages/LoginPage.tsx',
-  '../features/file/components/FileList.tsx',
-], { eager: false });
+}>(
+  [
+    '../features/**/pages/*.tsx',
+    '!../features/**/pages/*.test.tsx',
+    '!../features/**/pages/*.spec.tsx',
+    '!../features/auth/pages/LoginPage.tsx',
+    '../features/file/components/FileList.tsx',
+  ],
+  { eager: false }
+);
 
 const componentAliases: Record<string, string> = {
   Dashboard: 'DashboardPage',
@@ -109,7 +112,10 @@ function extractComponentName(path: string): string {
  *   ...
  * }
  */
-const componentRegistry = new Map<string, () => Promise<{ [key: string]: ComponentType<Record<string, never>> }>>();
+const componentRegistry = new Map<
+  string,
+  () => Promise<{ [key: string]: ComponentType<Record<string, never>> }>
+>();
 
 // 构建组件注册表
 for (const [path, loader] of Object.entries(pageModules)) {
@@ -119,7 +125,10 @@ for (const [path, loader] of Object.entries(pageModules)) {
     continue;
   }
 
-  componentRegistry.set(componentName, loader as () => Promise<{ [key: string]: ComponentType<Record<string, never>> }>);
+  componentRegistry.set(
+    componentName,
+    loader as () => Promise<{ [key: string]: ComponentType<Record<string, never>> }>
+  );
 }
 
 /**
@@ -143,10 +152,10 @@ export function getComponent(componentName: string): ComponentType<Record<string
   if (!loader) {
     console.error(
       `[ComponentRegistry] 组件 "${componentName}" 未找到。\n` +
-      `请确认：\n` +
-      `1. 文件是否存在于 features/[module]/pages/ 或 features/file/components/FileList.tsx\n` +
-      `2. 组件名是否与文件名一致，或已在 componentAliases 中配置\n` +
-      `3. 组件是否使用命名导出（export function ${normalizedName}）`
+        `请确认：\n` +
+        `1. 文件是否存在于 features/[module]/pages/ 或 features/file/components/FileList.tsx\n` +
+        `2. 组件名是否与文件名一致，或已在 componentAliases 中配置\n` +
+        `3. 组件是否使用命名导出（export function ${normalizedName}）`
     );
     return null;
   }
@@ -164,7 +173,7 @@ export function getComponent(componentName: string): ComponentType<Record<string
       } else {
         throw new Error(
           `组件 "${componentName}" 导出格式错误。\n` +
-          `请使用命名导出：export function ${normalizedName}`
+            `请使用命名导出：export function ${normalizedName}`
         );
       }
     })

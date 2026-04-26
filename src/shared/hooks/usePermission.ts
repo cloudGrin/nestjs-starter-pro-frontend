@@ -73,9 +73,10 @@ export function usePermission() {
       return true;
     }
 
-    // 后端当前登录响应可能不下发权限清单；此时前端不做误拦截，接口仍由后端鉴权。
+    // 权限清单缺失时不能默认放行，避免低权限账号看到不可执行的操作。
+    // 页面访问由后端菜单接口过滤，按钮/局部入口必须等权限清单明确后再展示。
     if (user.permissions === undefined) {
-      return true;
+      return false;
     }
 
     const userPermissions = user.permissions;
@@ -123,9 +124,8 @@ export function usePermission() {
       return true;
     }
 
-    // 普通用户检查权限数组
     if (user.permissions === undefined) {
-      return true;
+      return false;
     }
 
     const userPermissions = user.permissions;

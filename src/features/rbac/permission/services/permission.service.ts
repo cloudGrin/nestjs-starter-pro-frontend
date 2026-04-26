@@ -22,8 +22,7 @@ export const permissionService = {
   /**
    * 获取权限树（按模块分组）
    */
-  getPermissionTree: () =>
-    request.get<PermissionTreeNode[]>('/permissions/tree'),
+  getPermissionTree: () => request.get<PermissionTreeNode[]>('/permissions/tree'),
 
   /**
    * 创建权限（手动创建 - 一般不需要,权限通过扫描自动生成）
@@ -64,5 +63,4 @@ export const permissionService = {
         },
       },
     }),
-
 };

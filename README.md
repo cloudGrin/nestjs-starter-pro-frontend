@@ -82,6 +82,22 @@ VITE_API_URL=http://localhost:3000/api/v1
 VITE_APP_TITLE=home 管理后台
 ```
 
+Production builds should use the same-origin API path:
+
+```bash
+VITE_API_URL=/api/v1
+```
+
+## Deployment
+
+The Docker image serves the Vite build through nginx and rewrites SPA routes to `index.html`.
+Set `API_UPSTREAM` to the backend origin that should receive `/api/*` requests:
+
+```bash
+pnpm run docker:build
+docker run --rm -p 8080:80 -e API_UPSTREAM=http://host.docker.internal:3000 home-web
+```
+
 ## API Contract
 
 The frontend uses handwritten services under `src/features/**/services`. Keep them aligned with local `api-docs.json` after backend controller changes.

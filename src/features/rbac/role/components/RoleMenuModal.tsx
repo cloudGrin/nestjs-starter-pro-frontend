@@ -22,12 +22,7 @@ interface RoleMenuModalProps {
   onCancel: () => void;
 }
 
-export function RoleMenuModal({
-  open,
-  role,
-  onSuccess,
-  onCancel,
-}: RoleMenuModalProps) {
+export function RoleMenuModal({ open, role, onSuccess, onCancel }: RoleMenuModalProps) {
   const [searchValue, setSearchValue] = useState('');
   const [checkedKeys, setCheckedKeys] = useState<React.Key[]>([]);
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
@@ -82,8 +77,7 @@ export function RoleMenuModal({
 
     const filterNode = (node: MenuTreeNode): MenuTreeNode | null => {
       const matches =
-        node.name.toLowerCase().includes(keyword) ||
-        node.path?.toLowerCase().includes(keyword);
+        node.name.toLowerCase().includes(keyword) || node.path?.toLowerCase().includes(keyword);
 
       const filteredChildren = node.children
         ?.map((child) => filterNode(child))

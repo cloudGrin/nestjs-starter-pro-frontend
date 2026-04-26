@@ -48,11 +48,7 @@ interface PermissionGuardProps {
  *   <Button type="primary">创建用户</Button>
  * </PermissionGuard>
  */
-export function PermissionGuard({
-  permissions,
-  fallback = null,
-  children,
-}: PermissionGuardProps) {
+export function PermissionGuard({ permissions, fallback = null, children }: PermissionGuardProps) {
   const { hasPermission } = usePermission();
 
   // 检查是否拥有所需权限

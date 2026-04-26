@@ -10,12 +10,7 @@ import { RoleForm } from '../components/RoleForm';
 import { RolePermissionModal } from '../components/RolePermissionModal';
 import { RoleMenuModal } from '../components/RoleMenuModal';
 import { PageWrap, SearchForm, PermissionGuard, EmptyState } from '@/shared/components';
-import {
-  useRoles,
-  useCreateRole,
-  useUpdateRole,
-  useDeleteRole,
-} from '../hooks/useRoles';
+import { useRoles, useCreateRole, useUpdateRole, useDeleteRole } from '../hooks/useRoles';
 import type { Role, QueryRoleDto, CreateRoleDto, UpdateRoleDto } from '../types/role.types';
 
 export function RoleListPage() {

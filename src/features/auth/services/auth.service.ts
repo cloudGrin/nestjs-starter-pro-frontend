@@ -20,6 +20,5 @@ export const authService = {
   /**
    * 用户登出
    */
-  logout: (refreshToken?: string) =>
-    request.post('/auth/logout', { refreshToken }),
+  logout: (refreshToken?: string) => request.post('/auth/logout', { refreshToken }),
 };

@@ -21,12 +21,7 @@ interface RolePermissionModalProps {
   onCancel: () => void;
 }
 
-export function RolePermissionModal({
-  open,
-  role,
-  onSuccess,
-  onCancel,
-}: RolePermissionModalProps) {
+export function RolePermissionModal({ open, role, onSuccess, onCancel }: RolePermissionModalProps) {
   const [searchValue, setSearchValue] = useState('');
   const [checkedKeys, setCheckedKeys] = useState<React.Key[]>([]);
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
@@ -84,12 +79,8 @@ export function RolePermissionModal({
       </div>
       {/* 第二行：权限代码 + 描述 */}
       <div className="flex items-center gap-2 text-xs ml-6">
-        <code className="bg-gray-100 px-2 py-0.5 rounded text-blue-600">
-          {permission.code}
-        </code>
-        {permission.description && (
-          <span className="text-gray-500">{permission.description}</span>
-        )}
+        <code className="bg-gray-100 px-2 py-0.5 rounded text-blue-600">{permission.code}</code>
+        {permission.description && <span className="text-gray-500">{permission.description}</span>}
       </div>
     </div>
   );
@@ -189,7 +180,9 @@ export function RolePermissionModal({
   /**
    * Tree复选框变化
    */
-  const handleCheck = (checked: React.Key[] | { checked: React.Key[]; halfChecked: React.Key[] }) => {
+  const handleCheck = (
+    checked: React.Key[] | { checked: React.Key[]; halfChecked: React.Key[] }
+  ) => {
     const keys = Array.isArray(checked) ? checked : checked.checked;
     setCheckedKeys(keys);
   };

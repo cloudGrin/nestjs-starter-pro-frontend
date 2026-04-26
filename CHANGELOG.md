@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Avoid self-redirecting `/` when backend menus contain no resolvable page.
-- Synchronize refreshed access tokens with auth store and WebSocket state.
+- Synchronize refreshed access tokens with auth store.
 
 ## [2.0.0] - 2025-11-04
 
@@ -19,7 +19,7 @@ All notable changes to this project will be documented in this file.
 - RBAC management: users, roles, menus, permissions.
 - Dashboard based on current backend list APIs and unread notifications.
 - File management: direct upload, list, detail, download, delete.
-- Notification center with WebSocket updates.
+- Notification center backed by the notification APIs.
 - API app and API key management.
 - Dynamic backend-driven routing with component registry aliases.
 - Dark mode, shared layout components, search forms, table actions, status badges, empty states.

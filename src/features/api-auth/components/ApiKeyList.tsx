@@ -15,7 +15,12 @@ import {
   Typography,
   Select,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined, CopyOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  CopyOutlined,
+  EyeInvisibleOutlined,
+} from '@ant-design/icons';
 import { useForm, Controller } from 'react-hook-form';
 import dayjs from 'dayjs';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey } from '../hooks/useApiApps';
@@ -273,10 +278,7 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
             />
           </Form.Item>
 
-          <Form.Item
-            label="权限范围"
-            help="留空则继承应用权限，多个权限用逗号分隔"
-          >
+          <Form.Item label="权限范围" help="留空则继承应用权限，多个权限用逗号分隔">
             <Controller
               name="scopes"
               control={control}

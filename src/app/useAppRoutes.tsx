@@ -71,7 +71,11 @@ export function useAppRoutes() {
   const isAuthenticated = !!token;
 
   // 只有登录后才获取用户菜单（避免401错误）
-  const { data: userMenus, isLoading, error } = useUserMenus({
+  const {
+    data: userMenus,
+    isLoading,
+    error,
+  } = useUserMenus({
     enabled: isAuthenticated, // ← 关键：未登录时禁用查询
   });
 

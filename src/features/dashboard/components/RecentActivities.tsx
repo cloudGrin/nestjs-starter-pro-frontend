@@ -9,7 +9,10 @@ import { PermissionGuard } from '@/shared/components';
 import { useThemeStore } from '@/shared/stores';
 import { cn } from '@/shared/utils/cn';
 import { UserStatus } from '@/shared/types/user.types';
-import { NotificationPriority, NotificationStatus } from '@/features/notification/types/notification.types';
+import {
+  NotificationPriority,
+  NotificationStatus,
+} from '@/features/notification/types/notification.types';
 
 // 配置dayjs
 dayjs.extend(relativeTime);

@@ -70,7 +70,6 @@ const getFileIcon = (mimeType: string) => {
 };
 
 export const FileList: React.FC = () => {
-
   // 搜索参数
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -195,7 +194,12 @@ export const FileList: React.FC = () => {
       width: 150,
       render: (tags: string) => {
         // 数据库存储为逗号分隔的字符串，需要分割成数组
-        const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+        const tagArray = tags
+          ? tags
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean)
+          : [];
         return tagArray.length > 0 ? (
           <Space>
             {tagArray.map((tag) => (
@@ -214,8 +218,7 @@ export const FileList: React.FC = () => {
       dataIndex: 'uploader',
       key: 'uploader',
       width: 120,
-      render: (uploader) =>
-        uploader ? uploader.nickname || uploader.username : '-',
+      render: (uploader) => (uploader ? uploader.nickname || uploader.username : '-'),
     },
     {
       title: '上传时间',

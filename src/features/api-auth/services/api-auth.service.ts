@@ -17,8 +17,7 @@ export const apiAuthService = {
   /**
    * 获取API应用列表
    */
-  getApiApps: (params: QueryApiAppDto) =>
-    request.get<ApiAppListResponse>('/api-apps', { params }),
+  getApiApps: (params: QueryApiAppDto) => request.get<ApiAppListResponse>('/api-apps', { params }),
 
   /**
    * 创建API应用
@@ -92,5 +91,4 @@ export const apiAuthService = {
         },
       },
     }),
-
 };

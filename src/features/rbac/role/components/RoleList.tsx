@@ -72,10 +72,7 @@ export function RoleList({
       key: 'isActive',
       width: 80,
       render: (isActive: boolean) => (
-        <StatusBadge
-          status={isActive ? 'success' : 'default'}
-          text={isActive ? '启用' : '禁用'}
-        />
+        <StatusBadge status={isActive ? 'success' : 'default'} text={isActive ? '启用' : '禁用'} />
       ),
     },
     {

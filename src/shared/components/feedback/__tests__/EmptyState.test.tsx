@@ -33,12 +33,7 @@ describe('EmptyState 组件', () => {
   });
 
   it('应该渲染自定义标题和描述', () => {
-    renderWithProviders(
-      <EmptyState
-        title="搜索无结果"
-        description="换个关键词试试吧"
-      />
-    );
+    renderWithProviders(<EmptyState title="搜索无结果" description="换个关键词试试吧" />);
 
     expect(screen.getByText('搜索无结果')).toBeInTheDocument();
     expect(screen.getByText('换个关键词试试吧')).toBeInTheDocument();

@@ -26,12 +26,7 @@ interface RoleTransferItem {
  * 分配角色弹窗组件
  * 使用Transfer组件实现角色的分配和移除
  */
-export function AssignRoleModal({
-  visible,
-  user,
-  onCancel,
-  onSuccess,
-}: AssignRoleModalProps) {
+export function AssignRoleModal({ visible, user, onCancel, onSuccess }: AssignRoleModalProps) {
   // 获取所有活跃角色
   const { data: roles } = useActiveRoles();
 
@@ -108,9 +103,7 @@ export function AssignRoleModal({
           render={(item) => (
             <div>
               <div style={{ fontWeight: 500 }}>{item.title}</div>
-              <div style={{ fontSize: 12, color: '#999' }}>
-                {item.description}
-              </div>
+              <div style={{ fontSize: 12, color: '#999' }}>{item.description}</div>
             </div>
           )}
           listStyle={{

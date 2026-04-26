@@ -524,7 +524,10 @@ describe('SearchForm 组件', () => {
       const onSearch = vi.fn();
 
       render(
-        <SearchForm onSearch={onSearch} initialValues={{ username: 'admin', email: 'admin@example.com' }}>
+        <SearchForm
+          onSearch={onSearch}
+          initialValues={{ username: 'admin', email: 'admin@example.com' }}
+        >
           <Form.Item name="username">
             <Input placeholder="用户名" />
           </Form.Item>

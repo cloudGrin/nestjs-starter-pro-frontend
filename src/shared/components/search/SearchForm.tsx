@@ -80,7 +80,13 @@
  */
 import { useState, type ReactNode } from 'react';
 import { Form, Button, Row, Col, Space } from 'antd';
-import { SearchOutlined, ReloadOutlined, DownOutlined, ExportOutlined, SyncOutlined } from '@ant-design/icons';
+import {
+  SearchOutlined,
+  ReloadOutlined,
+  DownOutlined,
+  ExportOutlined,
+  SyncOutlined,
+} from '@ant-design/icons';
 import type { FormInstance, ColProps } from 'antd';
 
 interface SearchFormProps {
@@ -165,12 +171,7 @@ export function SearchForm({
   const colProps: ColProps = typeof span === 'number' ? { span } : span;
 
   return (
-    <Form
-      form={form}
-      initialValues={initialValues}
-      onFinish={handleSearch}
-      className="w-full"
-    >
+    <Form form={form} initialValues={initialValues} onFinish={handleSearch} className="w-full">
       <div className="flex items-start gap-4">
         {/* 左侧：搜索表单项（占据剩余空间） */}
         <div className="flex-1 min-w-0">
@@ -235,11 +236,7 @@ export function SearchForm({
                 </Button>
               )}
               {shouldShowExpand && (
-                <Button
-                  type="link"
-                  onClick={() => setExpanded(!expanded)}
-                  className="px-0 group"
-                >
+                <Button type="link" onClick={() => setExpanded(!expanded)} className="px-0 group">
                   {expanded ? '收起' : '展开'}
                   <span
                     className="inline-block ml-1"

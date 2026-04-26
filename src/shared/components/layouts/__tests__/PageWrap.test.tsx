@@ -19,11 +19,14 @@ import type { BreadcrumbItemType } from 'antd/es/breadcrumb/Breadcrumb';
 
 // Mock useBreadcrumb hook
 vi.mock('@/shared/hooks/useBreadcrumb', () => ({
-  useBreadcrumb: vi.fn(() => [
-    { title: '首页', href: '/' },
-    { title: '用户管理', href: '/users' },
-    { title: '用户列表' },
-  ] as BreadcrumbItemType[]),
+  useBreadcrumb: vi.fn(
+    () =>
+      [
+        { title: '首页', href: '/' },
+        { title: '用户管理', href: '/users' },
+        { title: '用户列表' },
+      ] as BreadcrumbItemType[]
+  ),
 }));
 
 // 测试辅助函数
@@ -59,10 +62,7 @@ describe('PageWrap 组件', () => {
 
     it('应该渲染标题右侧内容', () => {
       render(
-        <PageWrap
-          title="用户管理"
-          titleRight={<Button data-testid="export-btn">导出</Button>}
-        >
+        <PageWrap title="用户管理" titleRight={<Button data-testid="export-btn">导出</Button>}>
           <div>内容</div>
         </PageWrap>
       );
@@ -73,10 +73,7 @@ describe('PageWrap 组件', () => {
 
     it('应该渲染头部额外内容', () => {
       render(
-        <PageWrap
-          title="用户管理"
-          header={<div data-testid="search-form">搜索表单</div>}
-        >
+        <PageWrap title="用户管理" header={<div data-testid="search-form">搜索表单</div>}>
           <div>内容</div>
         </PageWrap>
       );
@@ -126,7 +123,11 @@ describe('PageWrap 组件', () => {
     });
 
     it('应该在没有 title 和 header 时仍显示面包屑', () => {
-      render(<PageWrap><div>内容</div></PageWrap>);
+      render(
+        <PageWrap>
+          <div>内容</div>
+        </PageWrap>
+      );
 
       expect(screen.getByText('首页')).toBeInTheDocument();
       expect(screen.getByText('用户管理')).toBeInTheDocument();

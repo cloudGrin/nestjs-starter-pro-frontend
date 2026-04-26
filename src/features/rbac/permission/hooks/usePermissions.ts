@@ -41,8 +41,7 @@ export function useCreatePermission() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreatePermissionDto) =>
-      permissionService.createPermission(data),
+    mutationFn: (data: CreatePermissionDto) => permissionService.createPermission(data),
     onSuccess: () => {
       // Service层已配置successMessage，不需要在这里显示
       queryClient.invalidateQueries({ queryKey: ['permissions'] });

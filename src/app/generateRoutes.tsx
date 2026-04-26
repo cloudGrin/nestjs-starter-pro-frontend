@@ -66,10 +66,7 @@ export function generateRoutes(menus: MenuTreeNode[]): RouteObject[] {
 
       const Component = getComponent(menu.component);
       if (!Component) {
-        console.error(
-          `[动态路由] 组件 "${menu.component}" 未找到，跳过菜单 "${menu.name}"`,
-          menu
-        );
+        console.error(`[动态路由] 组件 "${menu.component}" 未找到，跳过菜单 "${menu.name}"`, menu);
         continue;
       }
 

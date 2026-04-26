@@ -370,10 +370,7 @@ let refreshSubscribers: Array<{
 /**
  * 添加到刷新队列
  */
-function subscribeTokenRefresh(
-  resolve: (token: string) => void,
-  reject: (error: unknown) => void
-) {
+function subscribeTokenRefresh(resolve: (token: string) => void, reject: (error: unknown) => void) {
   refreshSubscribers.push({ resolve, reject });
 }
 

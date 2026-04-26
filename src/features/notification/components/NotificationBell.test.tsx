@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import { NotificationBell } from './NotificationBell';
 import { renderWithProviders, userEvent } from '@/test/test-utils';
-import { NotificationPriority, NotificationStatus, NotificationType } from '../types/notification.types';
+import {
+  NotificationPriority,
+  NotificationStatus,
+  NotificationType,
+} from '../types/notification.types';
 
 const navigateMock = vi.fn();
 

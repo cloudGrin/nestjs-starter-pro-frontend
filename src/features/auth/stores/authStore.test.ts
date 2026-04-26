@@ -189,9 +189,9 @@ describe('authStore', () => {
     it('应该处理登录失败', async () => {
       vi.mocked(authService.login).mockRejectedValue(new Error('Invalid credentials'));
 
-      await expect(
-        useAuthStore.getState().login('testuser', 'wrongpassword')
-      ).rejects.toThrow('Invalid credentials');
+      await expect(useAuthStore.getState().login('testuser', 'wrongpassword')).rejects.toThrow(
+        'Invalid credentials'
+      );
 
       const state = useAuthStore.getState();
 

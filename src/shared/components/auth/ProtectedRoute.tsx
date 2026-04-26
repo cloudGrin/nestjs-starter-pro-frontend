@@ -90,9 +90,7 @@ export function ProtectedRoute({
           <div className="text-center">
             <h1 className="text-6xl font-bold text-gray-300">403</h1>
             <p className="mt-4 text-lg text-gray-600">无权限访问此页面</p>
-            <p className="mt-2 text-sm text-gray-400">
-              所需权限: {permissions.join(' 或 ')}
-            </p>
+            <p className="mt-2 text-sm text-gray-400">所需权限: {permissions.join(' 或 ')}</p>
           </div>
         </div>
       );

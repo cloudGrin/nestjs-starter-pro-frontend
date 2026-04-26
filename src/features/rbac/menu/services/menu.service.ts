@@ -15,8 +15,7 @@ export const menuService = {
   /**
    * 获取菜单列表
    */
-  getMenus: (params?: QueryMenuDto) =>
-    request.get<Menu[]>('/menus', { params }),
+  getMenus: (params?: QueryMenuDto) => request.get<Menu[]>('/menus', { params }),
 
   /**
    * 获取菜单树
@@ -53,13 +52,13 @@ export const menuService = {
     }),
 
   /**
-   * 删除菜单（级联删除子菜单）
+   * 删除菜单
    */
   deleteMenu: (id: number) =>
     request.delete(`/menus/${id}`, {
       requestOptions: {
         confirmConfig: {
-          message: '确定要删除该菜单吗？如果有子菜单将一并删除！',
+          message: '确定要删除该菜单吗？存在子菜单时请先移除或调整子菜单。',
           title: '删除菜单',
         },
         messageConfig: {
@@ -72,11 +71,15 @@ export const menuService = {
    * 移动菜单节点
    */
   moveMenu: (id: number, targetParentId: number | null) =>
-    request.patch<Menu>(`/menus/${id}/move`, { targetParentId }, {
-      requestOptions: {
-        messageConfig: {
-          successMessage: '移动菜单成功',
+    request.patch<Menu>(
+      `/menus/${id}/move`,
+      { targetParentId },
+      {
+        requestOptions: {
+          messageConfig: {
+            successMessage: '移动菜单成功',
+          },
         },
-      },
-    }),
+      }
+    ),
 };

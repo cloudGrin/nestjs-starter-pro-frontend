@@ -45,9 +45,7 @@ export function EmptyState({
           <div className="relative z-10">{icon}</div>
         </div>
 
-        <h3
-          className={`text-lg font-semibold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}
-        >
+        <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
           {title}
         </h3>
 
@@ -66,13 +64,9 @@ export function EmptyState({
 
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="mb-8">
-        {illustration || <EmptyIllustration size={illustrationSize} />}
-      </div>
+      <div className="mb-8">{illustration || <EmptyIllustration size={illustrationSize} />}</div>
 
-      <h3
-        className={`text-lg font-semibold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}
-      >
+      <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
         {title}
       </h3>
 

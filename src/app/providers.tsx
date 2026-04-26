@@ -45,27 +45,30 @@ export function AppProviders({ children }: AppProvidersProps) {
             }),
           },
           components: {
-            Card: themeMode === 'dark'
-              ? {
-                  headerBg: '#1e293b',
-                  colorBgContainer: '#1e293b',
-                  colorBorderSecondary: '#334155',
-                }
-              : {},
-            Table: themeMode === 'dark'
-              ? {
-                  headerBg: '#1e293b',
-                  headerColor: '#cbd5e1',
-                  colorBgContainer: '#1e293b',
-                  colorBorderSecondary: '#334155',
-                }
-              : {},
-            Modal: themeMode === 'dark'
-              ? {
-                  contentBg: '#1e293b',
-                  headerBg: '#1e293b',
-                }
-              : {},
+            Card:
+              themeMode === 'dark'
+                ? {
+                    headerBg: '#1e293b',
+                    colorBgContainer: '#1e293b',
+                    colorBorderSecondary: '#334155',
+                  }
+                : {},
+            Table:
+              themeMode === 'dark'
+                ? {
+                    headerBg: '#1e293b',
+                    headerColor: '#cbd5e1',
+                    colorBgContainer: '#1e293b',
+                    colorBorderSecondary: '#334155',
+                  }
+                : {},
+            Modal:
+              themeMode === 'dark'
+                ? {
+                    contentBg: '#1e293b',
+                    headerBg: '#1e293b',
+                  }
+                : {},
           },
         }}
       >

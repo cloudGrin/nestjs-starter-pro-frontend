@@ -38,9 +38,7 @@ export function ApiAuthPage() {
         width={1200}
         destroyOnHidden
       >
-        {selectedAppId && (
-          <ApiKeyList appId={selectedAppId} />
-        )}
+        {selectedAppId && <ApiKeyList appId={selectedAppId} />}
       </Modal>
     </div>
   );

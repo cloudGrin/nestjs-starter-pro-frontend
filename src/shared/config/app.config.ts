@@ -6,7 +6,7 @@ export const appConfig = {
   title: import.meta.env.VITE_APP_TITLE || 'home 管理后台',
 
   // API 基础 URL
-  apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1',
+  apiBaseUrl: import.meta.env.VITE_API_URL || '/api/v1',
 
   // Token 存储键名
   tokenKey: 'auth-token',
@@ -17,5 +17,4 @@ export const appConfig = {
 
   // 请求超时时间（毫秒）
   requestTimeout: 30000,
-
 };

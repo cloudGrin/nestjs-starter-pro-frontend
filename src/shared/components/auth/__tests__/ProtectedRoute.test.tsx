@@ -180,10 +180,7 @@ describe('ProtectedRoute', () => {
       });
 
       render(
-        <ProtectedRoute
-          permissions={['user:delete']}
-          fallback={<div>Custom No Permission</div>}
-        />
+        <ProtectedRoute permissions={['user:delete']} fallback={<div>Custom No Permission</div>} />
       );
 
       expect(screen.queryByTestId('outlet')).not.toBeInTheDocument();

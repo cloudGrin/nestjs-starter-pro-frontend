@@ -101,10 +101,7 @@ export const NotificationBell: React.FC = () => {
     <div
       className="w-[400px] max-h-[520px] rounded-lg overflow-hidden"
       style={{
-        background:
-          themeMode === 'dark'
-            ? 'rgb(15, 23, 42)'
-            : '#ffffff',
+        background: themeMode === 'dark' ? 'rgb(15, 23, 42)' : '#ffffff',
         boxShadow: '0 12px 40px rgba(0, 0, 0, 0.12)',
         border:
           themeMode === 'dark'
@@ -166,10 +163,7 @@ export const NotificationBell: React.FC = () => {
                     : 'hover:shadow-md'
                 }`}
                 style={{
-                  background:
-                    themeMode === 'dark'
-                      ? 'rgba(30, 41, 59, 0.9)'
-                      : '#f8fafc',
+                  background: themeMode === 'dark' ? 'rgba(30, 41, 59, 0.9)' : '#f8fafc',
                   border:
                     themeMode === 'dark'
                       ? '1px solid rgba(71, 85, 105, 0.8)'
@@ -209,7 +203,9 @@ export const NotificationBell: React.FC = () => {
                     >
                       {notification.content}
                     </Text>
-                    <Text className={`text-xs ${themeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <Text
+                      className={`text-xs ${themeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}
+                    >
                       {dayjs(notification.createdAt).fromNow()}
                     </Text>
                   </div>

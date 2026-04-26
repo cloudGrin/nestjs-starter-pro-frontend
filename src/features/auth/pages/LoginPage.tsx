@@ -37,9 +37,7 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 transition-colors duration-300">
       <Card className="w-full max-w-md shadow-lg">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-indigo-700 mb-2">
-            {appConfig.title}
-          </h1>
+          <h1 className="text-3xl font-bold text-indigo-700 mb-2">{appConfig.title}</h1>
           <p className="text-gray-600">欢迎回来，请登录您的账户</p>
         </div>
 
@@ -51,21 +49,11 @@ export function LoginPage() {
           autoComplete="off"
           disabled={loading}
         >
-          <Form.Item
-            name="account"
-            rules={[{ required: true, message: '请输入用户名或邮箱！' }]}
-          >
-            <Input
-              prefix={<UserOutlined />}
-              placeholder="用户名或邮箱"
-              autoComplete="username"
-            />
+          <Form.Item name="account" rules={[{ required: true, message: '请输入用户名或邮箱！' }]}>
+            <Input prefix={<UserOutlined />} placeholder="用户名或邮箱" autoComplete="username" />
           </Form.Item>
 
-          <Form.Item
-            name="password"
-            rules={[{ required: true, message: '请输入密码！' }]}
-          >
+          <Form.Item name="password" rules={[{ required: true, message: '请输入密码！' }]}>
             <Input.Password
               prefix={<LockOutlined />}
               placeholder="密码"

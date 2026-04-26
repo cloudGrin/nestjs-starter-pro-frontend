@@ -19,8 +19,7 @@ export const roleService = {
   /**
    * 获取角色列表（分页）
    */
-  getRoles: (params: QueryRoleDto) =>
-    request.get<RoleListResponse>('/roles', { params }),
+  getRoles: (params: QueryRoleDto) => request.get<RoleListResponse>('/roles', { params }),
 
   /**
    * 获取所有活跃角色（用于用户分配角色）
@@ -100,5 +99,4 @@ export const roleService = {
    * 获取角色的菜单
    */
   getRoleMenus: (id: number) => request.get<Menu[]>(`/roles/${id}/menus`),
-
 };

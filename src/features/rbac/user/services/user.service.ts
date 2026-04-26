@@ -16,8 +16,7 @@ export const userService = {
   /**
    * 获取用户列表（分页）
    */
-  getUsers: (params: QueryUserDto) =>
-    request.get<UserListResponse>('/users', { params }),
+  getUsers: (params: QueryUserDto) => request.get<UserListResponse>('/users', { params }),
 
   /**
    * 创建用户

@@ -19,7 +19,10 @@
   align-items: center;
 }
 
-.breadcrumb-container :global(.app-breadcrumbs) :global(li:last-child) :global(.ant-breadcrumb-link) {
+.breadcrumb-container
+  :global(.app-breadcrumbs)
+  :global(li:last-child)
+  :global(.ant-breadcrumb-link) {
   font-weight: 500;
 }
 

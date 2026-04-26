@@ -9,7 +9,11 @@ import { useNavigate } from 'react-router-dom';
 import { PageWrap, StatusBadge, EmptyState } from '@/shared/components';
 import { formatDate } from '@/shared/utils';
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '../hooks/useNotifications';
-import { NotificationStatus, NotificationType, NotificationPriority } from '../types/notification.types';
+import {
+  NotificationStatus,
+  NotificationType,
+  NotificationPriority,
+} from '../types/notification.types';
 import type { Notification } from '../types/notification.types';
 import { getNotificationLink } from '../utils/notificationLink';
 
@@ -18,7 +22,9 @@ const { Text } = Typography;
 /**
  * 获取通知优先级对应的StatusBadge状态
  */
-const getPriorityStatus = (priority: NotificationPriority): 'success' | 'error' | 'warning' | 'default' => {
+const getPriorityStatus = (
+  priority: NotificationPriority
+): 'success' | 'error' | 'warning' | 'default' => {
   const statusMap = {
     [NotificationPriority.LOW]: 'default' as const,
     [NotificationPriority.NORMAL]: 'success' as const,
@@ -161,11 +167,7 @@ export const NotificationListPage: React.FC = () => {
         ) : notifications.length === 0 ? (
           <EmptyState
             title={activeTab === 'unread' ? '暂无未读通知' : '暂无通知'}
-            description={
-              activeTab === 'unread'
-                ? '所有通知都已阅读'
-                : '您还没有收到任何通知'
-            }
+            description={activeTab === 'unread' ? '所有通知都已阅读' : '您还没有收到任何通知'}
           />
         ) : (
           <List
@@ -188,10 +190,10 @@ export const NotificationListPage: React.FC = () => {
                   transition-all duration-200
                   !px-4 !py-3 !rounded-lg !mx-0
                   ${
-                  notification.status === NotificationStatus.UNREAD
-                    ? 'bg-blue-50 dark:bg-blue-900/20'
-                    : ''
-                }`}
+                    notification.status === NotificationStatus.UNREAD
+                      ? 'bg-blue-50 dark:bg-blue-900/20'
+                      : ''
+                  }`}
                 onClick={() => handleNotificationClick(notification)}
               >
                 <div className="w-full">
@@ -219,9 +221,7 @@ export const NotificationListPage: React.FC = () => {
                   </div>
 
                   {/* 内容 */}
-                  <Text className="text-gray-600 block mb-2">
-                    {notification.content}
-                  </Text>
+                  <Text className="text-gray-600 block mb-2">{notification.content}</Text>
 
                   {/* 时间 */}
                   <Text className="text-xs text-gray-400">

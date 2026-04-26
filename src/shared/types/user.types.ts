@@ -33,10 +33,10 @@ export interface Role {
  * ⚠️ 必须与后端保持一致: home-admin/src/common/enums/user.enum.ts
  */
 export const UserStatus = {
-  ACTIVE: 'active',       // 激活
-  INACTIVE: 'inactive',   // 未激活
-  DISABLED: 'disabled',   // 禁用
-  LOCKED: 'locked',       // 锁定
+  ACTIVE: 'active', // 激活
+  INACTIVE: 'inactive', // 未激活
+  DISABLED: 'disabled', // 禁用
+  LOCKED: 'locked', // 锁定
 } as const;
 
 export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus];

@@ -1,8 +1,8 @@
 /* Tailwind CSS v4 导入 */
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* 主题CSS变量 */
-@import "./theme.css";
+@import './theme.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -18,7 +18,8 @@
   body,
   #root {
     height: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
       'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif, 'Apple Color Emoji',
       'Segoe UI Emoji', 'Segoe UI Symbol';
   }
@@ -49,9 +50,10 @@
   .ant-table,
   .ant-menu,
   .ant-breadcrumb {
-    transition: background-color 0.2s ease-in-out,
-                color 0.2s ease-in-out,
-                border-color 0.2s ease-in-out;
+    transition:
+      background-color 0.2s ease-in-out,
+      color 0.2s ease-in-out,
+      border-color 0.2s ease-in-out;
   }
 }
 

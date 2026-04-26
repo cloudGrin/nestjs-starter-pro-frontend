@@ -42,20 +42,22 @@ export function PageWrap({
 
   return (
     <div
-      className={cn('flex flex-col w-full h-full', themeMode === 'dark' ? 'bg-gray-900' : 'bg-gray-50', {
-        // sticky模式：header固定在顶部
-        '[&>.page-wrap-header]:sticky [&>.page-wrap-header]:top-0 [&>.page-wrap-header]:z-10 [&>.page-wrap-header]:shadow-sm':
-          sticky,
-        '[&>.page-wrap-content]:overflow-y-auto': sticky,
-      })}
+      className={cn(
+        'flex flex-col w-full h-full',
+        themeMode === 'dark' ? 'bg-gray-900' : 'bg-gray-50',
+        {
+          // sticky模式：header固定在顶部
+          '[&>.page-wrap-header]:sticky [&>.page-wrap-header]:top-0 [&>.page-wrap-header]:z-10 [&>.page-wrap-header]:shadow-sm':
+            sticky,
+          '[&>.page-wrap-content]:overflow-y-auto': sticky,
+        }
+      )}
     >
       {(header || title || includeBreadcrumbs) && (
         <div
           className={cn(
             'page-wrap-header relative w-full px-6 py-5 border-b',
-            themeMode === 'dark'
-              ? 'bg-slate-900 border-slate-700'
-              : 'bg-white border-gray-200'
+            themeMode === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
           )}
         >
           {includeBreadcrumbs && breadcrumbItems.length > 0 && (
@@ -100,17 +102,13 @@ export function PageWrap({
               <h1
                 className={cn(
                   'text-xl font-bold leading-8 m-0',
-                  themeMode === 'dark'
-                    ? 'text-white'
-                    : 'text-black'
+                  themeMode === 'dark' ? 'text-white' : 'text-black'
                 )}
               >
                 {title}
               </h1>
               {titleRight && (
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {titleRight}
-                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">{titleRight}</div>
               )}
             </div>
           )}
@@ -127,9 +125,7 @@ export function PageWrap({
         <div
           className={cn(
             'page-wrap-footer w-full px-6 py-4 border-t',
-            themeMode === 'dark'
-              ? 'bg-slate-900 border-slate-700'
-              : 'bg-white border-gray-200'
+            themeMode === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
           )}
         >
           <ErrorBoundary>{footer}</ErrorBoundary>

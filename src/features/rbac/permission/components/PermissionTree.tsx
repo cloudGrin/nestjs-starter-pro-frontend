@@ -191,12 +191,7 @@ export function PermissionTree({ treeData, loading, onEdit, onDelete }: Permissi
   }
 
   if (!treeData || treeData.length === 0) {
-    return (
-      <Empty
-        description="暂无权限数据"
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-      />
-    );
+    return <Empty description="暂无权限数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
   }
 
   return (

@@ -16,7 +16,9 @@ export function NotFoundPage() {
   const isDark = mode === 'dark';
 
   return (
-    <div className={`flex flex-col items-center justify-center min-h-screen px-4 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div
+      className={`flex flex-col items-center justify-center min-h-screen px-4 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
+    >
       <div className="mb-8 relative">
         <div className="text-[160px] font-black text-gray-300 dark:text-gray-700 leading-none select-none">
           404
@@ -27,7 +29,9 @@ export function NotFoundPage() {
         页面未找到
       </p>
 
-      <p className={`text-sm mb-8 text-center max-w-md ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+      <p
+        className={`text-sm mb-8 text-center max-w-md ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+      >
         抱歉，您访问的页面不存在或已被移除
       </p>
 

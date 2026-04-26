@@ -48,12 +48,7 @@ const getStatusConfig = (isDark: boolean) => ({
   },
 });
 
-export function StatusBadge({
-  status,
-  text,
-  showIcon = true,
-  icon,
-}: StatusBadgeProps) {
+export function StatusBadge({ status, text, showIcon = true, icon }: StatusBadgeProps) {
   const { mode } = useThemeStore();
   const config = getStatusConfig(mode === 'dark')[status];
 
@@ -70,14 +65,7 @@ export function StatusBadge({
         config.borderColor
       )}
     >
-      {showIcon && !icon && (
-        <span
-          className={cn(
-            'w-2 h-2 rounded-full',
-            config.dotColor
-          )}
-        />
-      )}
+      {showIcon && !icon && <span className={cn('w-2 h-2 rounded-full', config.dotColor)} />}
 
       {icon && <span className="text-xs">{icon}</span>}
 

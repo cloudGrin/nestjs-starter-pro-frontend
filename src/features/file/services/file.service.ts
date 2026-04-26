@@ -3,11 +3,7 @@
  */
 
 import { request } from '@/shared/utils/request';
-import type {
-  FileEntity,
-  FileListResponse,
-  QueryFileDto,
-} from '../types/file.types';
+import type { FileEntity, FileListResponse, QueryFileDto } from '../types/file.types';
 
 const BASE_URL = '/files';
 

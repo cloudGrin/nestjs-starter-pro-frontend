@@ -55,13 +55,7 @@ export interface FileListResponse {
 /**
  * 文件模块类型
  */
-export type FileModule =
-  | 'user-avatar'
-  | 'document'
-  | 'image'
-  | 'video'
-  | 'audio'
-  | 'other';
+export type FileModule = 'user-avatar' | 'document' | 'image' | 'video' | 'audio' | 'other';
 
 /**
  * 文件大小限制（字节）

@@ -17,14 +17,7 @@ interface RoleFormProps {
   onCancel: () => void;
 }
 
-export function RoleForm({
-  open,
-  mode,
-  role,
-  loading,
-  onSubmit,
-  onCancel,
-}: RoleFormProps) {
+export function RoleForm({ open, mode, role, loading, onSubmit, onCancel }: RoleFormProps) {
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -102,12 +95,7 @@ export function RoleForm({
         </Form.Item>
 
         <Form.Item label="角色描述" name="description">
-          <TextArea
-            rows={4}
-            placeholder="输入角色描述（可选）"
-            maxLength={200}
-            showCount
-          />
+          <TextArea rows={4} placeholder="输入角色描述（可选）" maxLength={200} showCount />
         </Form.Item>
 
         <Form.Item label="启用状态" name="isActive" valuePropName="checked">

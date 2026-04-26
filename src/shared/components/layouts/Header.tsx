@@ -11,6 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { NotificationBell } from '@/features/notification/components/NotificationBell';
+import { PermissionGuard } from '@/shared/components/auth/PermissionGuard';
 import { useThemeStore } from '@/shared/stores';
 import type { MenuProps } from 'antd';
 
@@ -45,9 +46,7 @@ export function Header({ collapsed, onToggleCollapsed }: HeaderProps) {
   ];
 
   return (
-    <AntHeader
-      className="pl-6! flex items-center justify-between pr-4! header-bg border-b transition-theme"
-    >
+    <AntHeader className="pl-6! flex items-center justify-between pr-4! header-bg border-b transition-theme">
       <Button
         type="text"
         icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
@@ -56,7 +55,9 @@ export function Header({ collapsed, onToggleCollapsed }: HeaderProps) {
       />
 
       <Space size="middle">
-        <NotificationBell />
+        <PermissionGuard permissions={['notification:read']}>
+          <NotificationBell />
+        </PermissionGuard>
 
         <Tooltip title={themeMode === 'dark' ? '切换为浅色模式' : '切换为深色模式'}>
           <Button
@@ -92,9 +93,7 @@ export function Header({ collapsed, onToggleCollapsed }: HeaderProps) {
           placement="bottomRight"
           overlayClassName="min-w-[180px] rounded-xl p-2"
         >
-          <div
-            className="user-info-trigger flex items-center cursor-pointer px-3 py-2 rounded-xl transition-all hover:bg-blue-50 dark:hover:bg-gray-700"
-          >
+          <div className="user-info-trigger flex items-center cursor-pointer px-3 py-2 rounded-xl transition-all hover:bg-blue-50 dark:hover:bg-gray-700">
             <div className="relative">
               <Avatar
                 icon={<UserOutlined />}

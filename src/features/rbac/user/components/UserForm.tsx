@@ -165,9 +165,7 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
                 message: '请输入有效的邮箱地址',
               },
             }}
-            render={({ field }) => (
-              <Input {...field} placeholder="请输入邮箱" type="email" />
-            )}
+            render={({ field }) => <Input {...field} placeholder="请输入邮箱" type="email" />}
           />
         </Form.Item>
 
@@ -207,9 +205,7 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
           <Controller
             name="nickname"
             control={control}
-            render={({ field }) => (
-              <Input {...field} placeholder="请输入昵称（可选）" />
-            )}
+            render={({ field }) => <Input {...field} placeholder="请输入昵称（可选）" />}
           />
         </Form.Item>
 

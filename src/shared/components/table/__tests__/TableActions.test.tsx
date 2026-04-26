@@ -230,7 +230,9 @@ describe('TableActions 组件', () => {
     });
 
     it('应该处理未登录用户', () => {
-      render(<TableActions actions={[{ label: '编辑', onClick: vi.fn(), permission: 'user:update' }]} />);
+      render(
+        <TableActions actions={[{ label: '编辑', onClick: vi.fn(), permission: 'user:update' }]} />
+      );
 
       expect(screen.getByText('-')).toBeInTheDocument();
     });

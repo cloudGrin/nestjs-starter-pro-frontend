@@ -88,9 +88,7 @@ export function MenuForm({
       .map((node) => ({
         value: node.id,
         title: `${node.name} (${node.type === 'directory' ? '目录' : '菜单'})`,
-        children: node.children
-          ? convertToTreeSelectData(node.children, excludeId)
-          : [],
+        children: node.children ? convertToTreeSelectData(node.children, excludeId) : [],
       }));
   };
 
@@ -150,7 +148,10 @@ export function MenuForm({
                 return Promise.resolve();
               },
             },
-            { pattern: /^\/[a-zA-Z0-9/_-]*$/, message: '路径必须以/开头，只能包含字母、数字、/、-、_' },
+            {
+              pattern: /^\/[a-zA-Z0-9/_-]*$/,
+              message: '路径必须以/开头，只能包含字母、数字、/、-、_',
+            },
           ]}
         >
           <Input placeholder="输入路由路径（如：/system/users）" />
@@ -165,9 +166,7 @@ export function MenuForm({
             label="页面组件"
             name="component"
             preserve={false}
-            rules={[
-              { required: menuType === 'menu', message: '菜单类型必须选择页面组件' },
-            ]}
+            rules={[{ required: menuType === 'menu', message: '菜单类型必须选择页面组件' }]}
             extra="自动扫描 features/[module]/pages/，并兼容文件模块 FileList 入口"
           >
             <ComponentSelector />

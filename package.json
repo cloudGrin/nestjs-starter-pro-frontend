@@ -34,7 +34,9 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    "api:check": "echo '请对照本地 api-docs.json 复核手写 API 服务类型'"
+    "api:check": "echo '请对照本地 api-docs.json 复核手写 API 服务类型'",
+    "docker:build": "docker build -t home-web .",
+    "docker:run": "docker run --rm -p 8080:80 -e API_UPSTREAM=http://host.docker.internal:3000 home-web"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
@@ -78,5 +80,9 @@
     "typescript-eslint": "^8.45.0",
     "vite": "^7.1.7",
     "vitest": "4.0.4"
+  },
+  "volta": {
+    "node": "22.20.0",
+    "pnpm": "10.3.0"
   }
 }

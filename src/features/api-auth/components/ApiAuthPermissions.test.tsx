@@ -24,13 +24,7 @@ vi.mock('@/shared/components', async () => {
 
   return {
     PermissionGuard,
-    PageWrap: ({
-      titleRight,
-      children,
-    }: {
-      titleRight?: ReactNode;
-      children: ReactNode;
-    }) => (
+    PageWrap: ({ titleRight, children }: { titleRight?: ReactNode; children: ReactNode }) => (
       <div>
         <div>{titleRight}</div>
         {children}

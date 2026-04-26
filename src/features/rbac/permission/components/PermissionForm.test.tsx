@@ -23,13 +23,7 @@ describe('PermissionForm', () => {
     const onSubmit = vi.fn();
 
     renderWithProviders(
-      <PermissionForm
-        open
-        mode="create"
-        loading={false}
-        onSubmit={onSubmit}
-        onCancel={vi.fn()}
-      />
+      <PermissionForm open mode="create" loading={false} onSubmit={onSubmit} onCancel={vi.fn()} />
     );
 
     await userEvent.type(screen.getByLabelText('权限代码'), 'api-app:key:create');

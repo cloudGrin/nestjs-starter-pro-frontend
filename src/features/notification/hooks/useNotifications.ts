@@ -12,8 +12,7 @@ import type { QueryNotificationDto } from '../types/notification.types';
 export const notificationKeys = {
   all: ['notifications'] as const,
   lists: () => [...notificationKeys.all, 'list'] as const,
-  list: (params: QueryNotificationDto) =>
-    [...notificationKeys.lists(), params] as const,
+  list: (params: QueryNotificationDto) => [...notificationKeys.lists(), params] as const,
   unread: () => [...notificationKeys.all, 'unread'] as const,
 };
 

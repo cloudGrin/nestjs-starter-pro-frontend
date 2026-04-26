@@ -9,47 +9,46 @@
 @layer base {
   :root {
     /* ===== 品牌色 ===== */
-    --brand-primary: 22 119 255;            /* #1677ff - Ant Design 蓝 */
-    --brand-secondary: 64 150 255;          /* #4096ff */
-    --brand-link: 22 119 255;               /* #1677ff */
+    --brand-primary: 22 119 255; /* #1677ff - Ant Design 蓝 */
+    --brand-secondary: 64 150 255; /* #4096ff */
+    --brand-link: 22 119 255; /* #1677ff */
 
     /* ===== 基础背景色（浅色模式） ===== */
-    --bg-primary: 255 255 255;              /* #ffffff - 主背景（Header、Card等） */
-    --bg-secondary: 249 250 251;            /* #f9fafb - 次级背景（Content区域） */
-    --bg-tertiary: 248 250 252;             /* #f8fafc - 第三级背景（Sidebar顶部） */
-    --bg-quaternary: 241 245 249;           /* #f1f5f9 - 第四级背景（Sidebar底部） */
+    --bg-primary: 255 255 255; /* #ffffff - 主背景（Header、Card等） */
+    --bg-secondary: 249 250 251; /* #f9fafb - 次级背景（Content区域） */
+    --bg-tertiary: 248 250 252; /* #f8fafc - 第三级背景（Sidebar顶部） */
+    --bg-quaternary: 241 245 249; /* #f1f5f9 - 第四级背景（Sidebar底部） */
 
     /* ===== 文字色（浅色模式） ===== */
-    --text-primary: 15 23 42;               /* #0f172a - slate-900 主文字 */
-    --text-secondary: 100 116 139;          /* #64748b - slate-600 次要文字 */
-    --text-tertiary: 148 163 184;           /* #94a3b8 - slate-400 辅助文字 */
+    --text-primary: 15 23 42; /* #0f172a - slate-900 主文字 */
+    --text-secondary: 100 116 139; /* #64748b - slate-600 次要文字 */
+    --text-tertiary: 148 163 184; /* #94a3b8 - slate-400 辅助文字 */
 
     /* ===== 边框色（浅色模式） ===== */
-    --border-primary: 226 232 240;          /* #e2e8f0 - slate-200 主边框 */
-    --border-secondary: 241 245 249;        /* #f1f5f9 - slate-100 次级边框 */
+    --border-primary: 226 232 240; /* #e2e8f0 - slate-200 主边框 */
+    --border-secondary: 241 245 249; /* #f1f5f9 - slate-100 次级边框 */
 
     /* ===== 阴影（浅色模式） ===== */
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);                    /* 小阴影 */
-    --shadow-md: 2px 0 12px rgba(0, 0, 0, 0.04);                   /* 中阴影（Sidebar） */
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);                   /* 大阴影 */
-
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04); /* 小阴影 */
+    --shadow-md: 2px 0 12px rgba(0, 0, 0, 0.04); /* 中阴影（Sidebar） */
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12); /* 大阴影 */
   }
 
   /* ===== 深色模式 ===== */
   .dark {
     /* 背景色（深色模式） */
-    --bg-primary: 15 23 42;                 /* slate-900 - 主背景 */
-    --bg-secondary: 30 41 59;               /* slate-800 - 次级背景 */
-    --bg-tertiary: 51 65 85;                /* slate-700 - 第三级背景 */
+    --bg-primary: 15 23 42; /* slate-900 - 主背景 */
+    --bg-secondary: 30 41 59; /* slate-800 - 次级背景 */
+    --bg-tertiary: 51 65 85; /* slate-700 - 第三级背景 */
 
     /* 文字色（深色模式） */
-    --text-primary: 248 250 252;            /* slate-50 - 主文字 */
-    --text-secondary: 203 213 225;          /* slate-300 - 次要文字 */
-    --text-tertiary: 163 163 163;           /* #a3a3a3 - 辅助文字 */
+    --text-primary: 248 250 252; /* slate-50 - 主文字 */
+    --text-secondary: 203 213 225; /* slate-300 - 次要文字 */
+    --text-tertiary: 163 163 163; /* #a3a3a3 - 辅助文字 */
 
     /* 边框色（深色模式） */
-    --border-primary: 71 85 105;            /* slate-600 */
-    --border-secondary: 51 65 85;           /* slate-700 */
+    --border-primary: 71 85 105; /* slate-600 */
+    --border-secondary: 51 65 85; /* slate-700 */
 
     /* 阴影（深色模式） */
     --shadow-sm: 0 1px 8px rgba(0, 0, 0, 0.2);
@@ -111,5 +110,8 @@
 
 /* 平滑过渡 */
 .transition-theme {
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease;
 }

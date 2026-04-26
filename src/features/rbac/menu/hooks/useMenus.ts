@@ -6,11 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { menuService } from '../services/menu.service';
-import type {
-  QueryMenuDto,
-  CreateMenuDto,
-  UpdateMenuDto,
-} from '../types/menu.types';
+import type { QueryMenuDto, CreateMenuDto, UpdateMenuDto } from '../types/menu.types';
 
 /**
  * 获取菜单列表

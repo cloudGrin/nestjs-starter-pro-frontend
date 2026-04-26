@@ -14,7 +14,14 @@ import MockAdapter from 'axios-mock-adapter';
 import { appConfig } from '@/shared/config/app.config';
 
 // 使用 vi.hoisted 创建全局 mock 函数（在 vi.mock 之前执行）
-const { mockMessageSuccess, mockMessageError, mockMessageWarning, mockMessageInfo, mockModalConfirm, mockNotificationError } = vi.hoisted(() => ({
+const {
+  mockMessageSuccess,
+  mockMessageError,
+  mockMessageWarning,
+  mockMessageInfo,
+  mockModalConfirm,
+  mockNotificationError,
+} = vi.hoisted(() => ({
   mockMessageSuccess: vi.fn(),
   mockMessageError: vi.fn(),
   mockMessageWarning: vi.fn(),
@@ -645,7 +652,6 @@ describe('request - Axios封装', () => {
     });
 
     it('401 自动刷新 + 重试 + 成功提示', async () => {
-
       localStorage.setItem(appConfig.tokenKey, 'expired-token');
       localStorage.setItem(appConfig.refreshTokenKey, 'refresh-token');
 

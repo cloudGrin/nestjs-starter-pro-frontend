@@ -1,10 +1,5 @@
 import { PageWrap, PermissionGuard } from '@/shared/components';
-import {
-  UserOutlined,
-  TeamOutlined,
-  MenuOutlined,
-  BellOutlined,
-} from '@ant-design/icons';
+import { UserOutlined, TeamOutlined, MenuOutlined, BellOutlined } from '@ant-design/icons';
 import { StatCard } from '../components/StatCard';
 import { QuickActions } from '../components/QuickActions';
 import { RecentActivities } from '../components/RecentActivities';

@@ -133,12 +133,7 @@ export function PermissionForm({
         </Form.Item>
 
         <Form.Item label="权限描述" name="description">
-          <TextArea
-            rows={4}
-            placeholder="输入权限描述（可选）"
-            maxLength={200}
-            showCount
-          />
+          <TextArea rows={4} placeholder="输入权限描述（可选）" maxLength={200} showCount />
         </Form.Item>
 
         <Form.Item
@@ -147,12 +142,7 @@ export function PermissionForm({
           rules={[{ required: true, message: '请输入排序值' }]}
           tooltip="数值越小，排序越靠前"
         >
-          <InputNumber
-            min={0}
-            max={9999}
-            placeholder="输入排序值"
-            style={{ width: '100%' }}
-          />
+          <InputNumber min={0} max={9999} placeholder="输入排序值" style={{ width: '100%' }} />
         </Form.Item>
 
         <Form.Item label="启用状态" name="isActive" valuePropName="checked">
