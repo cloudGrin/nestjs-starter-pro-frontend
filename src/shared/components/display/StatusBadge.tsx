@@ -56,16 +56,15 @@ export function StatusBadge({ status, text, showIcon = true, icon }: StatusBadge
     <span
       className={cn(
         'inline-flex items-center gap-2',
-        'px-3 py-1.5 rounded-full',
+        'rounded-full px-2.5 py-1',
         'text-xs font-medium whitespace-nowrap',
         'border',
-        'transition-all duration-200',
         config.bgColor,
         config.textColor,
         config.borderColor
       )}
     >
-      {showIcon && !icon && <span className={cn('w-2 h-2 rounded-full', config.dotColor)} />}
+      {showIcon && !icon && <span className={cn('h-1.5 w-1.5 rounded-full', config.dotColor)} />}
 
       {icon && <span className="text-xs">{icon}</span>}
 

@@ -187,7 +187,6 @@ export const NotificationListPage: React.FC = () => {
                 key={notification.id}
                 className={`cursor-pointer
                   hover:bg-blue-50 dark:hover:bg-gray-700
-                  transition-all duration-200
                   !px-4 !py-3 !rounded-lg !mx-0
                   ${
                     notification.status === NotificationStatus.UNREAD

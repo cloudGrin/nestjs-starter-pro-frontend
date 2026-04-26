@@ -31,12 +31,12 @@ export function EmptyState({
   // 如果传入了icon，使用旧的图标样式（向后兼容）
   if (icon) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
+      <div className="flex flex-col items-center justify-center px-4 py-12">
         <div
           className={`
-            w-24 h-24 rounded-full
+            w-20 h-20 rounded-2xl
             flex items-center justify-center
-            mb-6
+            mb-5
             relative
             overflow-hidden
             ${isDark ? 'bg-gray-800' : 'bg-gray-100'}
@@ -45,13 +45,15 @@ export function EmptyState({
           <div className="relative z-10">{icon}</div>
         </div>
 
-        <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+        <h3
+          className={`mb-2 text-base font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}
+        >
           {title}
         </h3>
 
         {description && (
           <p
-            className={`text-sm mb-6 max-w-md text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+            className={`mb-6 max-w-md text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
           >
             {description}
           </p>
@@ -63,16 +65,18 @@ export function EmptyState({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="mb-8">{illustration || <EmptyIllustration size={illustrationSize} />}</div>
+    <div className="flex flex-col items-center justify-center px-4 py-12">
+      <div className="mb-6 opacity-95">
+        {illustration || <EmptyIllustration size={illustrationSize} />}
+      </div>
 
-      <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+      <h3 className={`mb-2 text-base font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
         {title}
       </h3>
 
       {description && (
         <p
-          className={`text-sm mb-6 max-w-md text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+          className={`mb-6 max-w-md text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
         >
           {description}
         </p>

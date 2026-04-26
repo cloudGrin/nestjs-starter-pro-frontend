@@ -78,7 +78,7 @@
  *   </Form.Item>
  * </SearchForm>
  */
-import { useState, type ReactNode } from 'react';
+import { Children, useState, type ReactNode } from 'react';
 import { Form, Button, Row, Col, Space } from 'antd';
 import {
   SearchOutlined,
@@ -144,7 +144,7 @@ export function SearchForm({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   // 计算有多少个表单项
-  const childrenArray = Array.isArray(children) ? children : [children];
+  const childrenArray = Children.toArray(children);
   const itemCount = childrenArray.filter(Boolean).length;
   const shouldShowExpand = itemCount > defaultCollapseCount;
 
@@ -172,9 +172,9 @@ export function SearchForm({
 
   return (
     <Form form={form} initialValues={initialValues} onFinish={handleSearch} className="w-full">
-      <div className="flex items-start gap-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
         {/* 左侧：搜索表单项（占据剩余空间） */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {/* 始终显示的表单项 */}
           <Row gutter={gutter}>
             {childrenArray.slice(0, defaultCollapseCount).map((child, index) => (
@@ -198,22 +198,18 @@ export function SearchForm({
         </div>
 
         {/* 右侧：操作按钮（固定在右边，垂直居中） */}
-        <div className="shrink-0">
+        <div className="shrink-0 xl:pt-0">
           <Form.Item className="mb-0">
-            <Space>
+            <Space wrap size={[8, 8]} className="justify-end">
               <Button
                 type="primary"
                 htmlType="submit"
                 icon={<SearchOutlined />}
-                className="shadow-sm hover:shadow-md transition-shadow duration-200"
+                className="shadow-sm"
               >
                 查询
               </Button>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={handleReset}
-                className="hover:bg-gray-50 transition-colors duration-200"
-              >
+              <Button icon={<ReloadOutlined />} onClick={handleReset}>
                 重置
               </Button>
               {showRefresh && onRefresh && (
@@ -221,7 +217,7 @@ export function SearchForm({
                   icon={<SyncOutlined />}
                   onClick={onRefresh}
                   title="强制刷新数据"
-                  className="hover:bg-blue-50 hover:text-blue-600 transition-all duration-200"
+                  className="hover:bg-indigo-50 hover:text-indigo-600"
                 >
                   {refreshText}
                 </Button>
@@ -230,18 +226,15 @@ export function SearchForm({
                 <Button
                   icon={<ExportOutlined />}
                   onClick={onExport}
-                  className="hover:bg-green-50 hover:text-green-600 transition-all duration-200"
+                  className="hover:bg-emerald-50 hover:text-emerald-600"
                 >
                   {exportText}
                 </Button>
               )}
               {shouldShowExpand && (
-                <Button type="link" onClick={() => setExpanded(!expanded)} className="px-0 group">
+                <Button type="link" onClick={() => setExpanded(!expanded)} className="px-0">
                   {expanded ? '收起' : '展开'}
-                  <span
-                    className="inline-block ml-1"
-                    style={{ transform: expanded ? 'rotate(180deg)' : undefined }}
-                  >
+                  <span className="ml-1 inline-block">
                     <DownOutlined className="text-xs" />
                   </span>
                 </Button>

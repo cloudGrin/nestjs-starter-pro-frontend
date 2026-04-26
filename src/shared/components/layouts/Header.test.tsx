@@ -8,6 +8,10 @@ vi.mock('@/features/notification/components/NotificationBell', () => ({
   NotificationBell: () => <button type="button">通知入口</button>,
 }));
 
+vi.mock('@/shared/hooks/useBreadcrumb', () => ({
+  useBreadcrumb: () => [{ title: '首页' }],
+}));
+
 describe('Header', () => {
   beforeEach(() => {
     clearMockUser();

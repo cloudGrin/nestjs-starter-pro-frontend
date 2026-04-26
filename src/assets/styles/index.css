@@ -1,17 +1,13 @@
-/* Tailwind CSS v4 导入 */
 @import 'tailwindcss';
-
-/* 主题CSS变量 */
 @import './theme.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* 全局样式 - 使用 @layer base 确保优先级低于工具类 */
 @layer base {
   * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
   }
 
   html,
@@ -20,147 +16,232 @@
     height: 100%;
     font-family:
       -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
-      'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif, 'Apple Color Emoji',
-      'Segoe UI Emoji', 'Segoe UI Symbol';
+      'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
 
-  /* 主题切换过渡动画 - 仅针对主要布局元素 */
-  html {
-    transition: background-color 0.2s ease-in-out;
-  }
-
-  /* ⭐ 关键：立即应用背景色，防止深色模式闪烁 */
   html,
   body {
-    background-color: rgb(var(--bg-secondary)); /* 浅色模式: #f9fafb */
+    background-color: rgb(var(--bg-secondary));
+    color: rgb(var(--text-primary));
   }
 
-  /* 深色模式背景色 - 与 .dark 类配合，立即生效 */
   html.dark,
   html.dark body {
-    background-color: rgb(var(--bg-primary)); /* 深色模式: slate-900 #0f172a */
-  }
-
-  /* Ant Design组件的主题过渡 */
-  .ant-layout,
-  .ant-layout-header,
-  .ant-layout-sider,
-  .ant-layout-content,
-  .ant-card,
-  .ant-table,
-  .ant-menu,
-  .ant-breadcrumb {
-    transition:
-      background-color 0.2s ease-in-out,
-      color 0.2s ease-in-out,
-      border-color 0.2s ease-in-out;
+    background-color: rgb(var(--bg-primary));
   }
 }
 
-/* 自定义滚动条样式 - 浅色模式 */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+  background: #cbd5e1;
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #94a3b8;
 }
 
-/* 深色模式滚动条样式 */
 .dark ::-webkit-scrollbar-track {
-  background: #1f1f1f;
+  background: #111827;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #555;
+  background: #475569;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #777;
+  background: #64748b;
 }
 
-/* Ant Design 样式覆盖 */
 .ant-layout {
   min-height: 100vh;
 }
 
-/* 自定义 Menu 组件配色 - TailAdmin 浅色风格 */
-.ant-menu-light {
-  background-color: transparent;
+.sidebar-bg {
+  height: 100vh;
 }
 
-/* Menu 菜单项 */
+.sidebar-bg .ant-layout-sider-children {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+.sidebar-menu.ant-menu-inline {
+  width: 100%;
+}
+
+.sidebar-menu.ant-menu-inline .ant-menu-item,
+.sidebar-menu.ant-menu-inline .ant-menu-submenu-title {
+  width: calc(100% - 16px);
+  margin-inline: 8px;
+}
+
+.ant-card {
+  border-radius: 8px !important;
+  border-color: #edf2f7 !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04) !important;
+}
+
+.ant-card-head {
+  min-height: 52px !important;
+  border-color: #edf2f7 !important;
+}
+
+.ant-card-head-title {
+  color: #0f172a;
+  font-weight: 650 !important;
+}
+
+.ant-table-wrapper .ant-table {
+  border-radius: 8px !important;
+}
+
+.ant-table-thead > tr > th {
+  font-weight: 650 !important;
+}
+
+.ant-table-tbody > tr > td {
+  color: #334155;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: #f8fafc !important;
+}
+
+.ant-table-cell-fix-left,
+.ant-table-cell-fix-right {
+  background: #ffffff !important;
+}
+
+.ant-table-tbody > tr:hover > .ant-table-cell-fix-left,
+.ant-table-tbody > tr:hover > .ant-table-cell-fix-right {
+  background: #f8fafc !important;
+}
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border-color: transparent !important;
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.22) !important;
+}
+
+.ant-btn-primary:disabled {
+  background: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector,
+.ant-picker {
+  border-color: #e2e8f0 !important;
+}
+
+.ant-input:hover,
+.ant-input-affix-wrapper:hover,
+.ant-select-selector:hover,
+.ant-picker:hover {
+  border-color: #8ea0f4 !important;
+}
+
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12) !important;
+}
+
+.ant-menu-light,
+.ant-menu-dark {
+  background-color: transparent !important;
+}
+
 .ant-menu-light .ant-menu-item,
 .ant-menu-light .ant-menu-submenu-title {
   color: #64748b;
-  font-weight: 500;
   border-radius: 8px;
-  transition: all 0.3s ease;
+  font-weight: 500;
 }
 
-/* Menu 菜单项悬停 */
 .ant-menu-light .ant-menu-item:hover,
 .ant-menu-light .ant-menu-submenu-title:hover {
-  color: #1677ff !important;
-  background: #e6f4ff !important;
+  color: #667eea !important;
+  background: rgba(102, 126, 234, 0.08) !important;
 }
 
-/* Menu 菜单项选中 */
 .ant-menu-light .ant-menu-item-selected {
-  color: #1677ff !important;
-  background: #e6f4ff !important;
-  font-weight: 600;
+  color: #667eea !important;
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.14),
+    rgba(118, 75, 162, 0.12)
+  ) !important;
+  font-weight: 650;
 }
 
-/* Menu 菜单项激活状态（点击时） */
-.ant-menu-light .ant-menu-item-active,
-.ant-menu-light .ant-menu-submenu-active {
-  color: #1677ff !important;
-}
-
-/* Menu 子菜单 */
 .ant-menu-light .ant-menu-sub {
-  background-color: rgba(248, 250, 252, 0.5);
+  background: rgba(248, 250, 252, 0.8) !important;
 }
 
-/* Menu 图标颜色 */
 .ant-menu-light .ant-menu-item .anticon,
 .ant-menu-light .ant-menu-submenu-title .anticon {
   color: #94a3b8;
-  font-size: 18px;
+  font-size: 17px;
 }
 
+.ant-menu-light .ant-menu-item-selected .anticon,
 .ant-menu-light .ant-menu-item:hover .anticon,
 .ant-menu-light .ant-menu-submenu-title:hover .anticon {
-  color: #1677ff;
+  color: #667eea;
 }
 
-.ant-menu-light .ant-menu-item-selected .anticon {
-  color: #1677ff;
+.app-breadcrumbs .ant-breadcrumb-link,
+.app-breadcrumbs .ant-breadcrumb-separator {
+  display: inline-flex;
+  align-items: center;
 }
 
-/* ========================================== */
-/* 深色模式 */
-/* ========================================== */
+.app-breadcrumbs .ant-breadcrumb-link {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login-panel.ant-card {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
 
 .dark .ant-card {
-  background: #1e293b !important;
-  border-color: #334155 !important;
+  background: rgba(30, 41, 59, 0.72) !important;
+  border-color: rgba(102, 126, 234, 0.18) !important;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.28) !important;
+}
+
+.dark .login-panel.ant-card {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 .dark .ant-card-head {
-  border-color: #334155 !important;
-  background: #1e293b;
+  background: rgba(30, 41, 59, 0.42) !important;
+  border-color: rgba(102, 126, 234, 0.18) !important;
+}
+
+.dark .ant-card-head-title {
+  color: #f8fafc;
 }
 
 .dark .ant-table {
@@ -168,25 +249,25 @@
 }
 
 .dark .ant-table-thead > tr > th {
-  background: #1e293b !important;
-  border-color: #334155 !important;
+  background: rgba(30, 41, 59, 0.88) !important;
+  border-color: rgba(102, 126, 234, 0.14) !important;
   color: #cbd5e1 !important;
 }
 
 .dark .ant-table-tbody > tr > td {
-  border-color: #334155 !important;
+  background: rgba(30, 41, 59, 0.64) !important;
+  border-color: rgba(102, 126, 234, 0.12) !important;
+  color: #e5e7eb !important;
 }
 
 .dark .ant-table-tbody > tr:hover > td {
-  background: #334155 !important;
+  background: rgba(102, 126, 234, 0.12) !important;
 }
 
-/* 固定列（fixed column）- 必须完全不透明，否则会看到后面的列 */
 .dark .ant-table-cell-fix-left,
 .dark .ant-table-cell-fix-right {
-  background: rgb(30, 41, 59) !important; /* 完全不透明 */
-  z-index: 2 !important; /* 确保在其他列之上 */
-  position: sticky !important;
+  background: rgb(30, 41, 59) !important;
+  z-index: 2 !important;
 }
 
 .dark .ant-table-tbody > tr:hover > .ant-table-cell-fix-left,
@@ -194,119 +275,71 @@
   background: rgb(45, 55, 72) !important;
 }
 
-.dark .ant-table-thead > tr > .ant-table-cell-fix-left,
-.dark .ant-table-thead > tr > .ant-table-cell-fix-right {
-  background: rgb(30, 41, 59) !important; /* 表头固定列也完全不透明 */
+.dark .ant-input,
+.dark .ant-input-affix-wrapper,
+.dark .ant-select-selector,
+.dark .ant-picker {
+  background: rgba(15, 23, 42, 0.42) !important;
+  border-color: rgba(102, 126, 234, 0.18) !important;
+  color: #e5e7eb !important;
 }
 
-/* 固定列分隔阴影 - 让边界更清晰 */
-.dark .ant-table-cell-fix-right::before {
-  box-shadow: inset 10px 0 8px -8px rgba(0, 0, 0, 0.2) !important;
+.dark .ant-input::placeholder,
+.dark .ant-input-affix-wrapper input::placeholder {
+  color: #94a3b8 !important;
 }
 
-.dark .ant-table-cell-fix-left::after {
-  box-shadow: inset -10px 0 8px -8px rgba(0, 0, 0, 0.2) !important;
-}
-
-.dark .ant-modal-content {
-  background: #1e293b !important;
-  border: 1px solid #334155;
-}
-
+.dark .ant-modal-content,
 .dark .ant-modal-header {
-  background: #1e293b !important;
-  border-color: #334155 !important;
+  background: rgba(30, 41, 59, 0.96) !important;
+  border-color: rgba(102, 126, 234, 0.18) !important;
 }
 
 .dark .ant-dropdown-menu {
-  background: #1e293b !important;
-  border: 1px solid #334155;
+  background: rgba(30, 41, 59, 0.96) !important;
+  border: 1px solid rgba(102, 126, 234, 0.18);
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.28);
 }
 
 .dark .ant-dropdown-menu-item:hover {
-  background: #334155 !important;
+  background: rgba(102, 126, 234, 0.14) !important;
 }
 
-/* ========================================== */
-/* 深色模式菜单样式 */
-/* ========================================== */
-
-.ant-menu-dark {
-  background-color: transparent;
-}
-
-/* Menu 菜单项 - 深色模式 */
 .ant-menu-dark .ant-menu-item,
 .ant-menu-dark .ant-menu-submenu-title {
-  color: #c5c5c5;
-  font-weight: 500;
+  color: #cbd5e1;
   border-radius: 8px;
-  transition: all 0.3s ease;
+  font-weight: 500;
 }
 
-/* Menu 菜单项悬停 - 深色模式 */
 .ant-menu-dark .ant-menu-item:hover,
 .ant-menu-dark .ant-menu-submenu-title:hover {
   color: #91d1ff !important;
   background: rgba(145, 209, 255, 0.1) !important;
 }
 
-/* Menu 菜单项选中 - 深色模式 */
 .ant-menu-dark .ant-menu-item-selected {
   color: #91d1ff !important;
   background: rgba(145, 209, 255, 0.15) !important;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(145, 209, 255, 0.2);
+  font-weight: 650;
 }
 
-/* Menu 菜单项激活状态 - 深色模式 */
-.ant-menu-dark .ant-menu-item-active,
-.ant-menu-dark .ant-menu-submenu-active {
-  color: #91d1ff !important;
-}
-
-/* Menu 子菜单 - 深色模式 */
 .ant-menu-dark .ant-menu-sub {
-  background-color: rgba(15, 23, 42, 0.85) !important;
-  border-left: 1px solid #334155 !important;
+  background: rgba(15, 23, 42, 0.82) !important;
+  border-left: 1px solid rgba(102, 126, 234, 0.12) !important;
 }
 
-/* Menu 子菜单内的菜单项背景 - 深色模式 */
-.ant-menu-dark .ant-menu-sub .ant-menu-item,
-.ant-menu-dark .ant-menu-sub .ant-menu-submenu-title {
-  background-color: transparent !important;
-}
-
-/* Menu 子菜单内的菜单项悬停 - 深色模式 */
-.ant-menu-dark .ant-menu-sub .ant-menu-item:hover,
-.ant-menu-dark .ant-menu-sub .ant-menu-submenu-title:hover {
-  background-color: rgba(145, 209, 255, 0.08) !important;
-}
-
-/* Menu 子菜单内的菜单项选中 - 深色模式 */
-.ant-menu-dark .ant-menu-sub .ant-menu-item-selected {
-  background-color: rgba(145, 209, 255, 0.12) !important;
-}
-
-/* Menu 图标颜色 - 深色模式 */
 .ant-menu-dark .ant-menu-item .anticon,
 .ant-menu-dark .ant-menu-submenu-title .anticon {
-  color: #8c8c8c;
-  font-size: 18px;
+  color: #94a3b8;
+  font-size: 17px;
 }
 
+.ant-menu-dark .ant-menu-item-selected .anticon,
 .ant-menu-dark .ant-menu-item:hover .anticon,
 .ant-menu-dark .ant-menu-submenu-title:hover .anticon {
   color: #91d1ff;
 }
-
-.ant-menu-dark .ant-menu-item-selected .anticon {
-  color: #91d1ff;
-}
-
-/* ========================================== */
-/* 通知列表页 - 列表项间距 */
-/* ========================================== */
 
 .notification-list .ant-list-item {
   margin-bottom: 12px !important;
@@ -317,55 +350,29 @@
   margin-bottom: 0 !important;
 }
 
-/* ========================================== */
-/* 权限树 - 深色模式适配 */
-/* ========================================== */
-
-/* 树节点 hover 状态 - 浅色模式 */
-.permission-tree-component .ant-tree-node-content-wrapper:hover {
-  background-color: rgba(0, 0, 0, 0.04) !important;
-}
-
-/* 树节点 hover 状态 - 深色模式 */
-.dark .permission-tree-component .ant-tree-node-content-wrapper:hover {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-/* 树节点选中状态 - 深色模式 */
-.dark .permission-tree-component .ant-tree-node-content-wrapper-selected {
-  background-color: rgba(22, 119, 255, 0.2) !important;
-}
-
-/* 树节点切换图标 - 深色模式 */
-.dark .permission-tree-component .ant-tree-switcher {
-  color: #9ca3af;
-}
-
-/* 树节点标题文字 - 深色模式 */
-.dark .permission-tree-component .ant-tree-title {
-  color: #e5e7eb;
-}
-
-/* ========================================== */
-/* 修复浅色模式hover背景色 */
-/* ========================================== */
-
-/* Header用户头像hover - 浅色模式 */
+.notification-list .ant-list-item:hover,
 .user-info-trigger:hover {
-  background-color: rgba(239, 246, 255, 1) !important; /* blue-50 */
+  background-color: #eff6ff !important;
 }
 
-/* Header用户头像hover - 深色模式 */
+.dark .notification-list .ant-list-item:hover,
 .dark .user-info-trigger:hover {
-  background-color: rgba(55, 65, 81, 1) !important; /* gray-700 */
+  background-color: rgba(55, 65, 81, 0.88) !important;
 }
 
-/* 通知列表项hover - 浅色模式 */
-.notification-list .ant-list-item:hover {
-  background-color: rgba(239, 246, 255, 1) !important; /* blue-50 */
+.permission-tree-component .ant-tree-node-content-wrapper:hover {
+  background-color: rgba(102, 126, 234, 0.08) !important;
 }
 
-/* 通知列表项hover - 深色模式 */
-.dark .notification-list .ant-list-item:hover {
-  background-color: rgba(55, 65, 81, 1) !important; /* gray-700 */
+.dark .permission-tree-component .ant-tree-node-content-wrapper:hover {
+  background-color: rgba(145, 209, 255, 0.1) !important;
+}
+
+.dark .permission-tree-component .ant-tree-node-content-wrapper-selected {
+  background-color: rgba(145, 209, 255, 0.14) !important;
+}
+
+.dark .permission-tree-component .ant-tree-title,
+.dark .permission-tree-component .ant-tree-switcher {
+  color: #e5e7eb;
 }

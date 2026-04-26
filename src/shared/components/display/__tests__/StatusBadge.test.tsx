@@ -82,15 +82,15 @@ describe('StatusBadge 组件', () => {
 
       const dot = container.querySelector('.rounded-full.bg-green-500');
       expect(dot).toBeInTheDocument();
-      expectHasClass(dot as HTMLElement, 'w-2');
-      expectHasClass(dot as HTMLElement, 'h-2');
+      expectHasClass(dot as HTMLElement, 'w-1.5');
+      expectHasClass(dot as HTMLElement, 'h-1.5');
       expectHasClass(dot as HTMLElement, 'rounded-full');
     });
 
     it('应该在 showIcon=false 时隐藏圆点', () => {
       const { container } = render(<StatusBadge status="success" text="成功" showIcon={false} />);
 
-      const dot = container.querySelector('.animate-pulse');
+      const dot = container.querySelector('.rounded-full.bg-green-500');
       expect(dot).not.toBeInTheDocument();
     });
 
@@ -103,7 +103,7 @@ describe('StatusBadge 组件', () => {
       expect(starIcon).toBeInTheDocument();
 
       // 自定义图标时不显示圆点
-      const dot = container.querySelector('.w-2.h-2.rounded-full');
+      const dot = container.querySelector('.w-1\\.5.h-1\\.5.rounded-full');
       expect(dot).not.toBeInTheDocument();
     });
 
@@ -120,7 +120,7 @@ describe('StatusBadge 组件', () => {
       const starIcon = screen.getByTestId('star-icon');
       expect(starIcon).toBeInTheDocument();
 
-      const dot = container.querySelector('.w-2.h-2.rounded-full');
+      const dot = container.querySelector('.w-1\\.5.h-1\\.5.rounded-full');
       expect(dot).not.toBeInTheDocument();
     });
   });
@@ -175,19 +175,19 @@ describe('StatusBadge 组件', () => {
       expectHasClass(badge, 'inline-flex');
       expectHasClass(badge, 'items-center');
       expectHasClass(badge, 'gap-2');
-      expectHasClass(badge, 'px-3');
-      expectHasClass(badge, 'py-1.5');
+      expectHasClass(badge, 'px-2.5');
+      expectHasClass(badge, 'py-1');
       expectHasClass(badge, 'rounded-full');
       expectHasClass(badge, 'text-xs');
       expectHasClass(badge, 'font-medium');
       expectHasClass(badge, 'whitespace-nowrap');
     });
 
-    it('应该包含状态过渡样式', () => {
+    it('不应该包含动效样式', () => {
       render(<StatusBadge status="success" text="成功" />);
 
       const badge = screen.getByText('成功');
-      expectHasClass(badge, 'transition-all');
+      expect(badge.className).not.toContain('transition');
     });
 
     it('应该包含状态圆点', () => {
@@ -208,7 +208,7 @@ describe('StatusBadge 组件', () => {
       const badge = document.querySelector('.inline-flex');
       expect(badge).toBeInTheDocument();
       // 验证有圆点但无文本
-      const dot = document.querySelector('.w-2.h-2.rounded-full');
+      const dot = document.querySelector('.w-1\\.5.h-1\\.5.rounded-full');
       expect(dot).toBeInTheDocument();
     });
 

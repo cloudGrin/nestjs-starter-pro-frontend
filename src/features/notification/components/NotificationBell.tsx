@@ -157,10 +157,10 @@ export const NotificationBell: React.FC = () => {
             renderItem={(notification: Notification) => (
               <div
                 key={notification.id}
-                className={`mb-2 p-3 rounded-xl cursor-pointer transition-all ${
+                className={`mb-2 cursor-pointer rounded-lg p-3 ${
                   themeMode === 'dark'
                     ? 'hover:bg-gray-700/30 hover:border-blue-400/40'
-                    : 'hover:shadow-md'
+                    : 'hover:bg-indigo-50'
                 }`}
                 style={{
                   background: themeMode === 'dark' ? 'rgba(30, 41, 59, 0.9)' : '#f8fafc',
@@ -261,8 +261,8 @@ export const NotificationBell: React.FC = () => {
             }}
             className={
               themeMode === 'dark'
-                ? 'hover:bg-gray-700 hover:text-blue-400 transition-all rounded-lg'
-                : 'hover:bg-blue-50 hover:text-blue-600 transition-all rounded-lg'
+                ? 'rounded-lg hover:bg-gray-700 hover:text-blue-400'
+                : 'rounded-lg hover:bg-indigo-50 hover:text-indigo-600'
             }
           />
         </Badge>

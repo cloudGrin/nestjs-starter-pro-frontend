@@ -1,86 +1,69 @@
-/**
- * 主题CSS变量定义
- *
- * 说明：
- * - 使用CSS变量统一管理颜色，避免硬编码
- * - 支持深色模式（通过.dark类切换）
- */
-
 @layer base {
   :root {
-    /* ===== 品牌色 ===== */
-    --brand-primary: 22 119 255; /* #1677ff - Ant Design 蓝 */
-    --brand-secondary: 64 150 255; /* #4096ff */
-    --brand-link: 22 119 255; /* #1677ff */
+    --app-header-height: 64px;
 
-    /* ===== 基础背景色（浅色模式） ===== */
-    --bg-primary: 255 255 255; /* #ffffff - 主背景（Header、Card等） */
-    --bg-secondary: 249 250 251; /* #f9fafb - 次级背景（Content区域） */
-    --bg-tertiary: 248 250 252; /* #f8fafc - 第三级背景（Sidebar顶部） */
-    --bg-quaternary: 241 245 249; /* #f1f5f9 - 第四级背景（Sidebar底部） */
+    --brand-primary: 102 126 234;
+    --brand-secondary: 118 75 162;
+    --brand-link: 102 126 234;
 
-    /* ===== 文字色（浅色模式） ===== */
-    --text-primary: 15 23 42; /* #0f172a - slate-900 主文字 */
-    --text-secondary: 100 116 139; /* #64748b - slate-600 次要文字 */
-    --text-tertiary: 148 163 184; /* #94a3b8 - slate-400 辅助文字 */
+    --bg-primary: 255 255 255;
+    --bg-secondary: 249 250 251;
+    --bg-tertiary: 248 250 252;
 
-    /* ===== 边框色（浅色模式） ===== */
-    --border-primary: 226 232 240; /* #e2e8f0 - slate-200 主边框 */
-    --border-secondary: 241 245 249; /* #f1f5f9 - slate-100 次级边框 */
+    --text-primary: 15 23 42;
+    --text-secondary: 100 116 139;
+    --text-tertiary: 148 163 184;
 
-    /* ===== 阴影（浅色模式） ===== */
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04); /* 小阴影 */
-    --shadow-md: 2px 0 12px rgba(0, 0, 0, 0.04); /* 中阴影（Sidebar） */
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12); /* 大阴影 */
+    --border-primary: 226 232 240;
+    --border-secondary: 241 245 249;
+
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.05);
+    --shadow-lg: 0 18px 46px rgba(15, 23, 42, 0.12);
   }
 
-  /* ===== 深色模式 ===== */
   .dark {
-    /* 背景色（深色模式） */
-    --bg-primary: 15 23 42; /* slate-900 - 主背景 */
-    --bg-secondary: 30 41 59; /* slate-800 - 次级背景 */
-    --bg-tertiary: 51 65 85; /* slate-700 - 第三级背景 */
+    --brand-link: 145 209 255;
 
-    /* 文字色（深色模式） */
-    --text-primary: 248 250 252; /* slate-50 - 主文字 */
-    --text-secondary: 203 213 225; /* slate-300 - 次要文字 */
-    --text-tertiary: 163 163 163; /* #a3a3a3 - 辅助文字 */
+    --bg-primary: 15 23 42;
+    --bg-secondary: 17 24 39;
+    --bg-tertiary: 30 41 59;
 
-    /* 边框色（深色模式） */
-    --border-primary: 71 85 105; /* slate-600 */
-    --border-secondary: 51 65 85; /* slate-700 */
+    --text-primary: 248 250 252;
+    --text-secondary: 203 213 225;
+    --text-tertiary: 148 163 184;
 
-    /* 阴影（深色模式） */
-    --shadow-sm: 0 1px 8px rgba(0, 0, 0, 0.2);
-    --shadow-md: 2px 0 16px rgba(0, 0, 0, 0.2);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.28);
+    --border-primary: 102 126 234 / 0.22;
+    --border-secondary: 102 126 234 / 0.14;
+
+    --shadow-sm: 0 1px 8px rgba(15, 23, 42, 0.24);
+    --shadow-md: 0 12px 34px rgba(15, 23, 42, 0.28);
+    --shadow-lg: 0 22px 58px rgba(15, 23, 42, 0.34);
   }
 }
-
-/* ===== 应用布局背景 ===== */
 
 .header-bg {
   background: #ffffff !important;
   border-bottom-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 .dark .header-bg {
-  background: #0f172a !important;
-  border-bottom-color: #334155 !important;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2) !important;
+  background: rgba(15, 23, 42, 0.96) !important;
+  border-bottom-color: rgba(102, 126, 234, 0.22) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 .sidebar-bg {
   background: #f8fafc !important;
   border-right-color: #e2e8f0 !important;
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 2px 0 16px rgba(15, 23, 42, 0.04) !important;
 }
 
 .dark .sidebar-bg {
-  background: #0f172a !important;
-  border-right-color: #334155 !important;
-  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.2) !important;
+  background: rgba(15, 23, 42, 0.98) !important;
+  border-right-color: rgba(102, 126, 234, 0.22) !important;
+  box-shadow: 2px 0 22px rgba(15, 23, 42, 0.3) !important;
 }
 
 .sidebar-logo-bg {
@@ -88,7 +71,7 @@
 }
 
 .dark .sidebar-logo-bg {
-  background: #0f172a !important;
+  background: rgba(102, 126, 234, 0.06) !important;
 }
 
 .content-bg {
@@ -96,22 +79,28 @@
 }
 
 .dark .content-bg {
-  background: rgb(15, 23, 42) !important;
+  background-color: rgb(15, 23, 42) !important;
 }
-
-/* ===== 工具类 ===== */
 
 .text-brand-gradient {
-  background: linear-gradient(135deg, #1677ff 0%, #4096ff 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
-/* 平滑过渡 */
+.app-surface {
+  background: #ffffff;
+  border: 1px solid #edf2f7;
+  box-shadow: var(--shadow-md);
+}
+
+.dark .app-surface {
+  background: rgba(30, 41, 59, 0.72);
+  border-color: rgba(102, 126, 234, 0.18);
+  box-shadow: var(--shadow-md);
+}
+
 .transition-theme {
-  transition:
-    background-color 0.3s ease,
-    border-color 0.3s ease,
-    color 0.3s ease;
+  transition: none;
 }

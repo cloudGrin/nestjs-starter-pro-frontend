@@ -82,7 +82,7 @@ export function DashboardPage() {
   return (
     <PageWrap title="仪表盘">
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
         <PermissionGuard permissions={['user:read']}>
           <UserTotalCard />
         </PermissionGuard>

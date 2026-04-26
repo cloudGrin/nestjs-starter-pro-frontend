@@ -6,7 +6,6 @@
 /* 树节点基础样式 */
 .menu-tree-custom .ant-tree-treenode {
   padding: 4px 0;
-  transition: all 0.2s ease;
   border-radius: 6px;
 }
 
@@ -33,7 +32,6 @@
 /* 拖拽图标 */
 .menu-tree-custom .ant-tree-draggable-icon {
   color: #94a3b8;
-  transition: color 0.2s ease;
 }
 
 .menu-tree-custom .ant-tree-treenode:hover .ant-tree-draggable-icon {
@@ -51,7 +49,6 @@
 /* 展开/收起图标 */
 .menu-tree-custom .ant-tree-switcher {
   color: #64748b;
-  transition: color 0.2s ease;
 }
 
 .dark .menu-tree-custom .ant-tree-switcher {
@@ -103,7 +100,6 @@
 /* 操作按钮hover效果 */
 .menu-tree-actions {
   opacity: 0;
-  transition: opacity 0.2s ease;
 }
 
 .menu-tree-node:hover .menu-tree-actions {

@@ -97,9 +97,9 @@ describe('PageWrap 组件', () => {
   // ==================== 面包屑测试 ====================
 
   describe('面包屑', () => {
-    it('应该默认显示面包屑（includeBreadcrumbs=true）', () => {
+    it('应该在 includeBreadcrumbs=true 时显示面包屑', () => {
       render(
-        <PageWrap title="用户管理">
+        <PageWrap title="用户管理" includeBreadcrumbs>
           <div>内容</div>
         </PageWrap>
       );
@@ -122,9 +122,9 @@ describe('PageWrap 组件', () => {
       expect(screen.queryByText('用户列表')).not.toBeInTheDocument();
     });
 
-    it('应该在没有 title 和 header 时仍显示面包屑', () => {
+    it('应该支持仅显示面包屑头部', () => {
       render(
-        <PageWrap>
+        <PageWrap includeBreadcrumbs>
           <div>内容</div>
         </PageWrap>
       );
@@ -135,7 +135,7 @@ describe('PageWrap 组件', () => {
 
     it('应该包含面包屑容器的样式类', () => {
       const { container } = render(
-        <PageWrap title="用户管理">
+        <PageWrap title="用户管理" includeBreadcrumbs>
           <div>内容</div>
         </PageWrap>
       );
@@ -352,6 +352,7 @@ describe('PageWrap 组件', () => {
       render(
         <PageWrap
           title="用户管理"
+          includeBreadcrumbs
           titleRight={<Button data-testid="export-btn">导出</Button>}
           header={<div data-testid="search-form">搜索表单</div>}
           footer={<div data-testid="footer">底部内容</div>}
@@ -377,8 +378,7 @@ describe('PageWrap 组件', () => {
       );
 
       expect(screen.getByTestId('content')).toBeInTheDocument();
-      // 应该仍然有面包屑
-      expect(screen.getByText('首页')).toBeInTheDocument();
+      expect(screen.queryByText('首页')).not.toBeInTheDocument();
     });
 
     it('应该支持 sticky 模式 + 完整配置', () => {

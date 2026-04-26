@@ -75,12 +75,10 @@ export function TableActions({ actions, maxVisible = 3 }: TableActionsProps) {
         icon={action.icon}
         onClick={action.onClick}
         className={cn(
-          'px-2 py-0.5 h-auto min-w-[60px]',
-          'transition-all duration-200 ease-in-out',
-          'hover:scale-105',
+          'h-7 min-w-[56px] rounded-md px-2 text-xs font-medium',
           action.danger
-            ? 'text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200'
-            : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+            ? 'text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700'
+            : 'text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-indigo-300'
         )}
       >
         {action.label}
@@ -141,9 +139,8 @@ export function TableActions({ actions, maxVisible = 3 }: TableActionsProps) {
             size="small"
             icon={<MoreOutlined />}
             className={cn(
-              'px-2 py-0.5 h-auto',
-              'hover:bg-gray-100 hover:scale-105',
-              'transition-all duration-200'
+              'h-7 rounded-md px-2',
+              'hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800'
             )}
           />
         </Tooltip>

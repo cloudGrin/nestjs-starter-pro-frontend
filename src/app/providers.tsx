@@ -33,42 +33,62 @@ export function AppProviders({ children }: AppProvidersProps) {
         theme={{
           algorithm: themeMode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {
-            colorPrimary: '#1677ff',
-            colorInfo: '#1677ff',
-            colorLink: '#1677ff',
+            colorPrimary: '#667eea',
+            colorInfo: '#667eea',
+            colorLink: themeMode === 'dark' ? '#91d1ff' : '#667eea',
             borderRadius: 8,
+            colorText: themeMode === 'dark' ? '#e5e7eb' : '#111827',
+            colorTextSecondary: themeMode === 'dark' ? '#cbd5e1' : '#64748b',
+            colorBorder: themeMode === 'dark' ? 'rgba(102, 126, 234, 0.22)' : '#e2e8f0',
+            colorBorderSecondary: themeMode === 'dark' ? 'rgba(102, 126, 234, 0.14)' : '#eef2f7',
+            controlHeight: 36,
+            controlHeightLG: 42,
             ...(themeMode === 'dark' && {
-              colorBgContainer: '#1e293b',
-              colorBgElevated: '#1e293b',
-              colorBorder: '#475569',
-              colorBorderSecondary: '#334155',
+              colorBgContainer: 'rgba(30, 41, 59, 0.72)',
+              colorBgElevated: 'rgba(30, 41, 59, 0.92)',
             }),
           },
           components: {
             Card:
               themeMode === 'dark'
                 ? {
-                    headerBg: '#1e293b',
-                    colorBgContainer: '#1e293b',
-                    colorBorderSecondary: '#334155',
+                    headerBg: 'rgba(30, 41, 59, 0.52)',
+                    colorBgContainer: 'rgba(30, 41, 59, 0.72)',
+                    colorBorderSecondary: 'rgba(102, 126, 234, 0.18)',
+                    boxShadow: '0 8px 30px rgba(15, 23, 42, 0.22)',
                   }
-                : {},
+                : {
+                    headerBg: '#ffffff',
+                    colorBorderSecondary: '#edf2f7',
+                    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)',
+                  },
             Table:
               themeMode === 'dark'
                 ? {
-                    headerBg: '#1e293b',
+                    headerBg: 'rgba(30, 41, 59, 0.86)',
                     headerColor: '#cbd5e1',
-                    colorBgContainer: '#1e293b',
-                    colorBorderSecondary: '#334155',
+                    colorBgContainer: 'rgba(30, 41, 59, 0.72)',
+                    colorBorderSecondary: 'rgba(102, 126, 234, 0.14)',
                   }
-                : {},
+                : {
+                    headerBg: '#f8fafc',
+                    headerColor: '#334155',
+                    colorBorderSecondary: '#edf2f7',
+                  },
             Modal:
               themeMode === 'dark'
                 ? {
-                    contentBg: '#1e293b',
-                    headerBg: '#1e293b',
+                    contentBg: 'rgba(30, 41, 59, 0.96)',
+                    headerBg: 'rgba(30, 41, 59, 0.96)',
                   }
                 : {},
+            Button: {
+              primaryShadow: '0 6px 16px rgba(102, 126, 234, 0.22)',
+            },
+            Menu: {
+              itemBorderRadius: 8,
+              itemHeight: 42,
+            },
           },
         }}
       >

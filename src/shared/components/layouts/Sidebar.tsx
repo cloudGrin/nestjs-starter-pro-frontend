@@ -7,8 +7,11 @@ import type { MenuTreeNode } from '@/features/rbac/menu/types/menu.types';
 import type { MenuProps } from 'antd';
 import { useThemeStore } from '@/shared/stores';
 import { getMenuIcon } from '@/shared/components/icons/menuIcons';
+import { cn } from '@/shared/utils/cn';
 
 const { Sider } = Layout;
+const SIDEBAR_WIDTH = 220;
+const SIDEBAR_COLLAPSED_WIDTH = 80;
 
 interface SidebarProps {
   collapsed: boolean;
@@ -128,31 +131,39 @@ export function Sidebar({ collapsed }: SidebarProps) {
       trigger={null}
       collapsible
       collapsed={collapsed}
+      width={SIDEBAR_WIDTH}
+      collapsedWidth={SIDEBAR_COLLAPSED_WIDTH}
       theme={themeMode === 'dark' ? 'dark' : 'light'}
-      className="sidebar-bg border-r transition-theme"
+      className="sidebar-bg flex-none border-r transition-theme"
     >
       <div
-        className="h-16 flex items-center justify-center text-xl font-bold border-b overflow-hidden relative sidebar-logo-bg transition-theme"
+        className={cn(
+          'sidebar-logo-bg relative flex items-center overflow-hidden border-b px-4 transition-theme',
+          collapsed ? 'justify-center' : 'justify-start'
+        )}
         style={{
+          height: 'var(--app-header-height)',
+          minHeight: 'var(--app-header-height)',
           borderColor: themeMode === 'dark' ? '#334155' : '#e2e8f0',
-          paddingLeft: collapsed ? 0 : 16,
-          paddingRight: collapsed ? 0 : 16,
         }}
       >
-        {collapsed ? (
-          <span className="text-3xl">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] text-base font-bold text-white shadow-sm">
             <HomeOutlined />
           </span>
-        ) : (
-          <span className="text-brand-gradient">Home Admin</span>
-        )}
+          {!collapsed && (
+            <div className="min-w-0 truncate text-lg font-bold leading-none text-brand-gradient">
+              Home Admin
+            </div>
+          )}
+        </div>
       </div>
       {menusLoading ? (
         <div className="flex justify-center items-center p-8">
           <Spin />
         </div>
       ) : (
-        <div>
+        <div className="w-full flex-1 overflow-y-auto py-3">
           <Menu
             theme={themeMode === 'dark' ? 'dark' : 'light'}
             mode="inline"
@@ -160,7 +171,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
             openKeys={collapsed ? [] : openKeys}
             onOpenChange={(keys) => setOpenKeys(keys)}
             items={menuItems}
-            className="sidebar-menu border-r-0 bg-transparent"
+            className="sidebar-menu w-full border-r-0 bg-transparent"
           />
         </div>
       )}

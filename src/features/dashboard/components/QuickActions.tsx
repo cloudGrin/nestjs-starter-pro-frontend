@@ -59,31 +59,45 @@ export function QuickActions() {
 
   return (
     <Card title="快捷操作" className="mt-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {actions.map((action) => {
           const content = (
-            <div
+            <button
+              type="button"
               onClick={() => navigate(action.path)}
               className={cn(
-                'h-20 border rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer hover:shadow-md transition-all',
+                'flex h-24 w-full items-center gap-3 rounded-lg border px-4 text-left',
                 themeMode === 'dark'
-                  ? 'bg-slate-800/40 hover:bg-slate-800/60' // 深色模式：半透明
-                  : 'bg-white hover:bg-gray-50'
+                  ? 'bg-slate-800/40 hover:bg-slate-800/70'
+                  : 'bg-white hover:bg-indigo-50'
               )}
-              style={{ borderColor: action.color }}
+              style={{ borderColor: `${action.color}66` }}
             >
-              <span className="text-2xl" style={{ color: action.color }}>
+              <span
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl"
+                style={{ backgroundColor: `${action.color}18`, color: action.color }}
+              >
                 {action.icon}
               </span>
-              <span
-                className={cn(
-                  'text-base font-medium',
-                  themeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'
-                )}
-              >
-                {action.label}
+              <span className="min-w-0">
+                <span
+                  className={cn(
+                    'block truncate text-sm font-semibold',
+                    themeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'
+                  )}
+                >
+                  {action.label}
+                </span>
+                <span
+                  className={cn(
+                    'mt-0.5 block truncate text-xs',
+                    themeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                  )}
+                >
+                  快速进入
+                </span>
               </span>
-            </div>
+            </button>
           );
 
           return action.permission ? (

@@ -1,11 +1,11 @@
-import { Card, List, Avatar, Tag, Empty } from 'antd';
+import { Card, List, Avatar, Tag } from 'antd';
 import { UserOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
 import { useUsers } from '@/features/rbac/user/hooks/useUsers';
 import { useNotifications } from '@/features/notification/hooks/useNotifications';
-import { PermissionGuard } from '@/shared/components';
+import { EmptyState, PermissionGuard } from '@/shared/components';
 import { useThemeStore } from '@/shared/stores';
 import { cn } from '@/shared/utils/cn';
 import { UserStatus } from '@/shared/types/user.types';
@@ -38,21 +38,23 @@ function RecentUsersCard() {
       loading={usersLoading}
     >
       {users.length === 0 ? (
-        <Empty description="暂无用户" />
+        <EmptyState title="暂无用户" illustrationSize={120} />
       ) : (
         <List
           dataSource={users}
           renderItem={(user) => (
-            <List.Item>
+            <List.Item className="rounded-lg px-2!">
               <List.Item.Meta
                 avatar={
-                  <Avatar style={{ backgroundColor: '#1890ff' }}>
+                  <Avatar style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>
                     {user.username.charAt(0).toUpperCase()}
                   </Avatar>
                 }
                 title={
-                  <div className="flex items-center gap-2">
-                    <span>{user.username}</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-semibold text-slate-800 dark:text-slate-100">
+                      {user.username}
+                    </span>
                     {user.status === UserStatus.ACTIVE ? (
                       <Tag color="success">正常</Tag>
                     ) : user.status === UserStatus.DISABLED ? (
@@ -65,8 +67,8 @@ function RecentUsersCard() {
                 description={
                   <span
                     className={cn(
-                      'flex items-center gap-1',
-                      themeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                      'flex items-center gap-1 text-xs',
+                      themeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'
                     )}
                   >
                     <ClockCircleOutlined />
@@ -102,12 +104,12 @@ function RecentNotificationsCard() {
       loading={notificationsLoading}
     >
       {notifications.length === 0 ? (
-        <Empty description="暂无通知" />
+        <EmptyState title="暂无通知" illustrationSize={120} />
       ) : (
         <List
           dataSource={notifications}
           renderItem={(notification) => (
-            <List.Item>
+            <List.Item className="rounded-lg px-2!">
               <List.Item.Meta
                 avatar={
                   <Avatar
@@ -125,8 +127,10 @@ function RecentNotificationsCard() {
                   />
                 }
                 title={
-                  <div className="flex items-center gap-2">
-                    <span>{notification.title}</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-semibold text-slate-800 dark:text-slate-100">
+                      {notification.title}
+                    </span>
                     {notification.status === NotificationStatus.UNREAD && (
                       <Tag color="red">未读</Tag>
                     )}
@@ -135,8 +139,8 @@ function RecentNotificationsCard() {
                 description={
                   <span
                     className={cn(
-                      'flex items-center gap-1',
-                      themeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                      'flex items-center gap-1 text-xs',
+                      themeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'
                     )}
                   >
                     <ClockCircleOutlined />
@@ -158,7 +162,7 @@ function RecentNotificationsCard() {
  */
 export function RecentActivities() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+    <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
       <PermissionGuard permissions={['user:read']}>
         <RecentUsersCard />
       </PermissionGuard>

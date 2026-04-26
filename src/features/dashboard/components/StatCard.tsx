@@ -31,12 +31,17 @@ export function StatCard({
   const { mode: themeMode } = useThemeStore();
 
   return (
-    <Card loading={loading} className="hover:shadow-lg transition-shadow">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
+    <Card loading={loading} className="h-full overflow-hidden">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <Statistic
             title={
-              <span className={cn(themeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
+              <span
+                className={cn(
+                  'text-sm font-medium',
+                  themeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                )}
+              >
                 {title}
               </span>
             }
@@ -44,14 +49,17 @@ export function StatCard({
             precision={precision}
             suffix={suffix}
             prefix={prefix}
-            valueStyle={{ color, fontSize: '28px', fontWeight: 600 }}
+            valueStyle={{ color, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }}
           />
         </div>
         <div
-          className="flex items-center justify-center w-16 h-16 rounded-full"
-          style={{ backgroundColor: `${color}15`, color }}
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
+          style={{
+            background: `linear-gradient(135deg, ${color}22, ${color}0f)`,
+            color,
+          }}
         >
-          <span className="text-3xl">{icon}</span>
+          <span className="text-2xl">{icon}</span>
         </div>
       </div>
     </Card>

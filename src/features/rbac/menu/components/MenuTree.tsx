@@ -307,14 +307,14 @@ export function MenuTree({
     <div className="menu-tree">
       <Space direction="vertical" className="w-full" size="large">
         {/* 顶部操作栏 */}
-        <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-blue-500/20 shadow-sm transition-theme">
+        <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4 shadow-sm transition-theme dark:border-blue-500/20">
           <PermissionGuard permissions={['menu:create']}>
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => onAdd?.()}
               size="middle"
-              className="shadow-sm hover:shadow-md transition-shadow"
+              className="shadow-sm"
             >
               创建顶级菜单
             </Button>
@@ -347,7 +347,7 @@ export function MenuTree({
             }
           />
         ) : (
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden transition-theme">
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-theme dark:border-slate-700 dark:bg-slate-800">
             <Tree
               draggable
               blockNode
