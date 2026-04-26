@@ -73,8 +73,13 @@ export function usePermission() {
       return true;
     }
 
+    // 后端当前登录响应可能不下发权限清单；此时前端不做误拦截，接口仍由后端鉴权。
+    if (user.permissions === undefined) {
+      return true;
+    }
+
     // 普通用户检查权限数组
-    if (!user.permissions || user.permissions.length === 0) {
+    if (user.permissions.length === 0) {
       return false;
     }
 
@@ -117,7 +122,11 @@ export function usePermission() {
     }
 
     // 普通用户检查权限数组
-    if (!user.permissions || user.permissions.length === 0) {
+    if (user.permissions === undefined) {
+      return true;
+    }
+
+    if (user.permissions.length === 0) {
       return false;
     }
 

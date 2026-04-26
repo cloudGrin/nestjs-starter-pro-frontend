@@ -45,7 +45,6 @@ export interface Notification {
   type: NotificationType;
   status: NotificationStatus;
   priority: NotificationPriority;
-  link?: string;
   metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;

@@ -29,7 +29,6 @@ export interface Menu {
   isVisible: boolean; // 是否在菜单中显示
   isExternal: boolean; // 是否外部链接
   isCache: boolean; // 是否缓存组件
-  displayCondition?: string; // 显示条件（JSON格式）
   meta?: Record<string, unknown>; // 路由元数据
   remark?: string; // 备注
   createdAt: string;

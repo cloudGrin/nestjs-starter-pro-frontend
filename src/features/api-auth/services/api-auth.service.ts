@@ -45,17 +45,17 @@ export const apiAuthService = {
     }),
 
   /**
-   * 删除API应用
+   * 停用API应用
    */
   deleteApiApp: (appId: number) =>
     request.delete(`/api-apps/${appId}`, {
       requestOptions: {
         confirmConfig: {
-          message: '删除应用后，所有相关的API密钥将立即失效，此操作不可恢复。确定要删除吗？',
-          title: '删除API应用',
+          message: '停用应用后，所有相关的API密钥将立即失效。确定要停用吗？',
+          title: '停用API应用',
         },
         messageConfig: {
-          successMessage: '删除API应用成功',
+          successMessage: 'API应用已停用',
         },
       },
     }),

@@ -12,7 +12,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore } from './authStore';
 import { authService } from '../services/auth.service';
-import { connectSocket, disconnectSocket } from '@/shared/utils/socket';
 
 // Mock authService
 vi.mock('../services/auth.service', () => ({
@@ -20,12 +19,6 @@ vi.mock('../services/auth.service', () => ({
     login: vi.fn(),
     logout: vi.fn(),
   },
-}));
-
-// Mock socket
-vi.mock('@/shared/utils/socket', () => ({
-  connectSocket: vi.fn(),
-  disconnectSocket: vi.fn(),
 }));
 
 // Mock app config
@@ -64,14 +57,14 @@ describe('authStore', () => {
 
       window.dispatchEvent(
         new CustomEvent('auth:token-refreshed', {
-          detail: { accessToken: 'new-access-token' },
+          detail: { accessToken: 'new-access-token', refreshToken: 'new-refresh-token' },
         })
       );
 
       expect(useAuthStore.getState().token).toBe('new-access-token');
+      expect(useAuthStore.getState().refreshToken).toBe('new-refresh-token');
       expect(localStorage.getItem('test-token')).toBe('new-access-token');
-      expect(disconnectSocket).toHaveBeenCalled();
-      expect(connectSocket).toHaveBeenCalled();
+      expect(localStorage.getItem('test-refresh-token')).toBe('new-refresh-token');
     });
 
     it('应该在请求层判定会话过期后清理认证状态', () => {
@@ -96,7 +89,6 @@ describe('authStore', () => {
       expect(useAuthStore.getState().user).toBeNull();
       expect(localStorage.getItem('test-token')).toBeNull();
       expect(localStorage.getItem('test-refresh-token')).toBeNull();
-      expect(disconnectSocket).toHaveBeenCalled();
     });
   });
 

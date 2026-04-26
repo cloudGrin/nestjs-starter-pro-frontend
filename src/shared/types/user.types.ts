@@ -11,8 +11,9 @@ export interface Permission {
   name: string;
   description?: string;
   module: string;
-  type: 'api' | 'feature';
+  sort?: number;
   isActive: boolean;
+  isSystem?: boolean;
 }
 
 /**
@@ -57,7 +58,11 @@ export interface User {
   avatar?: string;
   status: UserStatus;
   roles: Role[];
-  permissions: string[]; // 权限代码数组，如 ['user:create', 'user:read']
+  /**
+   * 权限代码数组，如 ['user:create', 'user:read']。
+   * undefined 表示当前后端响应未下发权限清单，前端只做登录态判断，由后端接口鉴权兜底。
+   */
+  permissions?: string[];
 
   // 超级管理员标识（后端JWT策略会设置）
   isSuperAdmin?: boolean; // 是否为超级管理员（拥有 super_admin 角色）

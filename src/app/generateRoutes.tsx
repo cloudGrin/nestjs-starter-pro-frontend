@@ -15,7 +15,6 @@ import { Navigate } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 import { getComponent } from './componentRegistry';
 import { NoAvailableMenuPage, PageLoading } from './routeFallbacks';
-import { ProtectedRoute } from '@/shared/components/auth/ProtectedRoute';
 import type { MenuTreeNode } from '@/features/rbac/menu/types/menu.types';
 
 /**
@@ -74,32 +73,10 @@ export function generateRoutes(menus: MenuTreeNode[]): RouteObject[] {
         continue;
       }
 
-      // 2. 提取权限配置（displayCondition 是 JSON 字符串）
-      let permissions: string[] | undefined;
-      if (menu.displayCondition) {
-        try {
-          const condition = JSON.parse(menu.displayCondition);
-          permissions = condition?.requireAnyPermission;
-        } catch (error) {
-          console.warn(
-            `[动态路由] 菜单 "${menu.name}" 的 displayCondition 解析失败`,
-            error
-          );
-        }
-      }
-
-      // 3. 生成路由配置
+      // 2. 生成路由配置。菜单访问范围已由后端 /menus/user-menus 按角色过滤。
       const route: RouteObject = {
         path: menu.path,
-        element: permissions && permissions.length > 0 ? (
-          // 需要权限验证
-          <ProtectedRoute permissions={permissions as [string, ...string[]]}>
-            <Suspense fallback={<PageLoading />}>
-              <Component />
-            </Suspense>
-          </ProtectedRoute>
-        ) : (
-          // 不需要权限验证（如 Dashboard）
+        element: (
           <Suspense fallback={<PageLoading />}>
             <Component />
           </Suspense>
@@ -114,7 +91,7 @@ export function generateRoutes(menus: MenuTreeNode[]): RouteObject[] {
 
       routes.push(route);
 
-      // 4. 递归处理子菜单（平铺到当前层级，不嵌套）
+      // 3. 递归处理子菜单（平铺到当前层级，不嵌套）
       // 原因：后端菜单path都是绝对路径（如 /users），不能嵌套在父路由下
       // React Router要求：嵌套路由的子路由必须是相对路径或以父路径开头
       if (menu.children && menu.children.length > 0) {

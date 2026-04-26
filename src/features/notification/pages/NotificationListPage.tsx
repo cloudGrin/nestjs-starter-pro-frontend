@@ -11,6 +11,7 @@ import { formatDate } from '@/shared/utils';
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '../hooks/useNotifications';
 import { NotificationStatus, NotificationType, NotificationPriority } from '../types/notification.types';
 import type { Notification } from '../types/notification.types';
+import { getNotificationLink } from '../utils/notificationLink';
 
 const { Text } = Typography;
 
@@ -99,8 +100,9 @@ export const NotificationListPage: React.FC = () => {
     }
 
     // 如果有链接，跳转到指定页面
-    if (notification.link) {
-      navigate(notification.link);
+    const link = getNotificationLink(notification);
+    if (link) {
+      navigate(link);
     }
   };
 

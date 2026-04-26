@@ -10,7 +10,7 @@ import type { DataNode } from 'antd/es/tree';
 import { usePermissionTree } from '../../permission/hooks/usePermissions';
 import { useAssignPermissions, useRole } from '../hooks/useRoles';
 import type { Role } from '../types/role.types';
-import type { PermissionTreeNode, Permission, PermissionType } from '../../permission/types/permission.types';
+import type { PermissionTreeNode, Permission } from '../../permission/types/permission.types';
 
 const { Search } = Input;
 
@@ -20,14 +20,6 @@ interface RolePermissionModalProps {
   onSuccess?: () => void;
   onCancel: () => void;
 }
-
-/**
- * 权限类型标签颜色
- */
-const TYPE_COLORS: Record<PermissionType, string> = {
-  api: 'blue',
-  feature: 'green',
-};
 
 export function RolePermissionModal({
   open,
@@ -85,7 +77,6 @@ export function RolePermissionModal({
       <div className="flex items-center gap-2 mb-1">
         <SafetyCertificateOutlined className="text-blue-500" />
         <span className="font-medium text-gray-800">{permission.name}</span>
-        <Tag color={TYPE_COLORS[permission.type]}>{permission.type}</Tag>
         <Tag color={permission.isActive ? 'success' : 'default'}>
           {permission.isActive ? '启用' : '禁用'}
         </Tag>
@@ -150,8 +141,23 @@ export function RolePermissionModal({
    */
   const handleSearch = (value: string) => {
     setSearchValue(value);
-    if (value && filteredTreeData) {
-      setExpandedKeys(filteredTreeData.map((node) => node.module));
+    const keyword = value.toLowerCase();
+    const nextTreeData = value
+      ? permissionTree
+          ?.map((node) => ({
+            ...node,
+            permissions: (node.permissions || []).filter(
+              (p) =>
+                p.name.toLowerCase().includes(keyword) ||
+                p.code.toLowerCase().includes(keyword) ||
+                node.name.toLowerCase().includes(keyword)
+            ),
+          }))
+          .filter((node) => node.permissions.length > 0)
+      : undefined;
+
+    if (value && nextTreeData) {
+      setExpandedKeys(nextTreeData.map((node) => node.module));
     } else {
       setExpandedKeys([]);
     }

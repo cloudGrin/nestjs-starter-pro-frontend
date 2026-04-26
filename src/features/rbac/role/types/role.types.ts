@@ -61,7 +61,6 @@ export interface CreateRoleDto {
   description?: string;
   sort?: number;
   isActive?: boolean;
-  permissionIds?: number[];
 }
 
 /**
@@ -73,7 +72,6 @@ export interface UpdateRoleDto {
   description?: string;
   isActive?: boolean;
   sort?: number;
-  permissionIds?: number[];
 }
 
 /**

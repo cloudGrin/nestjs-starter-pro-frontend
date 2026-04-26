@@ -16,7 +16,7 @@
 import { useMemo, lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { generateRoutesWithDefault } from './generateRoutes';
-import { PageLoading } from './routeFallbacks';
+import { MenuLoadErrorPage, PageLoading } from './routeFallbacks';
 import { useUserMenus } from '@/features/rbac/menu/hooks/useMenus';
 import { ProtectedRoute } from '@/shared/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -91,7 +91,7 @@ export function useAppRoutes() {
       ]);
     }
 
-    // 菜单加载失败，返回基础路由（只有登录页）
+    // 菜单加载失败时保留登录态，不把已登录用户误导回登录页
     if (error) {
       console.error('[动态路由] 加载用户菜单失败', error);
       return createBrowserRouter([
@@ -101,7 +101,11 @@ export function useAppRoutes() {
         },
         {
           path: '*',
-          element: <Navigate to="/login" replace />,
+          element: (
+            <ProtectedRoute>
+              <MenuLoadErrorPage />
+            </ProtectedRoute>
+          ),
         },
       ]);
     }

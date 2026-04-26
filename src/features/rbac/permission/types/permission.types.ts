@@ -4,48 +4,17 @@
  */
 
 /**
- * 权限类型枚举
- */
-export const PermissionType = {
-  API: 'api', // API接口权限
-  FEATURE: 'feature', // 功能权限
-} as const;
-
-export type PermissionType = (typeof PermissionType)[keyof typeof PermissionType];
-
-/**
- * HTTP元数据
- */
-export interface HttpMeta {
-  method: string; // GET, POST, PUT, DELETE, PATCH
-  path: string; // /api/users/:id
-}
-
-/**
- * 权限扩展配置
- */
-export interface PermissionExtra {
-  tags?: string[]; // 标签
-  deprecated?: boolean; // 是否废弃
-  replaceBy?: string; // 被哪个权限替代
-  [key: string]: unknown;
-}
-
-/**
  * 权限实体
  */
 export interface Permission {
   id: number; // 权限ID (自增主键)
   code: string; // 权限编码 (唯一标识) 格式: {module}:{resource}:{action}
   name: string; // 权限名称
-  type: PermissionType; // 权限类型
   module: string; // 所属模块
-  httpMeta?: HttpMeta[]; // HTTP元数据
   sort: number; // 排序值
   isActive: boolean; // 是否启用
   isSystem: boolean; // 是否为系统内置 (不可删除)
   description?: string; // 权限描述
-  extra?: PermissionExtra; // 扩展配置
   createdAt: string; // 创建时间
   updatedAt: string; // 更新时间
 }
@@ -69,7 +38,6 @@ export interface QueryPermissionDto {
   limit?: number; // 每页数量 (后端参数名为limit)
   code?: string; // 权限编码 (模糊搜索)
   name?: string; // 权限名称 (模糊搜索)
-  type?: PermissionType; // 权限类型
   module?: string; // 所属模块
   isActive?: boolean; // 是否启用
   isSystem?: boolean; // 是否为系统内置
@@ -92,14 +60,10 @@ export interface PermissionListResponse {
 export interface CreatePermissionDto {
   code: string; // 权限编码
   name: string; // 权限名称
-  type: PermissionType; // 权限类型
   module: string; // 所属模块
-  httpMeta?: HttpMeta[]; // HTTP元数据
   sort?: number; // 排序值
   isActive?: boolean; // 是否启用
-  isSystem?: boolean; // 是否为系统内置
   description?: string; // 权限描述
-  extra?: PermissionExtra; // 扩展配置
 }
 
 /**
@@ -108,12 +72,8 @@ export interface CreatePermissionDto {
 export interface UpdatePermissionDto {
   code?: string;
   name?: string;
-  type?: PermissionType;
   module?: string;
-  httpMeta?: HttpMeta[];
   sort?: number;
   isActive?: boolean;
-  isSystem?: boolean;
   description?: string;
-  extra?: PermissionExtra;
 }

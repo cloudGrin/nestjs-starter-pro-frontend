@@ -2,11 +2,11 @@
  * 权限列表组件（表格视图）
  */
 
-import { Table, Tag } from 'antd';
+import { Table } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { TableActions, StatusBadge } from '@/shared/components';
-import type { Permission, PermissionType } from '../types/permission.types';
+import type { Permission } from '../types/permission.types';
 import dayjs from 'dayjs';
 
 interface PermissionListProps {
@@ -21,14 +21,6 @@ interface PermissionListProps {
   onDelete?: (id: number) => void;
   onPageChange?: (page: number, pageSize: number) => void;
 }
-
-/**
- * 权限类型标签颜色
- */
-const TYPE_COLORS: Record<PermissionType, string> = {
-  api: 'blue', // 修正：小写
-  feature: 'green', // 修正：小写
-};
 
 export function PermissionList({
   data = [],
@@ -58,15 +50,6 @@ export function PermissionList({
       dataIndex: 'name',
       key: 'name',
       width: 150,
-    },
-    {
-      title: '类型',
-      dataIndex: 'type',
-      key: 'type',
-      width: 100,
-      render: (type: PermissionType) => (
-        <Tag color={TYPE_COLORS[type]}>{type}</Tag>
-      ),
     },
     {
       title: '模块',

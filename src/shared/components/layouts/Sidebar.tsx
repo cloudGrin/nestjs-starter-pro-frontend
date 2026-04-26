@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Layout, Menu, Spin } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { HomeOutlined } from '@ant-design/icons';
@@ -21,6 +21,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { mode: themeMode } = useThemeStore();
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
 
   // 获取用户菜单
   const { data: userMenus, isLoading: menusLoading } = useUserMenus();
@@ -114,9 +115,13 @@ export function Sidebar({ collapsed }: SidebarProps) {
     return userMenus ? findSelectedKey(userMenus, location.pathname) : null;
   }, [userMenus, location.pathname, findSelectedKey]);
 
-  const defaultOpenKeys = useMemo(() => {
+  const routeOpenKeys = useMemo(() => {
     return userMenus ? findOpenKeys(userMenus, location.pathname) : [];
   }, [userMenus, location.pathname, findOpenKeys]);
+
+  useEffect(() => {
+    setOpenKeys(routeOpenKeys);
+  }, [routeOpenKeys]);
 
   return (
     <Sider
@@ -152,7 +157,8 @@ export function Sidebar({ collapsed }: SidebarProps) {
             theme={themeMode === 'dark' ? 'dark' : 'light'}
             mode="inline"
             selectedKeys={selectedKey ? [selectedKey] : []}
-            defaultOpenKeys={defaultOpenKeys}
+            openKeys={collapsed ? [] : openKeys}
+            onOpenChange={(keys) => setOpenKeys(keys)}
             items={menuItems}
             className="sidebar-menu border-r-0 bg-transparent"
           />

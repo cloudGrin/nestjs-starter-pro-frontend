@@ -131,9 +131,9 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
   const columns: ColumnsType<ApiApp> = [
     {
       title: '应用ID',
-      dataIndex: 'appId',
-      width: 180,
-      render: (text) => <code className="text-xs">{text}</code>,
+      dataIndex: 'id',
+      width: 100,
+      render: (id: number) => <code className="text-xs">{id}</code>,
     },
     {
       title: '应用名称',
@@ -195,7 +195,7 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
               permission: 'api-app:update',
             },
             {
-              label: '删除',
+              label: '停用',
               icon: <DeleteOutlined />,
               onClick: () => handleDelete(record.id),
               danger: true,

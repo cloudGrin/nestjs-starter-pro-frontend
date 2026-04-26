@@ -2,14 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services/auth.service';
 import { appConfig } from '@/shared/config/app.config';
-import { connectSocket, disconnectSocket } from '@/shared/utils/socket';
 import type { User } from '@/shared/types/user.types';
-
-function debugAuth(...args: unknown[]) {
-  if (import.meta.env.DEV) {
-    console.debug(...args);
-  }
-}
 
 interface AuthState {
   token: string | null;
@@ -19,6 +12,26 @@ interface AuthState {
   login: (account: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   clearAuth: () => void;
+}
+
+interface TokenRefreshedPayload {
+  accessToken?: string;
+  refreshToken?: string;
+}
+
+function extractPermissions(user: User): string[] | undefined {
+  if (user.permissions) {
+    return user.permissions;
+  }
+
+  const permissions = new Set<string>();
+  user.roles?.forEach((role) => {
+    role.permissions?.forEach((permission) => {
+      permissions.add(permission.code);
+    });
+  });
+
+  return permissions.size > 0 ? Array.from(permissions) : undefined;
 }
 
 /**
@@ -37,22 +50,9 @@ export const useAuthStore = create<AuthState>()(
       login: async (account: string, password: string) => {
         const response = await authService.login({ account, password });
 
-        // 扁平化权限：从 roles[].permissions[].code 提取为 permissions: string[]
-        const permissions = new Set<string>();
-        if (response.user.roles) {
-          response.user.roles.forEach((role) => {
-            if (role.permissions) {
-              role.permissions.forEach((permission) => {
-                permissions.add(permission.code);
-              });
-            }
-          });
-        }
-
-        // 添加扁平化的permissions到user对象
         const userWithPermissions = {
           ...response.user,
-          permissions: Array.from(permissions),
+          permissions: extractPermissions(response.user),
         };
 
         // 保存到状态和 localStorage
@@ -65,14 +65,6 @@ export const useAuthStore = create<AuthState>()(
         // 同步到 localStorage（persist 中间件会自动处理，这里是备份）
         localStorage.setItem(appConfig.tokenKey, response.tokens.accessToken);
         localStorage.setItem(appConfig.refreshTokenKey, response.tokens.refreshToken);
-
-        // 登录成功后，连接 WebSocket
-        try {
-          connectSocket();
-          debugAuth('[Auth] WebSocket connected after login');
-        } catch (error) {
-          debugAuth('[Auth] Failed to connect WebSocket:', error);
-        }
       },
 
       /**
@@ -86,9 +78,6 @@ export const useAuthStore = create<AuthState>()(
             await authService.logout(refreshToken);
           }
         } finally {
-          // 断开 WebSocket
-          disconnectSocket();
-
           // 清除状态
           set({ token: null, refreshToken: null, user: null });
 
@@ -102,9 +91,6 @@ export const useAuthStore = create<AuthState>()(
        * 清除认证信息
        */
       clearAuth: () => {
-        // 断开 WebSocket
-        disconnectSocket();
-
         set({ token: null, refreshToken: null, user: null });
         localStorage.removeItem(appConfig.tokenKey);
         localStorage.removeItem(appConfig.refreshTokenKey);
@@ -123,20 +109,18 @@ export const useAuthStore = create<AuthState>()(
 
 if (typeof window !== 'undefined') {
   window.addEventListener('auth:token-refreshed', (event) => {
-    const accessToken = (event as CustomEvent<{ accessToken?: string }>).detail?.accessToken;
+    const { accessToken, refreshToken } =
+      (event as CustomEvent<TokenRefreshedPayload>).detail || {};
     if (!accessToken) return;
 
-    const currentUser = useAuthStore.getState().user;
-    useAuthStore.setState({ token: accessToken });
+    useAuthStore.setState((state) => ({
+      token: accessToken,
+      refreshToken: refreshToken || state.refreshToken,
+    }));
     localStorage.setItem(appConfig.tokenKey, accessToken);
 
-    if (!currentUser) return;
-
-    try {
-      disconnectSocket();
-      connectSocket();
-    } catch (error) {
-      debugAuth('[Auth] Failed to reconnect WebSocket after token refresh:', error);
+    if (refreshToken) {
+      localStorage.setItem(appConfig.refreshTokenKey, refreshToken);
     }
   });
 

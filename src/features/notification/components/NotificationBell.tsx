@@ -17,6 +17,7 @@ import 'dayjs/locale/zh-cn';
 import { useUnreadNotifications, useMarkAsRead, useMarkAllAsRead } from '../hooks/useNotifications';
 import { NotificationType, NotificationPriority } from '../types/notification.types';
 import type { Notification } from '../types/notification.types';
+import { getNotificationLink } from '../utils/notificationLink';
 import { useThemeStore } from '@/shared/stores';
 
 dayjs.extend(relativeTime);
@@ -71,8 +72,9 @@ export const NotificationBell: React.FC = () => {
     markAsReadMutation.mutate(notification.id);
 
     // 如果有链接，跳转到指定页面
-    if (notification.link) {
-      navigate(notification.link);
+    const link = getNotificationLink(notification);
+    if (link) {
+      navigate(link);
     }
   };
 

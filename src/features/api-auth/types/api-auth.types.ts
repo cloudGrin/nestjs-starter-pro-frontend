@@ -8,9 +8,8 @@
 export interface ApiApp {
   id: number;
   name: string;
-  appId: string;
   description?: string;
-  ownerId: number;
+  ownerId?: number;
   scopes: string[];
   isActive: boolean;
   createdAt: string;
@@ -82,7 +81,7 @@ export interface ApiAppListResponse {
   items: ApiApp[];
   total: number;
   page: number;
-  limit: number;
+  pageSize: number;
   totalPages: number;
 }
 

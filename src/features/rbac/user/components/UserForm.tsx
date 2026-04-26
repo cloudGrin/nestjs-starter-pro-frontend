@@ -8,7 +8,6 @@ import { useForm, Controller } from 'react-hook-form';
 import type { User, UserStatus } from '@/shared/types/user.types';
 import type { CreateUserDto, UpdateUserDto } from '../types/user.types';
 import { useCreateUser, useUpdateUser } from '../hooks/useUsers';
-import { useActiveRoles } from '@/features/rbac/role/hooks/useRoles';
 
 interface UserFormProps {
   visible: boolean;
@@ -23,7 +22,6 @@ interface UserFormData {
   password?: string;
   nickname?: string;
   status: UserStatus;
-  roleIds?: number[];
 }
 
 /**
@@ -47,12 +45,8 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
       password: '',
       nickname: '',
       status: 'active' as UserStatus,
-      roleIds: [],
     },
   });
-
-  // 获取角色列表
-  const { data: roles, isLoading: rolesLoading } = useActiveRoles();
 
   // 创建/更新Mutation
   const createUser = useCreateUser();
@@ -66,7 +60,6 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
         email: user.email,
         nickname: user.nickname || '',
         status: user.status,
-        roleIds: user.roles.map((r) => r.id),
       });
     } else {
       reset({
@@ -75,7 +68,6 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
         password: '',
         nickname: '',
         status: 'active' as UserStatus,
-        roleIds: [],
       });
     }
   }, [user, reset]);
@@ -89,7 +81,6 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
           email: data.email,
           nickname: data.nickname,
           status: data.status,
-          roleIds: data.roleIds,
         };
         await updateUser.mutateAsync({ id: user.id, data: updateDto });
       } else {
@@ -104,7 +95,6 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
           password: data.password,
           nickname: data.nickname,
           status: data.status,
-          roleIds: data.roleIds,
         };
         await createUser.mutateAsync(createDto);
       }
@@ -142,16 +132,16 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
             rules={{
               required: '用户名不能为空',
               minLength: { value: 3, message: '用户名至少3个字符' },
-              maxLength: { value: 100, message: '用户名最多100个字符' },
+              maxLength: { value: 50, message: '用户名最多50个字符' },
               pattern: {
-                value: /^[a-zA-Z0-9_]+$/,
-                message: '用户名只能包含字母、数字和下划线',
+                value: /^[a-zA-Z0-9_-]+$/,
+                message: '用户名只能包含字母、数字、下划线和连字符',
               },
             }}
             render={({ field }) => (
               <Input
                 {...field}
-                placeholder="请输入用户名（字母、数字、下划线）"
+                placeholder="请输入用户名（字母、数字、下划线或连字符）"
                 disabled={isEditMode} // 编辑模式禁用
               />
             )}
@@ -195,9 +185,14 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
               rules={{
                 required: '密码不能为空',
                 minLength: { value: 6, message: '密码至少6个字符' },
+                maxLength: { value: 50, message: '密码最多50个字符' },
+                pattern: {
+                  value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&_-]+$/,
+                  message: '密码必须包含大小写字母和数字',
+                },
               }}
               render={({ field }) => (
-                <Input.Password {...field} placeholder="请输入密码（至少6位）" />
+                <Input.Password {...field} placeholder="请输入密码（包含大小写字母和数字）" />
               )}
             />
           </Form.Item>
@@ -236,26 +231,6 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
                 <Select.Option value="disabled">禁用</Select.Option>
                 <Select.Option value="locked">锁定</Select.Option>
               </Select>
-            )}
-          />
-        </Form.Item>
-
-        {/* 角色 */}
-        <Form.Item label="角色">
-          <Controller
-            name="roleIds"
-            control={control}
-            render={({ field }) => (
-              <Select
-                {...field}
-                mode="multiple"
-                placeholder="请选择角色（可多选）"
-                loading={rolesLoading}
-                options={roles?.map((role) => ({
-                  label: `${role.name} (${role.code})`,
-                  value: role.id,
-                }))}
-              />
             )}
           />
         </Form.Item>

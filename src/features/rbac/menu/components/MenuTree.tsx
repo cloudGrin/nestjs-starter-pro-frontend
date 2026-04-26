@@ -259,6 +259,28 @@ export function MenuTree({
   const handleSearch = (value: string) => {
     setSearchValue(value);
     if (value) {
+      const keyword = value.toLowerCase();
+      const filterNode = (node: MenuTreeNode): MenuTreeNode | null => {
+        const matches =
+          node.name.toLowerCase().includes(keyword) || node.path?.toLowerCase().includes(keyword);
+
+        const filteredChildren = node.children
+          ?.map((child) => filterNode(child))
+          .filter((child): child is MenuTreeNode => child !== null);
+
+        if (matches || (filteredChildren && filteredChildren.length > 0)) {
+          return {
+            ...node,
+            children: filteredChildren,
+          };
+        }
+
+        return null;
+      };
+      const nextTreeData = treeData
+        .map((node) => filterNode(node))
+        .filter((node): node is MenuTreeNode => node !== null);
+
       // 展开所有匹配的节点
       const getAllKeys = (nodes: MenuTreeNode[]): React.Key[] => {
         let keys: React.Key[] = [];
@@ -270,7 +292,7 @@ export function MenuTree({
         });
         return keys;
       };
-      setExpandedKeys(getAllKeys(filteredTreeData));
+      setExpandedKeys(getAllKeys(nextTreeData));
     } else {
       setExpandedKeys([]);
     }

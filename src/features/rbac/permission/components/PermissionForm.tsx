@@ -3,14 +3,12 @@
  */
 
 import { useEffect } from 'react';
-import { Form, Input, Select, Switch, Modal, InputNumber } from 'antd';
+import { Form, Input, Switch, Modal, InputNumber } from 'antd';
 import type {
   Permission,
   CreatePermissionDto,
   UpdatePermissionDto,
-  PermissionType,
 } from '../types/permission.types';
-import { PermissionType as PermissionTypeEnum } from '../types/permission.types';
 
 const { TextArea } = Input;
 
@@ -22,14 +20,6 @@ interface PermissionFormProps {
   onSubmit: (data: CreatePermissionDto | UpdatePermissionDto) => void;
   onCancel: () => void;
 }
-
-/**
- * 权限类型选项
- */
-const PERMISSION_TYPE_OPTIONS: Array<{ label: string; value: PermissionType }> = [
-  { label: 'API接口权限', value: PermissionTypeEnum.API },
-  { label: '功能权限', value: PermissionTypeEnum.FEATURE },
-];
 
 export function PermissionForm({
   open,
@@ -47,7 +37,6 @@ export function PermissionForm({
         form.setFieldsValue({
           code: permission.code,
           name: permission.name,
-          type: permission.type,
           module: permission.module,
           description: permission.description,
           sort: permission.sort,
@@ -56,7 +45,6 @@ export function PermissionForm({
       } else {
         form.resetFields();
         form.setFieldsValue({
-          type: PermissionTypeEnum.API,
           isActive: true,
           sort: 0,
         });
@@ -122,18 +110,6 @@ export function PermissionForm({
         </Form.Item>
 
         <Form.Item
-          label="权限类型"
-          name="type"
-          rules={[{ required: true, message: '请选择权限类型' }]}
-        >
-          <Select
-            placeholder="选择权限类型"
-            options={PERMISSION_TYPE_OPTIONS}
-            disabled={mode === 'edit' && permission?.isSystem}
-          />
-        </Form.Item>
-
-        <Form.Item
           label="所属模块"
           name="module"
           rules={[
@@ -185,7 +161,7 @@ export function PermissionForm({
 
         {mode === 'edit' && permission?.isSystem && (
           <div className="text-gray-500 text-sm p-3 bg-gray-50 rounded">
-            ⚠️ 系统内置权限的代码、类型和模块不可编辑
+            系统内置权限的代码和模块不可编辑
           </div>
         )}
       </Form>

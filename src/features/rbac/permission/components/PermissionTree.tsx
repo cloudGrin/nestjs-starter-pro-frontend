@@ -12,7 +12,7 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
-import type { PermissionTreeNode, Permission, PermissionType } from '../types/permission.types';
+import type { PermissionTreeNode, Permission } from '../types/permission.types';
 import { PermissionGuard } from '@/shared/components';
 
 const { Search } = Input;
@@ -23,14 +23,6 @@ interface PermissionTreeProps {
   onEdit?: (permission: Permission) => void;
   onDelete?: (id: number) => void;
 }
-
-/**
- * 权限类型配置
- */
-const TYPE_CONFIG: Record<PermissionType, { color: string; label: string }> = {
-  api: { color: 'blue', label: 'API接口' },
-  feature: { color: 'green', label: '功能权限' },
-};
 
 export function PermissionTree({ treeData, loading, onEdit, onDelete }: PermissionTreeProps) {
   const [searchValue, setSearchValue] = useState('');
@@ -73,9 +65,6 @@ export function PermissionTree({ treeData, loading, onEdit, onDelete }: Permissi
       <div className="flex items-center gap-2 mb-1">
         <SafetyCertificateOutlined className="text-blue-500 dark:text-blue-400" />
         <span className="font-medium text-gray-800 dark:text-gray-200">{permission.name}</span>
-        <Tag color={TYPE_CONFIG[permission.type].color}>
-          {TYPE_CONFIG[permission.type].label}
-        </Tag>
         <Tag color={permission.isActive ? 'success' : 'default'}>
           {permission.isActive ? '启用' : '禁用'}
         </Tag>
@@ -158,9 +147,25 @@ export function PermissionTree({ treeData, loading, onEdit, onDelete }: Permissi
    */
   const handleSearch = (value: string) => {
     setSearchValue(value);
-    if (value && filteredTreeData) {
+    const keyword = value.toLowerCase();
+    const nextTreeData = value
+      ? treeData
+          ?.map((node) => ({
+            ...node,
+            permissions: node.permissions.filter(
+              (p) =>
+                p.name.toLowerCase().includes(keyword) ||
+                p.code.toLowerCase().includes(keyword) ||
+                node.name.toLowerCase().includes(keyword) ||
+                node.module.toLowerCase().includes(keyword)
+            ),
+          }))
+          .filter((node) => node.permissions.length > 0)
+      : undefined;
+
+    if (value && nextTreeData) {
       // 展开所有模块节点
-      setExpandedKeys(filteredTreeData.map((node) => node.module));
+      setExpandedKeys(nextTreeData.map((node) => node.module));
     } else {
       setExpandedKeys([]);
     }

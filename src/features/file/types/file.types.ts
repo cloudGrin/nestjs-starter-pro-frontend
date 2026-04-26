@@ -36,7 +36,6 @@ export interface QueryFileDto {
   order?: 'ASC' | 'DESC';
   keyword?: string;
   storage?: 'local' | 'oss';
-  status?: 'uploading' | 'available' | 'processing' | 'failed';
   category?: string;
   module?: string;
   isPublic?: boolean;

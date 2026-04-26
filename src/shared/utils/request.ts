@@ -22,6 +22,13 @@ interface ApiResponse<T = unknown> {
   method?: string;
 }
 
+interface PaginationMeta {
+  totalItems?: number;
+  currentPage?: number;
+  itemsPerPage?: number;
+  totalPages?: number;
+}
+
 /**
  * 请求配置选项（扩展 axios）
  */
@@ -59,15 +66,54 @@ export class UserCancelError extends Error {
 }
 
 function unwrapApiData(responseData: unknown): unknown {
+  const normalizePagination = (data: unknown) => {
+    if (!data || typeof data !== 'object') {
+      return data;
+    }
+
+    const paginationData = data as {
+      items?: unknown;
+      meta?: PaginationMeta;
+      total?: unknown;
+      page?: unknown;
+      pageSize?: unknown;
+      totalPages?: unknown;
+    };
+
+    if (
+      Array.isArray(paginationData.items) &&
+      paginationData.meta &&
+      typeof paginationData.meta === 'object'
+    ) {
+      const { totalItems, currentPage, itemsPerPage, totalPages } = paginationData.meta;
+
+      if (
+        typeof totalItems === 'number' &&
+        typeof currentPage === 'number' &&
+        typeof itemsPerPage === 'number'
+      ) {
+        return {
+          ...paginationData,
+          total: totalItems,
+          page: currentPage,
+          pageSize: itemsPerPage,
+          totalPages: typeof totalPages === 'number' ? totalPages : paginationData.totalPages,
+        };
+      }
+    }
+
+    return data;
+  };
+
   if (
     responseData &&
     typeof responseData === 'object' &&
     Object.prototype.hasOwnProperty.call(responseData, 'data')
   ) {
-    return (responseData as { data: unknown }).data;
+    return normalizePagination((responseData as { data: unknown }).data);
   }
 
-  return responseData;
+  return normalizePagination(responseData);
 }
 
 // 扩展 axios 类型
@@ -411,11 +457,20 @@ axiosInstance.interceptors.response.use(
             refreshToken,
           });
 
-          const { accessToken } = unwrapApiData(response.data) as { accessToken: string };
+          const { accessToken, refreshToken: nextRefreshToken } = unwrapApiData(response.data) as {
+            accessToken: string;
+            refreshToken?: string;
+          };
 
           // 保存新的 Token
           localStorage.setItem(appConfig.tokenKey, accessToken);
-          dispatchAuthEvent('auth:token-refreshed', { accessToken });
+          if (nextRefreshToken) {
+            localStorage.setItem(appConfig.refreshTokenKey, nextRefreshToken);
+          }
+          dispatchAuthEvent('auth:token-refreshed', {
+            accessToken,
+            refreshToken: nextRefreshToken,
+          });
 
           // 更新原请求的 Token
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;

@@ -20,7 +20,6 @@ export interface CreateUserDto {
   bio?: string;
   avatar?: string;
   status?: UserStatus;
-  roleIds?: number[]; // 角色ID列表
 }
 
 /**
@@ -37,7 +36,6 @@ export interface UpdateUserDto {
   bio?: string;
   avatar?: string;
   status?: UserStatus;
-  roleIds?: number[];
 }
 
 /**
