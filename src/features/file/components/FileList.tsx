@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import {
+  Card,
   Table,
   Button,
   Space,
@@ -300,25 +301,27 @@ export const FileList: React.FC = () => {
       }
     >
       {/* 表格 */}
-      <Table
-        columns={columns}
-        dataSource={data?.items || []}
-        rowKey="id"
-        loading={isLoading}
-        scroll={{ x: 1200 }}
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: data?.total || 0,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total) => `共 ${total} 个文件`,
-          onChange: (newPage, newPageSize) => {
-            setPage(newPage);
-            setPageSize(newPageSize);
-          },
-        }}
-      />
+      <Card>
+        <Table
+          columns={columns}
+          dataSource={data?.items || []}
+          rowKey="id"
+          loading={isLoading}
+          scroll={{ x: 1200 }}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: data?.total || 0,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total) => `共 ${total} 个文件`,
+            onChange: (newPage, newPageSize) => {
+              setPage(newPage);
+              setPageSize(newPageSize);
+            },
+          }}
+        />
+      </Card>
 
       {/* 图片预览 */}
       <Image

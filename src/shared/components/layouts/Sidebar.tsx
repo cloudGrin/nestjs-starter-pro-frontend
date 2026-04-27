@@ -134,7 +134,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
       width={SIDEBAR_WIDTH}
       collapsedWidth={SIDEBAR_COLLAPSED_WIDTH}
       theme={themeMode === 'dark' ? 'dark' : 'light'}
-      className="sidebar-bg flex-none border-r transition-theme"
+      className="sidebar-bg flex-none transition-theme"
     >
       <div
         className={cn(
@@ -168,8 +168,12 @@ export function Sidebar({ collapsed }: SidebarProps) {
             theme={themeMode === 'dark' ? 'dark' : 'light'}
             mode="inline"
             selectedKeys={selectedKey ? [selectedKey] : []}
-            openKeys={collapsed ? [] : openKeys}
-            onOpenChange={(keys) => setOpenKeys(keys)}
+            {...(!collapsed && { openKeys })}
+            onOpenChange={(keys) => {
+              if (!collapsed) {
+                setOpenKeys(keys);
+              }
+            }}
             items={menuItems}
             className="sidebar-menu w-full border-r-0 bg-transparent"
           />
