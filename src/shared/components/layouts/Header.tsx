@@ -4,6 +4,8 @@ import {
   MenuUnfoldOutlined,
   UserOutlined,
   LogoutOutlined,
+  ProfileOutlined,
+  LockOutlined,
   BulbOutlined,
   BulbFilled,
   DownOutlined,
@@ -40,6 +42,21 @@ export function Header({ collapsed, onToggleCollapsed }: HeaderProps) {
   };
 
   const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      icon: <ProfileOutlined />,
+      label: '个人资料',
+      onClick: () => navigate('/profile'),
+    },
+    {
+      key: 'password',
+      icon: <LockOutlined />,
+      label: '修改密码',
+      onClick: () => navigate('/profile?tab=password'),
+    },
+    {
+      type: 'divider',
+    },
     {
       key: 'logout',
       icon: <LogoutOutlined />,

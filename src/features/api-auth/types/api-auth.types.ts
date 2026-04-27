@@ -10,7 +10,7 @@ export interface ApiApp {
   name: string;
   description?: string;
   ownerId?: number;
-  scopes: string[];
+  scopes?: string[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -26,7 +26,7 @@ export interface ApiKey {
   displayKey: string; // 脱敏显示的密钥
   prefix: string;
   suffix: string;
-  scopes: string[];
+  scopes?: string[];
   appId: number;
   isActive: boolean;
   lastUsedAt?: string;
@@ -94,7 +94,7 @@ export interface CreateApiKeyResponse {
   key: string; // 完整密钥，仅此一次显示
   prefix: string;
   suffix: string;
-  scopes: string[];
+  scopes?: string[];
   expiresAt?: string;
   createdAt: string;
   message: string;

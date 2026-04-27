@@ -1,5 +1,11 @@
 import { request } from '@/shared/utils/request';
-import type { LoginDto, LoginResponse } from '../types/auth.types';
+import type { User } from '@/shared/types/user.types';
+import type {
+  ChangePasswordDto,
+  LoginDto,
+  LoginResponse,
+  UpdateProfileDto,
+} from '../types/auth.types';
 
 /**
  * 认证服务
@@ -21,4 +27,26 @@ export const authService = {
    * 用户登出
    */
   logout: (refreshToken?: string) => request.post('/auth/logout', { refreshToken }),
+
+  /**
+   * 获取当前用户资料
+   */
+  getProfile: () => request.get<User>('/users/profile'),
+
+  /**
+   * 更新当前用户资料
+   */
+  updateProfile: (data: UpdateProfileDto) => request.put<User>('/users/profile', data),
+
+  /**
+   * 修改当前用户密码
+   */
+  changePassword: (data: ChangePasswordDto) =>
+    request.put('/users/password', data, {
+      requestOptions: {
+        messageConfig: {
+          successMessage: '密码修改成功',
+        },
+      },
+    }),
 };

@@ -3,7 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import { ApiAppList } from './ApiAppList';
 import { ApiKeyList } from './ApiKeyList';
-import { clearMockUser, createMockUser, renderWithProviders, setMockUser } from '@/test/test-utils';
+import {
+  clearMockUser,
+  createMockUser,
+  renderWithProviders,
+  setMockUser,
+  userEvent,
+  waitFor,
+} from '@/test/test-utils';
 
 const hookMocks = vi.hoisted(() => ({
   useApiApps: vi.fn(),
@@ -81,6 +88,27 @@ describe('API Auth permission actions', () => {
     expect(screen.getByRole('button', { name: /创建应用/ })).toBeInTheDocument();
   });
 
+  it('创建应用时权限范围可留空', async () => {
+    const user = userEvent.setup();
+    const mutateAsync = vi.fn().mockResolvedValue({});
+    hookMocks.useCreateApiApp.mockReturnValue({ mutateAsync, isPending: false });
+    setMockUser(createMockUser({ permissions: ['api-app:create'] }));
+
+    renderWithProviders(<ApiAppList />);
+
+    await user.click(screen.getByRole('button', { name: /创建应用/ }));
+    await user.type(screen.getByPlaceholderText('请输入应用名称，如：家庭财务小程序'), 'Personal App');
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        name: 'Personal App',
+        description: '',
+        scopes: [],
+      });
+    });
+  });
+
   it('无 api-app:key:create 权限时隐藏生成密钥按钮', () => {
     setMockUser(createMockUser({ permissions: [] }));
 
@@ -95,5 +123,31 @@ describe('API Auth permission actions', () => {
     renderWithProviders(<ApiKeyList appId={1} />);
 
     expect(screen.getByRole('button', { name: /生成密钥/ })).toBeInTheDocument();
+  });
+
+  it('密钥未覆盖 scopes 时按继承应用权限渲染', () => {
+    setMockUser(createMockUser({ permissions: ['api-app:key:read'] }));
+    hookMocks.useApiKeys.mockReturnValue({
+      data: [
+        {
+          id: 1,
+          name: 'Default Key',
+          displayKey: 'sk_live_****...abcd',
+          prefix: 'sk_live',
+          suffix: 'abcd',
+          scopes: undefined,
+          appId: 1,
+          isActive: true,
+          usageCount: 0,
+          createdAt: '2026-04-27T00:00:00.000Z',
+          updatedAt: '2026-04-27T00:00:00.000Z',
+        },
+      ],
+      isLoading: false,
+    });
+
+    renderWithProviders(<ApiKeyList appId={1} />);
+
+    expect(screen.getByText('继承应用权限')).toBeInTheDocument();
   });
 });

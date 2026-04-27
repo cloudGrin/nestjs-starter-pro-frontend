@@ -1,6 +1,7 @@
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Header } from './Header';
 import { clearMockUser, mockUsers, setMockUser } from '@/test/test-utils';
 
@@ -45,5 +46,25 @@ describe('Header', () => {
     );
 
     expect(screen.getByRole('button', { name: '通知入口' })).toBeInTheDocument();
+  });
+
+  it('用户菜单提供个人资料和修改密码入口', async () => {
+    const user = userEvent.setup();
+    setMockUser({
+      ...mockUsers.user,
+      nickname: '测试用户',
+      permissions: [],
+    });
+
+    render(
+      <MemoryRouter>
+        <Header collapsed={false} onToggleCollapsed={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByText('测试用户'));
+
+    expect(await screen.findByText('个人资料')).toBeInTheDocument();
+    expect(screen.getByText('修改密码')).toBeInTheDocument();
   });
 });

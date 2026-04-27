@@ -285,19 +285,13 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
 
           <Form.Item
             label="权限范围"
-            required
             validateStatus={errors.scopes ? 'error' : ''}
-            help={errors.scopes?.message || '多个权限用逗号分隔，如：finance:read, finance:create'}
+            help={errors.scopes?.message || '可选，多个权限用逗号分隔，如：read:users'}
           >
             <Controller
               name="scopes"
               control={control}
-              rules={{
-                required: '请输入权限范围',
-              }}
-              render={({ field }) => (
-                <Input {...field} placeholder="finance:read, finance:create" />
-              )}
+              render={({ field }) => <Input {...field} placeholder="read:users" />}
             />
           </Form.Item>
         </Form>

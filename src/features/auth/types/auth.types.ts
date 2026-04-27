@@ -24,3 +24,20 @@ export interface LoginResponse {
     sessionId: string;
   };
 }
+
+type ProfileFormFields = Pick<
+  User,
+  'realName' | 'nickname' | 'phone' | 'gender' | 'birthday' | 'address' | 'bio' | 'avatar'
+>;
+
+export type UpdateProfileDto = Partial<{
+  [Field in keyof ProfileFormFields]: Field extends 'gender'
+    ? ProfileFormFields[Field]
+    : ProfileFormFields[Field] | null;
+}>;
+
+export interface ChangePasswordDto {
+  oldPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}

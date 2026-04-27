@@ -32,6 +32,12 @@ const LoginPage = lazy(() =>
   }))
 );
 
+const ProfilePage = lazy(() =>
+  import('@/features/auth/pages/ProfilePage').then((m) => ({
+    default: m.ProfilePage,
+  }))
+);
+
 /**
  * 主布局组件
  */
@@ -146,7 +152,13 @@ export function useAppRoutes() {
           {
             path: '',
             element: withSuspense(MainLayout), // 主布局
-            children: dynamicRoutes, // ← 动态路由（从菜单数据生成）
+            children: [
+              {
+                path: '/profile',
+                element: withSuspense(ProfilePage),
+              },
+              ...dynamicRoutes, // ← 动态路由（从菜单数据生成）
+            ],
           },
         ],
       },

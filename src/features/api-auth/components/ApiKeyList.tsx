@@ -135,16 +135,24 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
       title: '权限范围',
       dataIndex: 'scopes',
       width: 200,
-      render: (scopes: string[]) => (
-        <Space wrap>
-          {scopes.slice(0, 2).map((scope) => (
-            <Tag key={scope} color="blue">
-              {scope}
-            </Tag>
-          ))}
-          {scopes.length > 2 && <Tag>+{scopes.length - 2}</Tag>}
-        </Space>
-      ),
+      render: (scopes?: string[]) => {
+        const effectiveScopes = scopes ?? [];
+
+        if (effectiveScopes.length === 0) {
+          return <Tag>继承应用权限</Tag>;
+        }
+
+        return (
+          <Space wrap>
+            {effectiveScopes.slice(0, 2).map((scope) => (
+              <Tag key={scope} color="blue">
+                {scope}
+              </Tag>
+            ))}
+            {effectiveScopes.length > 2 && <Tag>+{effectiveScopes.length - 2}</Tag>}
+          </Space>
+        );
+      },
     },
     {
       title: '使用次数',
@@ -283,7 +291,7 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
               name="scopes"
               control={control}
               render={({ field }) => (
-                <Input {...field} placeholder="finance:read, finance:create（可选）" />
+                <Input {...field} placeholder="read:users（可选）" />
               )}
             />
           </Form.Item>

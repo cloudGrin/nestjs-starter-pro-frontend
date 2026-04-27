@@ -11,6 +11,7 @@ interface AuthState {
 
   login: (account: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  setUser: (user: User) => void;
   clearAuth: () => void;
 }
 
@@ -85,6 +86,13 @@ export const useAuthStore = create<AuthState>()(
           localStorage.removeItem(appConfig.tokenKey);
           localStorage.removeItem(appConfig.refreshTokenKey);
         }
+      },
+
+      /**
+       * 更新本地用户信息
+       */
+      setUser: (user: User) => {
+        set({ user });
       },
 
       /**

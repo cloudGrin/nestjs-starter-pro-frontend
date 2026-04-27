@@ -65,5 +65,5 @@ export const FILE_SIZE_LIMITS = {
   video: 500 * 1024 * 1024, // 500MB
   audio: 50 * 1024 * 1024, // 50MB
   document: 50 * 1024 * 1024, // 50MB
-  default: 100 * 1024 * 1024, // 100MB
+  default: 50 * 1024 * 1024, // 50MB
 } as const;
