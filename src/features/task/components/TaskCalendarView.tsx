@@ -1,23 +1,58 @@
 import dayjs from 'dayjs';
 import { Card, Empty, List, Space, Tag } from 'antd';
 import { formatDate } from '@/shared/utils';
-import type { PaginatedResult, Task } from '../types/task.types';
+import type { PaginatedResult, Task, TaskActionPending } from '../types/task.types';
 import { TaskQuickActions } from './TaskQuickActions';
 
 interface TaskCalendarViewProps {
   data?: PaginatedResult<Task>;
   loading?: boolean;
+  startDate?: string;
+  endDate?: string;
   onEdit: (task: Task) => void;
   onComplete: (task: Task) => void;
   onReopen: (task: Task) => void;
   onDelete: (task: Task) => void;
+  actionPending?: TaskActionPending | null;
 }
 
-function groupTasksByDate(tasks: Task[]) {
+function isDateInRange(date?: string | null, startDate?: string, endDate?: string) {
+  if (!date) {
+    return false;
+  }
+
+  const value = dayjs(date);
+  if (startDate && value.isBefore(dayjs(startDate))) {
+    return false;
+  }
+
+  if (endDate && value.isAfter(dayjs(endDate))) {
+    return false;
+  }
+
+  return true;
+}
+
+function getGroupDate(task: Task, startDate?: string, endDate?: string) {
+  const dueAtInRange = isDateInRange(task.dueAt, startDate, endDate);
+  const remindAtInRange = isDateInRange(task.remindAt, startDate, endDate);
+
+  if (dueAtInRange) {
+    return task.dueAt;
+  }
+
+  if (remindAtInRange) {
+    return task.remindAt;
+  }
+
+  return task.dueAt ?? task.remindAt;
+}
+
+function groupTasksByDate(tasks: Task[], startDate?: string, endDate?: string) {
   const groups = new Map<string, Task[]>();
 
   for (const task of tasks) {
-    const date = task.dueAt ?? task.remindAt;
+    const date = getGroupDate(task, startDate, endDate);
     const key = date ? dayjs(date).format('YYYY-MM-DD') : '未设置日期';
     groups.set(key, [...(groups.get(key) ?? []), task]);
   }
@@ -32,12 +67,19 @@ function groupTasksByDate(tasks: Task[]) {
 export function TaskCalendarView({
   data,
   loading,
+  startDate,
+  endDate,
   onEdit,
   onComplete,
   onReopen,
   onDelete,
+  actionPending,
 }: TaskCalendarViewProps) {
-  const groups = groupTasksByDate(data?.items ?? []);
+  const groups = groupTasksByDate(data?.items ?? [], startDate, endDate);
+
+  if (loading && groups.length === 0) {
+    return <Card title="加载中" loading />;
+  }
 
   if (!loading && groups.length === 0) {
     return <Empty description="当前日期范围内没有任务" />;
@@ -64,6 +106,7 @@ export function TaskCalendarView({
                     onComplete={onComplete}
                     onReopen={onReopen}
                     onDelete={onDelete}
+                    actionPending={actionPending}
                   />,
                 ]}
               >

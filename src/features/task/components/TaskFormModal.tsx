@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { DatePicker, Form, Input, InputNumber, Modal, Select, Switch } from 'antd';
+import { useEffect, useRef } from 'react';
+import { Alert, DatePicker, Form, Input, InputNumber, Modal, Select, Switch } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import type {
   CreateTaskDto,
@@ -49,11 +49,13 @@ const recurrenceOptions: Array<{ label: string; value: TaskRecurrenceType }> = [
   { label: '自定义间隔', value: 'custom' },
 ];
 
-const reminderChannelOptions: Array<{ label: string; value: TaskReminderChannel }> = [
-  { label: '站内', value: 'internal' },
+const reminderChannelOptions: Array<{ label: string; value: TaskReminderChannel; disabled?: boolean }> = [
+  { label: '站内', value: 'internal', disabled: true },
   { label: 'Bark', value: 'bark' },
   { label: '飞书', value: 'feishu' },
 ];
+
+const externalReminderChannels = new Set<TaskReminderChannel>(['bark', 'feishu']);
 
 const recurrenceTypesWithInterval = new Set<TaskRecurrenceType>([
   'daily',
@@ -71,6 +73,14 @@ function toDateValue(value?: string | null) {
   return value ? dayjs(value) : undefined;
 }
 
+function ensureInternalChannel(channels?: TaskReminderChannel[] | null) {
+  return Array.from(new Set<TaskReminderChannel>(['internal', ...(channels ?? [])]));
+}
+
+function hasExternalChannel(channels?: TaskReminderChannel[] | null) {
+  return channels?.some((channel) => externalReminderChannels.has(channel)) ?? false;
+}
+
 function toPayload(values: TaskFormValues, isEditing: boolean): CreateTaskDto | UpdateTaskDto {
   const payload: CreateTaskDto = {
     title: values.title.trim(),
@@ -80,7 +90,7 @@ function toPayload(values: TaskFormValues, isEditing: boolean): CreateTaskDto | 
     urgent: values.urgent,
     tags: values.tags ?? [],
     recurrenceType: values.recurrenceType,
-    reminderChannels: values.reminderChannels ?? ['internal'],
+    reminderChannels: ensureInternalChannel(values.reminderChannels),
     sendExternalReminder: values.sendExternalReminder,
   };
 
@@ -125,17 +135,31 @@ export function TaskFormModal({
 }: TaskFormModalProps) {
   const [form] = Form.useForm<TaskFormValues>();
   const activeLists = lists.filter((list) => !list.isArchived);
+  const firstActiveListId = activeLists[0]?.id;
+  const initializedKeyRef = useRef<number | 'create' | null>(null);
+  const currentList = task
+    ? lists.find((list) => list.id === task.listId) ?? task.list
+    : undefined;
+  const mustMigrateArchivedList = Boolean(task && currentList?.isArchived);
 
   useEffect(() => {
     if (!open) {
+      initializedKeyRef.current = null;
+      form.resetFields();
       return;
     }
+
+    const nextKey = task?.id ?? 'create';
+    if (initializedKeyRef.current === nextKey) {
+      return;
+    }
+    initializedKeyRef.current = nextKey;
 
     if (task) {
       form.setFieldsValue({
         title: task.title,
         description: task.description ?? undefined,
-        listId: task.listId,
+        listId: mustMigrateArchivedList ? undefined : task.listId,
         assigneeId: task.assigneeId ?? undefined,
         taskType: task.taskType,
         dueAt: toDateValue(task.dueAt),
@@ -145,7 +169,7 @@ export function TaskFormModal({
         tags: task.tags ?? [],
         recurrenceType: task.recurrenceType,
         recurrenceInterval: task.recurrenceInterval ?? undefined,
-        reminderChannels: task.reminderChannels ?? ['internal'],
+        reminderChannels: ensureInternalChannel(task.reminderChannels),
         sendExternalReminder: task.sendExternalReminder,
       });
       return;
@@ -154,7 +178,7 @@ export function TaskFormModal({
     form.setFieldsValue({
       title: '',
       description: undefined,
-      listId: lists.find((list) => !list.isArchived)?.id,
+      listId: firstActiveListId,
       assigneeId: undefined,
       taskType: 'task',
       dueAt: undefined,
@@ -167,11 +191,31 @@ export function TaskFormModal({
       reminderChannels: ['internal'],
       sendExternalReminder: false,
     });
-  }, [form, lists, open, task]);
+  }, [firstActiveListId, form, mustMigrateArchivedList, open, task]);
+
+  useEffect(() => {
+    if (!open || task || form.getFieldValue('listId') || !firstActiveListId) {
+      return;
+    }
+
+    form.setFieldValue('listId', firstActiveListId);
+  }, [firstActiveListId, form, open, task]);
 
   const handleOk = async () => {
-    const values = await form.validateFields();
+    let values: TaskFormValues;
+
+    try {
+      values = await form.validateFields();
+    } catch {
+      // Ant Design has already rendered field-level validation errors.
+      return;
+    }
+
     onSubmit(toPayload(values, Boolean(task)));
+  };
+
+  const handleReminderChannelsChange = (channels: TaskReminderChannel[]) => {
+    form.setFieldValue('reminderChannels', ensureInternalChannel(channels));
   };
 
   return (
@@ -186,11 +230,26 @@ export function TaskFormModal({
       width={720}
     >
       <Form form={form} layout="vertical">
+        {mustMigrateArchivedList ? (
+          <Alert
+            className="mb-4"
+            type="warning"
+            showIcon
+            message="当前任务所属清单已归档，请迁移到可用清单"
+          />
+        ) : null}
+
         <Form.Item
           name="title"
           label="标题"
           rules={[
             { required: true, message: '请输入任务标题' },
+            {
+              validator: (_, value?: string) =>
+                value?.trim()
+                  ? Promise.resolve()
+                  : Promise.reject(new Error('任务标题不能为空')),
+            },
             { max: 200, message: '标题不能超过 200 个字符' },
           ]}
         >
@@ -198,7 +257,18 @@ export function TaskFormModal({
         </Form.Item>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Form.Item name="listId" label="所属清单" rules={[{ required: true, message: '请选择清单' }]}>
+          <Form.Item
+            name="listId"
+            label="所属清单"
+            rules={[
+              {
+                required: true,
+                message: mustMigrateArchivedList
+                  ? '当前任务所属清单已归档，请迁移到可用清单'
+                  : '请选择清单',
+              },
+            ]}
+          >
             <Select
               placeholder="请选择清单"
               options={activeLists.map((list) => ({
@@ -242,11 +312,52 @@ export function TaskFormModal({
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Form.Item name="dueAt" label="截止时间">
+          <Form.Item
+            name="dueAt"
+            label="截止时间"
+            dependencies={['taskType', 'recurrenceType', 'remindAt']}
+            rules={[
+              {
+                validator: (_, value?: Dayjs) => {
+                  const taskType = form.getFieldValue('taskType');
+                  const recurrenceType = form.getFieldValue('recurrenceType');
+                  const remindAt = form.getFieldValue('remindAt');
+
+                  if (taskType === 'anniversary' && !value) {
+                    return Promise.reject(new Error('纪念日必须设置日期'));
+                  }
+                  if (recurrenceType !== 'none' && !value) {
+                    return Promise.reject(new Error('重复任务必须设置截止时间'));
+                  }
+                  if (value && remindAt && dayjs(remindAt).isAfter(value)) {
+                    return Promise.reject(new Error('提醒时间不能晚于截止时间'));
+                  }
+
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
             <DatePicker showTime className="w-full" placeholder="请选择截止时间" />
           </Form.Item>
 
-          <Form.Item name="remindAt" label="提醒时间">
+          <Form.Item
+            name="remindAt"
+            label="提醒时间"
+            dependencies={['dueAt']}
+            rules={[
+              {
+                validator: (_, value?: Dayjs) => {
+                  const dueAt = form.getFieldValue('dueAt');
+                  if (value && dueAt && dayjs(value).isAfter(dueAt)) {
+                    return Promise.reject(new Error('提醒时间不能晚于截止时间'));
+                  }
+
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
             <DatePicker showTime className="w-full" placeholder="请选择提醒时间" />
           </Form.Item>
         </div>
@@ -274,8 +385,31 @@ export function TaskFormModal({
           </Form.Item>
         </div>
 
-        <Form.Item name="reminderChannels" label="提醒渠道">
-          <Select mode="multiple" options={reminderChannelOptions} />
+        <Form.Item noStyle shouldUpdate={(prev, next) => prev.sendExternalReminder !== next.sendExternalReminder}>
+          {({ getFieldValue }) => (
+            <Form.Item
+              name="reminderChannels"
+              label="提醒渠道"
+              rules={[
+                {
+                  validator: (_, value?: TaskReminderChannel[]) => {
+                    const channels = ensureInternalChannel(value);
+                    if (getFieldValue('sendExternalReminder') && !hasExternalChannel(channels)) {
+                      return Promise.reject(new Error('外部提醒需要选择 Bark 或飞书'));
+                    }
+
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+            >
+              <Select
+                mode="multiple"
+                options={reminderChannelOptions}
+                onChange={handleReminderChannelsChange}
+              />
+            </Form.Item>
+          )}
         </Form.Item>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

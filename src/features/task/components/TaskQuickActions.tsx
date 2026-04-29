@@ -6,7 +6,7 @@ import {
   RollbackOutlined,
 } from '@ant-design/icons';
 import { PermissionGuard } from '@/shared/components';
-import type { Task } from '../types/task.types';
+import type { Task, TaskActionPending, TaskActionType } from '../types/task.types';
 
 interface TaskQuickActionsProps {
   task: Task;
@@ -14,6 +14,18 @@ interface TaskQuickActionsProps {
   onComplete: (task: Task) => void;
   onReopen: (task: Task) => void;
   onDelete: (task: Task) => void;
+  actionPending?: TaskActionPending | null;
+}
+
+function isActionPending(
+  actionPending: TaskActionPending | null | undefined,
+  task: Task,
+  type?: TaskActionType
+) {
+  return (
+    actionPending?.taskId === task.id &&
+    (!type || actionPending.type === type)
+  );
 }
 
 export function TaskQuickActions({
@@ -22,12 +34,22 @@ export function TaskQuickActions({
   onComplete,
   onReopen,
   onDelete,
+  actionPending,
 }: TaskQuickActionsProps) {
+  const rowPending = isActionPending(actionPending, task);
+
   return (
     <Space size={4} wrap>
       {task.status === 'completed' ? (
         <PermissionGuard permissions={['task:update']}>
-          <Button size="small" type="text" icon={<RollbackOutlined />} onClick={() => onReopen(task)}>
+          <Button
+            size="small"
+            type="text"
+            icon={<RollbackOutlined />}
+            loading={isActionPending(actionPending, task, 'reopen')}
+            disabled={rowPending}
+            onClick={() => onReopen(task)}
+          >
             重开
           </Button>
         </PermissionGuard>
@@ -37,6 +59,8 @@ export function TaskQuickActions({
             size="small"
             type="text"
             icon={<CheckCircleOutlined />}
+            loading={isActionPending(actionPending, task, 'complete')}
+            disabled={rowPending}
             onClick={() => onComplete(task)}
           >
             完成
@@ -44,7 +68,13 @@ export function TaskQuickActions({
         </PermissionGuard>
       )}
       <PermissionGuard permissions={['task:update']}>
-        <Button size="small" type="text" icon={<EditOutlined />} onClick={() => onEdit(task)}>
+        <Button
+          size="small"
+          type="text"
+          icon={<EditOutlined />}
+          disabled={rowPending}
+          onClick={() => onEdit(task)}
+        >
           编辑
         </Button>
       </PermissionGuard>
@@ -54,6 +84,8 @@ export function TaskQuickActions({
           size="small"
           type="text"
           icon={<DeleteOutlined />}
+          loading={isActionPending(actionPending, task, 'delete')}
+          disabled={rowPending}
           onClick={() => onDelete(task)}
         >
           删除

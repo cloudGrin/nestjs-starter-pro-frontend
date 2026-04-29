@@ -111,11 +111,6 @@ function toQueryParams(values: Record<string, unknown>, view: TaskView): QueryTa
   const searchValues = values as TaskSearchValues;
   const keyword = searchValues.keyword?.trim();
   const dateRange = searchValues.dateRange;
-  const fallbackDateRange: Pick<Partial<QueryTasksParams>, 'startDate' | 'endDate'> = dateRange
-    ? {}
-    : view === 'calendar'
-      ? getCalendarDefaultRange()
-      : {};
   const shouldUseDateRange = supportsDateRange(view);
 
   return {
@@ -127,20 +122,33 @@ function toQueryParams(values: Record<string, unknown>, view: TaskView): QueryTa
     status: searchValues.status,
     assigneeId: searchValues.assigneeId,
     tags: searchValues.tags?.length ? searchValues.tags : undefined,
-    startDate: shouldUseDateRange
-      ? dateRange?.[0]?.startOf('day').toISOString() ?? fallbackDateRange.startDate
-      : undefined,
-    endDate: shouldUseDateRange
-      ? dateRange?.[1]?.endOf('day').toISOString() ?? fallbackDateRange.endDate
-      : undefined,
+    startDate: shouldUseDateRange ? dateRange?.[0]?.startOf('day').toISOString() : undefined,
+    endDate: shouldUseDateRange ? dateRange?.[1]?.endOf('day').toISOString() : undefined,
   };
+}
+
+function toDateRange(startDate?: string, endDate?: string): [Dayjs, Dayjs] | undefined {
+  return startDate && endDate ? [dayjs(startDate), dayjs(endDate)] : undefined;
+}
+
+function toDateRangeParams(dateRange?: [Dayjs, Dayjs]) {
+  return dateRange
+    ? {
+        startDate: dateRange[0].startOf('day').toISOString(),
+        endDate: dateRange[1].endOf('day').toISOString(),
+      }
+    : {};
 }
 
 export function TaskCenterPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchForm] = Form.useForm<TaskSearchValues>();
   const [queryParams, setQueryParams] = useState<QueryTasksParams>(() =>
     getInitialQueryParams(location.search)
+  );
+  const [manualDateRange, setManualDateRange] = useState<[Dayjs, Dayjs] | undefined>(() =>
+    toDateRange(queryParams.startDate, queryParams.endDate)
   );
   const [aggregatedTasks, setAggregatedTasks] = useState<Task[]>([]);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
@@ -161,15 +169,30 @@ export function TaskCenterPage() {
   const deleteTask = useDeleteTask();
 
   const taskLists = taskListsQuery.data ?? [];
+  const activeTaskLists = taskLists.filter((list) => !list.isArchived);
   const users = assigneesQuery.data ?? [];
+  const tasksLoading = tasksQuery.isLoading || tasksQuery.isFetching;
 
   useEffect(() => {
     const taskId = getTaskIdFromSearch(location.search);
-    if (!taskId) {
-      return;
+    if (taskId) {
+      setManualDateRange(undefined);
     }
 
     setQueryParams((previous) => {
+      if (!taskId) {
+        if (!previous.taskId) {
+          return previous;
+        }
+
+        const rest = { ...previous };
+        delete rest.taskId;
+        return {
+          ...rest,
+          page: 1,
+        };
+      }
+
       if (previous.view === 'list' && previous.taskId === taskId) {
         return previous;
       }
@@ -180,6 +203,29 @@ export function TaskCenterPage() {
       };
     });
   }, [location.search]);
+
+  useEffect(() => {
+    searchForm.setFieldsValue({
+      keyword: queryParams.keyword,
+      listId: queryParams.listId,
+      status: queryParams.status,
+      assigneeId: queryParams.assigneeId,
+      tags: queryParams.tags,
+      dateRange: canUseDateRange
+        ? toDateRange(queryParams.startDate, queryParams.endDate)
+        : undefined,
+    });
+  }, [
+    canUseDateRange,
+    queryParams.assigneeId,
+    queryParams.endDate,
+    queryParams.keyword,
+    queryParams.listId,
+    queryParams.startDate,
+    queryParams.status,
+    queryParams.tags,
+    searchForm,
+  ]);
 
   useEffect(() => {
     const items = tasksQuery.data?.items;
@@ -243,29 +289,51 @@ export function TaskCenterPage() {
     setTaskFormOpen(true);
   };
 
+  const resetHighVolumeViewAfterMutation = () => {
+    if (!isHighVolumeView) {
+      return;
+    }
+
+    setAggregatedTasks([]);
+    setQueryParams((previous) => ({
+      ...previous,
+      page: 1,
+    }));
+  };
+
   const handleTaskSubmit = (payload: CreateTaskDto | UpdateTaskDto) => {
     if (currentTask) {
       updateTask.mutate(
         { id: currentTask.id, data: payload },
         {
-          onSuccess: closeTaskForm,
+          onSuccess: () => {
+            closeTaskForm();
+            resetHighVolumeViewAfterMutation();
+          },
         }
       );
       return;
     }
 
     createTask.mutate(payload as CreateTaskDto, {
-      onSuccess: closeTaskForm,
+      onSuccess: () => {
+        closeTaskForm();
+        resetHighVolumeViewAfterMutation();
+      },
     });
   };
 
   const handleSearch = (values: Record<string, unknown>) => {
     clearTaskIdFromUrl();
+    const searchValues = values as TaskSearchValues;
+    setManualDateRange(supportsDateRange(activeView) ? searchValues.dateRange : undefined);
     setQueryParams(toQueryParams(values, activeView));
   };
 
   const handleReset = () => {
     clearTaskIdFromUrl();
+    setManualDateRange(undefined);
+    searchForm.resetFields();
     setQueryParams(getViewDefaults(activeView));
   };
 
@@ -283,11 +351,11 @@ export function TaskCenterPage() {
       tags: previous.tags,
       sort: previous.sort,
       order: previous.order,
-      ...(supportsDateRange(view) && view === 'calendar' && !previous.startDate && !previous.endDate
-        ? getCalendarDefaultRange()
+      ...(supportsDateRange(view) && manualDateRange
+        ? toDateRangeParams(manualDateRange)
         : {}),
-      ...(supportsDateRange(view) && (previous.startDate || previous.endDate)
-        ? { startDate: previous.startDate, endDate: previous.endDate }
+      ...(supportsDateRange(view) && view === 'calendar' && !manualDateRange
+        ? getCalendarDefaultRange()
         : {}),
     }));
   };
@@ -321,13 +389,32 @@ export function TaskCenterPage() {
     isHighVolumeView &&
     (displayTasksData?.items.length ?? 0) < (displayTasksData?.total ?? 0);
 
+  const actionPending =
+    completeTask.isPending
+      ? { type: 'complete' as const, taskId: completeTask.variables as number | undefined }
+      : reopenTask.isPending
+        ? { type: 'reopen' as const, taskId: reopenTask.variables as number | undefined }
+        : deleteTask.isPending
+          ? { type: 'delete' as const, taskId: deleteTask.variables as number | undefined }
+          : null;
+
+  const mutateTaskAction = (
+    mutation: typeof completeTask | typeof reopenTask | typeof deleteTask,
+    task: Task
+  ) => {
+    mutation.mutate(task.id, {
+      onSuccess: resetHighVolumeViewAfterMutation,
+    });
+  };
+
   const sharedViewProps = {
     data: displayTasksData,
-    loading: tasksQuery.isLoading,
+    loading: tasksLoading,
     onEdit: handleEdit,
-    onComplete: (task: Task) => completeTask.mutate(task.id),
-    onReopen: (task: Task) => reopenTask.mutate(task.id),
-    onDelete: (task: Task) => deleteTask.mutate(task.id),
+    onComplete: (task: Task) => mutateTaskAction(completeTask, task),
+    onReopen: (task: Task) => mutateTaskAction(reopenTask, task),
+    onDelete: (task: Task) => mutateTaskAction(deleteTask, task),
+    actionPending,
   };
 
   return (
@@ -335,7 +422,7 @@ export function TaskCenterPage() {
       title="任务中心"
       titleRight={
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={() => tasksQuery.refetch()}>
+          <Button icon={<ReloadOutlined />} loading={tasksQuery.isFetching} onClick={() => tasksQuery.refetch()}>
             刷新
           </Button>
           <PermissionGuard permissions={['task-list:manage']}>
@@ -347,7 +434,7 @@ export function TaskCenterPage() {
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              disabled={taskLists.length === 0}
+              disabled={activeTaskLists.length === 0}
               onClick={handleCreate}
             >
               新建任务
@@ -357,6 +444,7 @@ export function TaskCenterPage() {
       }
       header={
         <SearchForm
+          form={searchForm}
           onSearch={handleSearch}
           onReset={handleReset}
           showRefresh
@@ -434,7 +522,13 @@ export function TaskCenterPage() {
           {
             key: 'calendar',
             label: '日历',
-            children: <TaskCalendarView {...sharedViewProps} />,
+            children: (
+              <TaskCalendarView
+                {...sharedViewProps}
+                startDate={queryParams.startDate}
+                endDate={queryParams.endDate}
+              />
+            ),
           },
           {
             key: 'matrix',
@@ -451,7 +545,7 @@ export function TaskCenterPage() {
 
       {canLoadMore ? (
         <div className="mt-4 flex justify-center">
-          <Button onClick={handleLoadMore} loading={tasksQuery.isLoading}>
+          <Button onClick={handleLoadMore} loading={tasksQuery.isFetching}>
             加载更多
           </Button>
         </div>

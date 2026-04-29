@@ -71,26 +71,36 @@ export function TaskListManageModal({
   };
 
   const handleSubmit = async () => {
-    const values = await form.validateFields();
+    let values: TaskListFormValues;
+    try {
+      values = await form.validateFields();
+    } catch {
+      return;
+    }
+
     const color = values.color?.trim();
     const basePayload = {
       ...values,
       name: values.name.trim(),
     };
 
-    if (editingList) {
-      await updateTaskList.mutateAsync({
-        id: editingList.id,
-        data: {
+    try {
+      if (editingList) {
+        await updateTaskList.mutateAsync({
+          id: editingList.id,
+          data: {
+            ...basePayload,
+            color: color || null,
+          },
+        });
+      } else {
+        await createTaskList.mutateAsync({
           ...basePayload,
-          color: color || null,
-        },
-      });
-    } else {
-      await createTaskList.mutateAsync({
-        ...basePayload,
-        color: color || undefined,
-      });
+          color: color || undefined,
+        });
+      }
+    } catch {
+      return;
     }
 
     resetForm();
@@ -175,6 +185,12 @@ export function TaskListManageModal({
             label="名称"
             rules={[
               { required: true, message: '请输入清单名称' },
+              {
+                validator: (_, value?: string) =>
+                  value?.trim()
+                    ? Promise.resolve()
+                    : Promise.reject(new Error('清单名称不能为空')),
+              },
               { max: 100, message: '名称不能超过 100 个字符' },
             ]}
           >

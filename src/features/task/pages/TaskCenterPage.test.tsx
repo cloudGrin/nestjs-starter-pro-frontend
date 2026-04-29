@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { TaskCenterPage } from './TaskCenterPage';
 import {
@@ -71,6 +71,19 @@ function TaskCenterWithNotificationJump() {
     <>
       <button type="button" onClick={() => navigate('/tasks?taskId=88')}>
         打开任务通知
+      </button>
+      <TaskCenterPage />
+    </>
+  );
+}
+
+function TaskCenterWithTaskIdClear() {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <button type="button" onClick={() => navigate('/tasks')}>
+        清理任务通知
       </button>
       <TaskCenterPage />
     </>
@@ -203,6 +216,25 @@ describe('TaskCenterPage', () => {
     );
   });
 
+  it('shows the calendar default date range in the search form', async () => {
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read'],
+      })
+    );
+
+    renderTaskCenter();
+    await userEvent.click(screen.getByRole('tab', { name: '日历' }));
+    await userEvent.click(screen.getByRole('button', { name: /展开/ }));
+
+    const dateRangeItem = (await screen.findByText('日期范围')).closest('.ant-form-item');
+    expect(dateRangeItem).not.toBeNull();
+    const dateInputs = within(dateRangeItem as HTMLElement).getAllByRole('textbox');
+    expect(dateInputs).toHaveLength(2);
+    expect(dateInputs[0]).not.toHaveValue('');
+    expect(dateInputs[1]).not.toHaveValue('');
+  });
+
   it('loads the next non-table page without exceeding the backend limit', async () => {
     taskHookMocks.useTasks.mockReturnValue({
       data: {
@@ -295,6 +327,117 @@ describe('TaskCenterPage', () => {
         taskId: 42,
       })
     );
+  });
+
+  it('clears notification taskId filters when the URL query is removed', async () => {
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read'],
+      })
+    );
+
+    window.history.pushState({}, '', '/tasks?taskId=42');
+    renderWithProviders(
+      <MemoryRouter initialEntries={['/tasks?taskId=42']}>
+        <TaskCenterWithTaskIdClear />
+      </MemoryRouter>
+    );
+
+    expect(getLastTaskQueryParams()).toEqual(
+      expect.objectContaining({
+        taskId: 42,
+      })
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: '清理任务通知' }));
+
+    expect(getLastTaskQueryParams()).not.toEqual(
+      expect.objectContaining({
+        taskId: 42,
+      })
+    );
+  });
+
+  it('does not carry the calendar default date range back to the list view', async () => {
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read'],
+      })
+    );
+
+    renderTaskCenter();
+    await userEvent.click(screen.getByRole('tab', { name: '日历' }));
+    await userEvent.click(screen.getByRole('tab', { name: '清单' }));
+
+    expect(getLastTaskQueryParams()).toEqual(
+      expect.objectContaining({
+        view: 'list',
+      })
+    );
+    expect(getLastTaskQueryParams()).not.toEqual(
+      expect.objectContaining({
+        startDate: expect.any(String),
+        endDate: expect.any(String),
+      })
+    );
+  });
+
+  it('disables creating tasks when every task list is archived', () => {
+    taskHookMocks.useTaskLists.mockReturnValue({
+      data: [{ id: 1, name: '归档清单', scope: 'family', sort: 0, isArchived: true }],
+      isLoading: false,
+    });
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read', 'task:create'],
+      })
+    );
+
+    renderTaskCenter();
+
+    expect(screen.getByRole('button', { name: /新建任务/ })).toBeDisabled();
+  });
+
+  it('disables row actions while the matching task action is pending', () => {
+    taskHookMocks.useTasks.mockReturnValue({
+      data: {
+        items: [
+          {
+            id: 7,
+            title: '待完成任务',
+            listId: 1,
+            status: 'pending',
+            taskType: 'task',
+            important: false,
+            urgent: false,
+            recurrenceType: 'none',
+            sendExternalReminder: false,
+            createdAt: '2026-04-01T00:00:00.000Z',
+            updatedAt: '2026-04-01T00:00:00.000Z',
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+      },
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    taskHookMocks.useCompleteTask.mockReturnValue({
+      ...mockMutation(),
+      isPending: true,
+      variables: 7,
+    });
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read', 'task:complete', 'task:update', 'task:delete'],
+      })
+    );
+
+    renderTaskCenter();
+
+    expect(screen.getByRole('button', { name: /完成/ })).toBeDisabled();
   });
 
   it('clears date range params when switching to views that do not support date filtering', async () => {

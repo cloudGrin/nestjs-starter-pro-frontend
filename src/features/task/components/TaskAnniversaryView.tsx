@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import { Card, Empty, List, Space, Tag } from 'antd';
 import { formatDate } from '@/shared/utils';
-import type { PaginatedResult, Task } from '../types/task.types';
+import type { PaginatedResult, Task, TaskActionPending } from '../types/task.types';
 import { TaskQuickActions } from './TaskQuickActions';
 
 interface TaskAnniversaryViewProps {
@@ -11,6 +11,7 @@ interface TaskAnniversaryViewProps {
   onComplete: (task: Task) => void;
   onReopen: (task: Task) => void;
   onDelete: (task: Task) => void;
+  actionPending?: TaskActionPending | null;
 }
 
 function getCountdownText(date?: string | null) {
@@ -37,6 +38,7 @@ export function TaskAnniversaryView({
   onComplete,
   onReopen,
   onDelete,
+  actionPending,
 }: TaskAnniversaryViewProps) {
   const tasks = data?.items ?? [];
 
@@ -57,6 +59,7 @@ export function TaskAnniversaryView({
                   onComplete={onComplete}
                   onReopen={onReopen}
                   onDelete={onDelete}
+                  actionPending={actionPending}
                 />,
               ]}
             >

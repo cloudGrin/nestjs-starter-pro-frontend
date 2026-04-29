@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCreateTask, useTasks } from './useTasks';
 
@@ -35,6 +35,22 @@ function CreateTaskConsumer() {
   return null;
 }
 
+function PagingTasksConsumer() {
+  const [page, setPage] = useState(1);
+  const query = useTasks({ view: 'calendar', page, limit: 100 });
+
+  return (
+    <>
+      <div data-testid="task-titles">
+        {query.data?.items.map((task: { title: string }) => task.title).join(',') ?? 'empty'}
+      </div>
+      <button type="button" onClick={() => setPage(2)}>
+        next
+      </button>
+    </>
+  );
+}
+
 describe('task hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,5 +76,35 @@ describe('task hooks', () => {
       expect(serviceMocks.createTask).toHaveBeenCalledWith({ title: 'Pay bills', listId: 1 })
     );
     await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['tasks'] }));
+  });
+
+  it('keeps previous task page data while the next page is loading', async () => {
+    serviceMocks.getTasks.mockImplementation((params) => {
+      if (params.page === 1) {
+        return Promise.resolve({
+          items: [{ id: 1, title: '第一页任务' }],
+          total: 2,
+          page: 1,
+          pageSize: 100,
+        });
+      }
+
+      return new Promise(() => undefined);
+    });
+
+    renderWithQueryClient(<PagingTasksConsumer />);
+
+    expect(await screen.findByText('第一页任务')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'next' }));
+
+    expect(screen.getByTestId('task-titles')).toHaveTextContent('第一页任务');
+    await waitFor(() =>
+      expect(serviceMocks.getTasks).toHaveBeenLastCalledWith({
+        view: 'calendar',
+        page: 2,
+        limit: 100,
+      })
+    );
   });
 });

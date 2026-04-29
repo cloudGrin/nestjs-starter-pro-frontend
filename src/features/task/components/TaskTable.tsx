@@ -10,7 +10,7 @@ import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { SorterResult } from 'antd/es/table/interface';
 import { StatusBadge, TableActions } from '@/shared/components';
 import { formatDate } from '@/shared/utils';
-import type { PaginatedResult, Task } from '../types/task.types';
+import type { PaginatedResult, Task, TaskActionPending, TaskActionType } from '../types/task.types';
 
 interface TaskTableProps {
   data?: PaginatedResult<Task>;
@@ -20,6 +20,18 @@ interface TaskTableProps {
   onReopen: (task: Task) => void;
   onDelete: (task: Task) => void;
   onTableChange: (pagination: TablePaginationConfig, sorter: SorterResult<Task>) => void;
+  actionPending?: TaskActionPending | null;
+}
+
+function isActionPending(
+  actionPending: TaskActionPending | null | undefined,
+  task: Task,
+  type?: TaskActionType
+) {
+  return (
+    actionPending?.taskId === task.id &&
+    (!type || actionPending.type === type)
+  );
 }
 
 function getStatus(task: Task) {
@@ -54,6 +66,7 @@ export function TaskTable({
   onReopen,
   onDelete,
   onTableChange,
+  actionPending,
 }: TaskTableProps) {
   const columns: ColumnsType<Task> = [
     {
@@ -130,38 +143,49 @@ export function TaskTable({
       key: 'actions',
       fixed: 'right',
       width: 220,
-      render: (_, record) => (
-        <TableActions
-          actions={[
-            record.status === 'completed'
-              ? {
-                  label: '重开',
-                  icon: <RollbackOutlined />,
-                  onClick: () => onReopen(record),
-                  permission: 'task:update',
-                }
-              : {
-                  label: '完成',
-                  icon: <CheckCircleOutlined />,
-                  onClick: () => onComplete(record),
-                  permission: 'task:complete',
-                },
-            {
-              label: '编辑',
-              icon: <EditOutlined />,
-              onClick: () => onEdit(record),
-              permission: 'task:update',
-            },
-            {
-              label: '删除',
-              icon: <DeleteOutlined />,
-              onClick: () => onDelete(record),
-              danger: true,
-              permission: 'task:delete',
-            },
-          ]}
-        />
-      ),
+      render: (_, record) => {
+        const rowPending = isActionPending(actionPending, record);
+
+        return (
+          <TableActions
+            actions={[
+              record.status === 'completed'
+                ? {
+                    label: '重开',
+                    icon: <RollbackOutlined />,
+                    onClick: () => onReopen(record),
+                    permission: 'task:update',
+                    loading: isActionPending(actionPending, record, 'reopen'),
+                    disabled: rowPending,
+                  }
+                : {
+                    label: '完成',
+                    icon: <CheckCircleOutlined />,
+                    onClick: () => onComplete(record),
+                    permission: 'task:complete',
+                    loading: isActionPending(actionPending, record, 'complete'),
+                    disabled: rowPending,
+                  },
+              {
+                label: '编辑',
+                icon: <EditOutlined />,
+                onClick: () => onEdit(record),
+                permission: 'task:update',
+                disabled: rowPending,
+              },
+              {
+                label: '删除',
+                icon: <DeleteOutlined />,
+                onClick: () => onDelete(record),
+                danger: true,
+                permission: 'task:delete',
+                loading: isActionPending(actionPending, record, 'delete'),
+                disabled: rowPending,
+              },
+            ]}
+          />
+        );
+      },
     },
   ];
 

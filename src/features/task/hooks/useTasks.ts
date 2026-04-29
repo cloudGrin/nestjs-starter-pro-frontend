@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { taskService } from '../services/task.service';
 import type {
   CreateTaskDto,
@@ -64,6 +64,7 @@ export function useTasks(params: QueryTasksParams) {
   return useQuery({
     queryKey: taskQueryKeys.list(params),
     queryFn: () => taskService.getTasks(params),
+    placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   });
 }

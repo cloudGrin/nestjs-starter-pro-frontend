@@ -21,6 +21,13 @@ export type TaskSortField = 'createdAt' | 'updatedAt' | 'dueAt' | 'remindAt' | '
 
 export type TaskSortOrder = 'ASC' | 'DESC';
 
+export type TaskActionType = 'complete' | 'reopen' | 'delete';
+
+export interface TaskActionPending {
+  type: TaskActionType;
+  taskId?: number;
+}
+
 export interface TaskList {
   id: number;
   name: string;

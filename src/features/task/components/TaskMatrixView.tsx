@@ -1,6 +1,6 @@
 import { Card, Empty, Space, Tag } from 'antd';
 import { formatDate } from '@/shared/utils';
-import type { PaginatedResult, Task } from '../types/task.types';
+import type { PaginatedResult, Task, TaskActionPending } from '../types/task.types';
 import { TaskQuickActions } from './TaskQuickActions';
 
 interface TaskMatrixViewProps {
@@ -10,6 +10,7 @@ interface TaskMatrixViewProps {
   onComplete: (task: Task) => void;
   onReopen: (task: Task) => void;
   onDelete: (task: Task) => void;
+  actionPending?: TaskActionPending | null;
 }
 
 const quadrants = [
@@ -45,12 +46,14 @@ function TaskCard({
   onComplete,
   onReopen,
   onDelete,
+  actionPending,
 }: {
   task: Task;
   onEdit: (task: Task) => void;
   onComplete: (task: Task) => void;
   onReopen: (task: Task) => void;
   onDelete: (task: Task) => void;
+  actionPending?: TaskActionPending | null;
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -70,6 +73,7 @@ function TaskCard({
           onComplete={onComplete}
           onReopen={onReopen}
           onDelete={onDelete}
+          actionPending={actionPending}
         />
       </Space>
     </div>
@@ -83,6 +87,7 @@ export function TaskMatrixView({
   onComplete,
   onReopen,
   onDelete,
+  actionPending,
 }: TaskMatrixViewProps) {
   const tasks = data?.items ?? [];
 
@@ -110,6 +115,7 @@ export function TaskMatrixView({
                     onComplete={onComplete}
                     onReopen={onReopen}
                     onDelete={onDelete}
+                    actionPending={actionPending}
                   />
                 ))}
               </Space>
