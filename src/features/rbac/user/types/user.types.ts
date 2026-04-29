@@ -72,3 +72,15 @@ export interface UserListResponse {
 export interface AssignRolesDto {
   roleIds: number[];
 }
+
+export interface UserNotificationSettings {
+  id?: number;
+  userId: number;
+  barkKey?: string | null;
+  feishuUserId?: string | null;
+}
+
+export interface UpdateUserNotificationSettingsDto {
+  barkKey?: string | null;
+  feishuUserId?: string | null;
+}

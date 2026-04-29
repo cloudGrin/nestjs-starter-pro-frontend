@@ -3,11 +3,21 @@
  */
 
 import { useEffect } from 'react';
-import { App, Modal, Form, Input, Select } from 'antd';
+import { App, Modal, Form, Input, Select, Divider } from 'antd';
 import { useForm, Controller } from 'react-hook-form';
 import type { User, UserStatus } from '@/shared/types/user.types';
-import type { CreateUserDto, UpdateUserDto } from '../types/user.types';
-import { useCreateUser, useUpdateUser } from '../hooks/useUsers';
+import type {
+  CreateUserDto,
+  UpdateUserDto,
+  UserNotificationSettings,
+  UpdateUserNotificationSettingsDto,
+} from '../types/user.types';
+import {
+  useCreateUser,
+  useUpdateUser,
+  useUserNotificationSettings,
+  useUpdateUserNotificationSettings,
+} from '../hooks/useUsers';
 
 interface UserFormProps {
   visible: boolean;
@@ -22,6 +32,29 @@ interface UserFormData {
   password?: string;
   nickname?: string;
   status: UserStatus;
+  barkKey?: string;
+  feishuUserId?: string;
+}
+
+function notificationSettingsToFormValues(
+  settings?: UserNotificationSettings | null
+): Pick<UserFormData, 'barkKey' | 'feishuUserId'> {
+  return {
+    barkKey: settings?.barkKey ?? '',
+    feishuUserId: settings?.feishuUserId ?? '',
+  };
+}
+
+function normalizeOptionalText(value?: string) {
+  const text = value?.trim();
+  return text ? text : null;
+}
+
+function toNotificationSettingsPayload(data: UserFormData): UpdateUserNotificationSettingsDto {
+  return {
+    barkKey: normalizeOptionalText(data.barkKey),
+    feishuUserId: normalizeOptionalText(data.feishuUserId),
+  };
 }
 
 /**
@@ -37,7 +70,8 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
     control,
     handleSubmit,
     reset,
-    formState: { errors },
+    setValue,
+    formState: { errors, dirtyFields },
   } = useForm<UserFormData>({
     defaultValues: {
       username: '',
@@ -45,21 +79,35 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
       password: '',
       nickname: '',
       status: 'active' as UserStatus,
+      barkKey: '',
+      feishuUserId: '',
     },
   });
 
   // 创建/更新Mutation
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
+  const userId = user?.id;
+  const notificationSettingsQuery = useUserNotificationSettings(userId, visible && isEditMode);
+  const updateNotificationSettings = useUpdateUserNotificationSettings();
+  const isNotificationSettingsLoading = isEditMode && notificationSettingsQuery.isLoading;
+  const isNotificationSettingsUnavailable =
+    isNotificationSettingsLoading || (isEditMode && notificationSettingsQuery.isError);
 
   // 编辑模式：填充表单数据
   useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
     if (user) {
       reset({
         username: user.username,
         email: user.email,
         nickname: user.nickname || '',
         status: user.status,
+        barkKey: '',
+        feishuUserId: '',
       });
     } else {
       reset({
@@ -68,21 +116,53 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
         password: '',
         nickname: '',
         status: 'active' as UserStatus,
+        barkKey: '',
+        feishuUserId: '',
       });
     }
-  }, [user, reset]);
+  }, [visible, user, reset]);
+
+  useEffect(() => {
+    if (!user || !notificationSettingsQuery.data) {
+      return;
+    }
+
+    const values = notificationSettingsToFormValues(notificationSettingsQuery.data);
+    if (!dirtyFields.barkKey) {
+      setValue('barkKey', values.barkKey, { shouldDirty: false });
+    }
+    if (!dirtyFields.feishuUserId) {
+      setValue('feishuUserId', values.feishuUserId, { shouldDirty: false });
+    }
+  }, [
+    dirtyFields.barkKey,
+    dirtyFields.feishuUserId,
+    notificationSettingsQuery.data,
+    setValue,
+    user,
+  ]);
 
   // 提交表单
   const onSubmit = async (data: UserFormData) => {
     try {
       if (isEditMode) {
+        if (isNotificationSettingsUnavailable) {
+          return;
+        }
+
         // 编辑模式
         const updateDto: UpdateUserDto = {
           email: data.email,
           nickname: data.nickname,
           status: data.status,
         };
-        await updateUser.mutateAsync({ id: user.id, data: updateDto });
+        await updateUser.mutateAsync({ id: user.id, data: updateDto, silent: true });
+        await updateNotificationSettings.mutateAsync({
+          id: user.id,
+          data: toNotificationSettingsPayload(data),
+          silent: true,
+        });
+        message.success?.('更新用户成功');
       } else {
         // 创建模式
         if (!data.password) {
@@ -99,7 +179,6 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
         await createUser.mutateAsync(createDto);
       }
 
-      // ⚠️ 不需要手动显示提示，Service 层已配置 successMessage
       onSuccess();
       reset();
     } catch (error) {
@@ -114,7 +193,13 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
       open={visible}
       onOk={handleSubmit(onSubmit)}
       onCancel={onCancel}
-      confirmLoading={createUser.isPending || updateUser.isPending}
+      confirmLoading={
+        createUser.isPending ||
+        updateUser.isPending ||
+        updateNotificationSettings.isPending ||
+        isNotificationSettingsLoading
+      }
+      okButtonProps={{ disabled: isNotificationSettingsUnavailable }}
       width={600}
       afterClose={() => reset()}
     >
@@ -230,6 +315,56 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
             )}
           />
         </Form.Item>
+
+        {isEditMode && (
+          <>
+            <Divider orientation="left">通知绑定</Divider>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Form.Item
+                label="Bark Key"
+                htmlFor="barkKey"
+                validateStatus={errors.barkKey ? 'error' : ''}
+                help={errors.barkKey?.message}
+              >
+                <Controller
+                  name="barkKey"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      id="barkKey"
+                      value={field.value || ''}
+                      placeholder="请输入 Bark 设备 Key"
+                      disabled={isNotificationSettingsUnavailable}
+                    />
+                  )}
+                />
+              </Form.Item>
+
+              <Form.Item
+                label="飞书 user_id"
+                htmlFor="feishuUserId"
+                validateStatus={errors.feishuUserId ? 'error' : ''}
+                help={errors.feishuUserId?.message}
+              >
+                <Controller
+                  name="feishuUserId"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      id="feishuUserId"
+                      value={field.value || ''}
+                      placeholder="请输入飞书用户 user_id"
+                      disabled={isNotificationSettingsUnavailable}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </div>
+          </>
+        )}
       </Form>
     </Modal>
   );

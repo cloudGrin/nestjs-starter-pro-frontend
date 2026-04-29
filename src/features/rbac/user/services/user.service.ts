@@ -7,10 +7,16 @@ import type { User } from '@/shared/types/user.types';
 import type {
   CreateUserDto,
   UpdateUserDto,
+  UpdateUserNotificationSettingsDto,
   QueryUserDto,
+  UserNotificationSettings,
   UserListResponse,
   AssignRolesDto,
 } from '../types/user.types';
+
+interface MutationRequestOptions {
+  silent?: boolean;
+}
 
 export const userService = {
   /**
@@ -33,14 +39,34 @@ export const userService = {
   /**
    * 更新用户
    */
-  updateUser: (id: number, data: UpdateUserDto) =>
-    request.put<User>(`/users/${id}`, data, {
-      requestOptions: {
-        messageConfig: {
-          successMessage: '更新用户成功',
-        },
-      },
-    }),
+  updateUser: (id: number, data: UpdateUserDto, options?: MutationRequestOptions) =>
+    options?.silent
+      ? request.put<User>(`/users/${id}`, data)
+      : request.put<User>(`/users/${id}`, data, {
+          requestOptions: {
+            messageConfig: {
+              successMessage: '更新用户成功',
+            },
+          },
+        }),
+
+  getNotificationSettings: (id: number) =>
+    request.get<UserNotificationSettings>(`/users/${id}/notification-settings`),
+
+  updateNotificationSettings: (
+    id: number,
+    data: UpdateUserNotificationSettingsDto,
+    options?: MutationRequestOptions
+  ) =>
+    options?.silent
+      ? request.put<UserNotificationSettings>(`/users/${id}/notification-settings`, data)
+      : request.put<UserNotificationSettings>(`/users/${id}/notification-settings`, data, {
+          requestOptions: {
+            messageConfig: {
+              successMessage: '更新通知绑定成功',
+            },
+          },
+        }),
 
   /**
    * 删除用户（软删除）

@@ -9,6 +9,7 @@ import { userService } from '../services/user.service';
 import type {
   CreateUserDto,
   UpdateUserDto,
+  UpdateUserNotificationSettingsDto,
   QueryUserDto,
   AssignRolesDto,
 } from '../types/user.types';
@@ -48,14 +49,43 @@ export function useUpdateUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateUserDto }) =>
-      userService.updateUser(id, data),
+    mutationFn: ({ id, data, silent }: { id: number; data: UpdateUserDto; silent?: boolean }) =>
+      userService.updateUser(id, data, { silent }),
     onSuccess: () => {
       // 更新成功后，失效相关缓存
       queryClient.invalidateQueries({ queryKey: ['users'] });
       // ⚠️ 不需要手动显示提示，Service 中已配置
     },
     // ⚠️ 不需要 onError，axios 拦截器已统一处理
+  });
+}
+
+export function useUserNotificationSettings(id?: number, enabled = true) {
+  return useQuery({
+    queryKey: ['users', id, 'notification-settings'],
+    queryFn: () => userService.getNotificationSettings(id!),
+    enabled: enabled && typeof id === 'number',
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useUpdateUserNotificationSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+      silent,
+    }: {
+      id: number;
+      data: UpdateUserNotificationSettingsDto;
+      silent?: boolean;
+    }) => userService.updateNotificationSettings(id, data, { silent }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['users', variables.id, 'notification-settings'] });
+    },
   });
 }
 
