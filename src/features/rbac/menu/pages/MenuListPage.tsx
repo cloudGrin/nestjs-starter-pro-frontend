@@ -16,6 +16,7 @@ import {
   useMoveMenu,
 } from '../hooks/useMenus';
 import type { Menu, CreateMenuDto, UpdateMenuDto } from '../types/menu.types';
+import type { MoveMenuDto } from '../types/menu.types';
 
 export function MenuListPage() {
   // 表单Modal状态
@@ -92,8 +93,12 @@ export function MenuListPage() {
   /**
    * 拖拽移动菜单
    */
-  const handleDrop = (dragId: number, targetParentId: number | null) => {
-    moveMenu({ id: dragId, targetParentId });
+  const handleDrop = (
+    dragId: number,
+    targetParentId: number | null,
+    placement?: Omit<MoveMenuDto, 'targetParentId'>
+  ) => {
+    moveMenu({ id: dragId, targetParentId, ...placement });
   };
 
   return (

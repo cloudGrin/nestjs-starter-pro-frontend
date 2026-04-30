@@ -9,6 +9,7 @@ import type {
   QueryMenuDto,
   CreateMenuDto,
   UpdateMenuDto,
+  MoveMenuDto,
 } from '../types/menu.types';
 
 export const menuService = {
@@ -70,10 +71,10 @@ export const menuService = {
   /**
    * 移动菜单节点
    */
-  moveMenu: (id: number, targetParentId: number | null) =>
+  moveMenu: (id: number, data: MoveMenuDto) =>
     request.patch<Menu>(
       `/menus/${id}/move`,
-      { targetParentId },
+      data,
       {
         requestOptions: {
           messageConfig: {

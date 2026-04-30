@@ -40,6 +40,8 @@ export function RoleList({
   onAssignMenus,
   onPageChange,
 }: RoleListProps) {
+  const isProtectedRole = (role: Role) => role.code === 'super_admin' || role.isSystem;
+
   const columns: ColumnsType<Role> = [
     {
       title: 'ID',
@@ -80,8 +82,14 @@ export function RoleList({
       dataIndex: 'isSystem',
       key: 'isSystem',
       width: 100,
-      render: (isSystem: boolean) =>
-        isSystem ? <Tag color="orange">系统角色</Tag> : <Tag>普通角色</Tag>,
+      render: (isSystem: boolean, record) =>
+        record.code === 'super_admin' ? (
+          <Tag color="red">内置超管</Tag>
+        ) : isSystem ? (
+          <Tag color="orange">系统角色</Tag>
+        ) : (
+          <Tag>普通角色</Tag>
+        ),
     },
     {
       title: '排序',
@@ -109,18 +117,26 @@ export function RoleList({
               label: '编辑',
               icon: <EditOutlined />,
               onClick: () => onEdit?.(record),
+              disabled: isProtectedRole(record),
+              tooltip:
+                record.code === 'super_admin' ? '超级管理员默认拥有所有权限和菜单' : undefined,
               permission: 'role:update',
             },
             {
               label: '权限',
               icon: <SafetyCertificateOutlined />,
               onClick: () => onAssignPermissions?.(record),
+              disabled: isProtectedRole(record),
+              tooltip:
+                record.code === 'super_admin' ? '超级管理员默认拥有所有权限' : undefined,
               permission: 'role:permission:assign',
             },
             {
               label: '菜单',
               icon: <MenuOutlined />,
               onClick: () => onAssignMenus?.(record),
+              disabled: isProtectedRole(record),
+              tooltip: record.code === 'super_admin' ? '超级管理员默认拥有所有菜单' : undefined,
               permission: 'role:menu:assign',
             },
             {
@@ -128,7 +144,7 @@ export function RoleList({
               icon: <DeleteOutlined />,
               onClick: () => onDelete?.(record.id),
               danger: true,
-              disabled: record.isSystem, // 系统角色不可删除
+              disabled: isProtectedRole(record),
               permission: 'role:delete',
             },
           ]}

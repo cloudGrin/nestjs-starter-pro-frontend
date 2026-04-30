@@ -1,12 +1,9 @@
 /**
- * 图标选择器组件（简化版）
- * 输入Ant Design图标名称，右侧预览
+ * 图标选择器组件
  */
 
-import { useState, useEffect } from 'react';
-import { Input } from 'antd';
-import { QuestionOutlined } from '@ant-design/icons';
-import { getMenuIcon } from '@/shared/components/icons/menuIcons';
+import { Select } from 'antd';
+import { menuIconMap } from '@/shared/components/icons/menuIcons';
 
 interface IconSelectorProps {
   value?: string;
@@ -17,35 +14,28 @@ interface IconSelectorProps {
 export function IconSelector({
   value,
   onChange,
-  placeholder = '输入图标名称，如 UserOutlined',
+  placeholder = '搜索或选择图标',
 }: IconSelectorProps) {
-  const [iconName, setIconName] = useState(value || '');
-
-  useEffect(() => {
-    setIconName(value || '');
-  }, [value]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const name = e.target.value;
-    setIconName(name);
-    onChange?.(name);
-  };
-
-  // 动态获取图标组件
-  const IconComponent = getMenuIcon(iconName);
+  const options = Object.entries(menuIconMap).map(([name, IconComponent]) => ({
+    value: name,
+    label: (
+      <span className="flex items-center gap-2">
+        <IconComponent />
+        <span>{name}</span>
+      </span>
+    ),
+  }));
 
   return (
-    <Input
-      value={iconName}
-      onChange={handleChange}
+    <Select
+      value={value}
+      onChange={(nextValue) => onChange?.(nextValue)}
       placeholder={placeholder}
-      addonAfter={
-        IconComponent ? (
-          <IconComponent style={{ fontSize: 16 }} />
-        ) : (
-          <QuestionOutlined style={{ fontSize: 16, color: '#ccc' }} />
-        )
-      }
+      allowClear
+      showSearch
+      optionFilterProp="value"
+      options={options}
+      style={{ width: '100%' }}
     />
   );
 }

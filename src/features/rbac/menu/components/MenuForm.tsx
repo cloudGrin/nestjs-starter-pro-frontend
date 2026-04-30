@@ -6,7 +6,13 @@ import { useEffect } from 'react';
 import { Form, Input, Select, Switch, InputNumber, TreeSelect, Modal } from 'antd';
 import { IconSelector } from './IconSelector';
 import { ComponentSelector } from './ComponentSelector';
-import type { Menu, MenuTreeNode, CreateMenuDto, UpdateMenuDto } from '../types/menu.types';
+import {
+  MenuType,
+  type Menu,
+  type MenuTreeNode,
+  type CreateMenuDto,
+  type UpdateMenuDto,
+} from '../types/menu.types';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -84,10 +90,10 @@ export function MenuForm({
    */
   const convertToTreeSelectData = (nodes: MenuTreeNode[], excludeId?: number): TreeSelectNode[] => {
     return nodes
-      .filter((node) => node.id !== excludeId)
+      .filter((node) => node.id !== excludeId && node.type === MenuType.DIRECTORY)
       .map((node) => ({
         value: node.id,
-        title: `${node.name} (${node.type === 'directory' ? '目录' : '菜单'})`,
+        title: `${node.name} (目录)`,
         children: node.children ? convertToTreeSelectData(node.children, excludeId) : [],
       }));
   };

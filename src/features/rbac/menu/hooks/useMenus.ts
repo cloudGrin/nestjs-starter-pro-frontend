@@ -6,7 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { menuService } from '../services/menu.service';
-import type { QueryMenuDto, CreateMenuDto, UpdateMenuDto } from '../types/menu.types';
+import type { QueryMenuDto, CreateMenuDto, UpdateMenuDto, MoveMenuDto } from '../types/menu.types';
 
 /**
  * 获取菜单列表
@@ -95,8 +95,7 @@ export function useMoveMenu() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, targetParentId }: { id: number; targetParentId: number | null }) =>
-      menuService.moveMenu(id, targetParentId),
+    mutationFn: ({ id, ...data }: { id: number } & MoveMenuDto) => menuService.moveMenu(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['menus'] });
     },

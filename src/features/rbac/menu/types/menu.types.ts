@@ -89,3 +89,9 @@ export interface UpdateMenuDto {
   meta?: Record<string, unknown>;
   remark?: string;
 }
+
+export interface MoveMenuDto {
+  targetParentId: number | null;
+  targetId?: number;
+  position?: 'before' | 'after' | 'inside';
+}

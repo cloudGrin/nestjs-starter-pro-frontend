@@ -10,6 +10,7 @@ import { PermissionGuard } from '@/shared/components/auth/PermissionGuard';
 import { EmptyState } from '@/shared/components';
 import { getMenuIcon } from '@/shared/components/icons/menuIcons';
 import { MenuTypeTag } from './MenuTypeTag';
+import { MenuType } from '../types/menu.types';
 import type { MenuTreeNode, Menu } from '../types/menu.types';
 import './MenuTree.css';
 
@@ -21,7 +22,11 @@ interface MenuTreeProps {
   onAdd?: (parentId?: number) => void;
   onEdit?: (menu: Menu) => void;
   onDelete?: (id: number) => void;
-  onDrop?: (dragId: number, targetParentId: number | null) => void;
+  onDrop?: (
+    dragId: number,
+    targetParentId: number | null,
+    placement?: { targetId: number; position: 'before' | 'after' | 'inside' }
+  ) => void;
 }
 
 export function MenuTree({
@@ -217,21 +222,21 @@ export function MenuTree({
     return undefined;
   };
 
+  const findNode = (nodes: MenuTreeNode[], id: number): MenuTreeNode | null => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNode(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
   /**
    * 检查节点是否是后代节点（防止循环引用）
    */
   const isDescendant = (dragId: number, targetId: number): boolean => {
-    const findNode = (nodes: MenuTreeNode[], id: number): MenuTreeNode | null => {
-      for (const node of nodes) {
-        if (node.id === id) return node;
-        if (node.children) {
-          const found = findNode(node.children, id);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
     const dragNode = findNode(treeData, dragId);
     if (!dragNode || !dragNode.children) return false;
 
@@ -257,11 +262,27 @@ export function MenuTree({
     const targetParentId = info.dropToGap
       ? findParentId(treeData, dropNodeId) // 拖到节点前后（同级）
       : dropNodeId; // 拖到节点内部（成为子节点）
+    const dropPosParts = String(info.node.pos ?? '').split('-');
+    const dropNodeIndex = Number(dropPosParts[dropPosParts.length - 1] ?? 0);
+    const relativeDropPosition = (info.dropPosition ?? 0) - dropNodeIndex;
+    const position = info.dropToGap
+      ? relativeDropPosition < 0
+        ? 'before'
+        : 'after'
+      : 'inside';
 
     // 如果findParentId返回undefined（未找到节点），不应该继续
     if (info.dropToGap && targetParentId === undefined) {
       message.error('拖拽失败：无法确定目标位置');
       return;
+    }
+
+    if (!info.dropToGap) {
+      const targetNode = findNode(treeData, dropNodeId);
+      if (targetNode?.type !== MenuType.DIRECTORY) {
+        message.error('只能移动到目录下，不能移动到菜单下');
+        return;
+      }
     }
 
     // 防止循环引用
@@ -271,7 +292,10 @@ export function MenuTree({
     }
 
     // 调用API
-    onDrop?.(dragNodeId, targetParentId ?? null);
+    onDrop?.(dragNodeId, targetParentId ?? null, {
+      targetId: dropNodeId,
+      position,
+    });
   };
 
   /**
@@ -370,6 +394,13 @@ export function MenuTree({
               expandedKeys={expandedKeys}
               onExpand={(keys) => setExpandedKeys(keys)}
               treeData={dataNodes}
+              allowDrop={({ dropNode, dropPosition }) => {
+                if (dropPosition === 0) {
+                  const targetNode = findNode(treeData, dropNode.key as number);
+                  return targetNode?.type === MenuType.DIRECTORY;
+                }
+                return true;
+              }}
               onDrop={handleDrop}
               className="menu-tree-custom p-4"
             />
