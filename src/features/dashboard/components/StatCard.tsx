@@ -1,7 +1,5 @@
 import { Card, Statistic } from 'antd';
 import type { ReactNode } from 'react';
-import { useThemeStore } from '@/shared/stores';
-import { cn } from '@/shared/utils/cn';
 
 interface StatCardProps {
   title: string;
@@ -28,20 +26,13 @@ export function StatCard({
   prefix,
   precision = 0,
 }: StatCardProps) {
-  const { mode: themeMode } = useThemeStore();
-
   return (
     <Card loading={loading} className="h-full overflow-hidden">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <Statistic
             title={
-              <span
-                className={cn(
-                  'text-sm font-medium',
-                  themeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'
-                )}
-              >
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 {title}
               </span>
             }

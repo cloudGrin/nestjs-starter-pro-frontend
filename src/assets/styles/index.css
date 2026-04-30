@@ -31,6 +31,17 @@
   }
 }
 
+@layer components {
+  .app-header-icon-button {
+    @apply flex h-10 w-10 items-center justify-center rounded-lg p-0 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100;
+  }
+
+  .app-header-icon {
+    font-size: 16px !important;
+    line-height: 1;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -65,10 +76,6 @@
   min-height: 100vh;
 }
 
-.sidebar-bg {
-  height: 100vh;
-}
-
 .sidebar-bg .ant-layout-sider-children {
   display: flex;
   height: 100%;
@@ -77,6 +84,7 @@
 
 .sidebar-menu.ant-menu-inline {
   width: 100%;
+  border-inline-end: 0 !important;
 }
 
 .sidebar-menu.ant-menu-inline .ant-menu-item,
@@ -120,11 +128,6 @@
 
 .ant-table-tbody > tr:hover > td {
   background: #f8fafc !important;
-}
-
-.ant-table-cell-fix-left,
-.ant-table-cell-fix-right {
-  background: #ffffff !important;
 }
 
 .ant-table-tbody > tr:hover > .ant-table-cell-fix-left,
@@ -232,6 +235,57 @@
   white-space: nowrap;
 }
 
+.app-breadcrumbs .app-breadcrumb-linkable,
+.app-breadcrumbs .app-breadcrumb-current,
+.app-breadcrumbs .app-breadcrumb-muted {
+  display: inline-flex;
+  max-width: 260px;
+  min-height: 28px;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 6px;
+  line-height: 20px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-breadcrumbs .app-breadcrumb-linkable,
+.app-breadcrumbs .app-breadcrumb-current {
+  margin-inline: -4px;
+  padding: 4px 8px;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.app-breadcrumbs .app-breadcrumb-linkable:hover,
+.app-breadcrumbs .app-breadcrumb-current:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.app-breadcrumbs .app-breadcrumb-muted {
+  padding: 4px 2px;
+}
+
+.app-breadcrumbs .app-breadcrumb-current {
+  color: inherit;
+  font-weight: inherit;
+}
+
+.dark .app-breadcrumbs .app-breadcrumb-linkable:hover,
+.dark .app-breadcrumbs .app-breadcrumb-current:hover {
+  background: rgba(148, 163, 184, 0.14);
+  color: #f8fafc;
+}
+
+.dark .app-breadcrumbs .app-breadcrumb-current {
+  color: inherit;
+}
+
 .login-panel.ant-card {
   border: 0 !important;
   border-radius: 0 !important;
@@ -264,13 +318,13 @@
 }
 
 .dark .ant-table-thead > tr > th {
-  background: rgba(30, 41, 59, 0.88) !important;
+  background: rgba(30, 41, 59, 1) !important;
   border-color: rgba(102, 126, 234, 0.14) !important;
   color: #cbd5e1 !important;
 }
 
 .dark .ant-table-tbody > tr > td {
-  background: rgba(30, 41, 59, 0.64) !important;
+  background: rgba(30, 41, 59, 1) !important;
   border-color: rgba(102, 126, 234, 0.12) !important;
   color: #e5e7eb !important;
 }

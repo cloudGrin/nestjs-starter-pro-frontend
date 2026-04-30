@@ -8,30 +8,23 @@
 import { Button } from 'antd';
 import { HomeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useThemeStore } from '@/shared/stores';
 
 export function NotFoundPage() {
   const navigate = useNavigate();
-  const { mode } = useThemeStore();
-  const isDark = mode === 'dark';
 
   return (
-    <div
-      className={`flex flex-col items-center justify-center min-h-screen px-4 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
-    >
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 dark:bg-gray-900">
       <div className="mb-8 relative">
         <div className="text-[160px] font-black text-gray-300 dark:text-gray-700 leading-none select-none">
           404
         </div>
       </div>
 
-      <p className={`text-xl mb-2 text-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+      <p className="mb-2 text-center text-xl text-gray-600 dark:text-gray-300">
         页面未找到
       </p>
 
-      <p
-        className={`text-sm mb-8 text-center max-w-md ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
-      >
+      <p className="mb-8 max-w-md text-center text-sm text-gray-500 dark:text-gray-400">
         抱歉，您访问的页面不存在或已被移除
       </p>
 

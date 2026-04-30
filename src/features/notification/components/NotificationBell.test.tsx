@@ -52,4 +52,13 @@ describe('NotificationBell', () => {
 
     expect(navigateMock).toHaveBeenCalledWith('/system/notifications');
   });
+
+  it('通知入口使用统一的语义图标按钮样式类', () => {
+    renderWithProviders(<NotificationBell />);
+
+    const button = screen.getByRole('button', { name: 'bell' });
+
+    expect(button.className).toContain('app-header-icon-button');
+    expect(button.querySelector('.app-header-icon')).toBeInTheDocument();
+  });
 });

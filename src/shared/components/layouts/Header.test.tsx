@@ -48,6 +48,26 @@ describe('Header', () => {
     expect(screen.getByRole('button', { name: '通知入口' })).toBeInTheDocument();
   });
 
+  it('顶部图标按钮使用统一的语义样式类', () => {
+    setMockUser({
+      ...mockUsers.user,
+      permissions: [],
+    });
+
+    const { container } = render(
+      <MemoryRouter>
+        <Header collapsed={false} onToggleCollapsed={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    const iconButtons = Array.from(container.querySelectorAll('.ant-btn')).filter(
+      (button) => button.className.includes('app-header-icon-button')
+    );
+
+    expect(iconButtons).toHaveLength(2);
+    expect(container.querySelectorAll('.app-header-icon')).toHaveLength(2);
+  });
+
   it('用户菜单提供个人资料和修改密码入口', async () => {
     const user = userEvent.setup();
     setMockUser({

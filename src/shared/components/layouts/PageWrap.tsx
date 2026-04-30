@@ -5,7 +5,6 @@ import { useBreadcrumb } from '@/shared/hooks/useBreadcrumb';
 import { ErrorBoundary } from '../error/ErrorBoundary';
 import { RightOutlined } from '@ant-design/icons';
 import styles from './PageWrap.module.css';
-import { useThemeStore } from '@/shared/stores';
 
 interface PageWrapProps {
   /** 页面内容 */
@@ -37,17 +36,16 @@ export function PageWrap({
   includeBreadcrumbs = false,
   sticky = false,
 }: PageWrapProps) {
-  const { mode: themeMode } = useThemeStore();
   const breadcrumbItems = useBreadcrumb();
 
   return (
     <div
       className={cn(
         'flex flex-col w-full h-full',
-        themeMode === 'dark' ? 'bg-gray-900' : 'bg-gray-50',
+        'bg-gray-50 dark:bg-gray-900',
         {
           // sticky模式：header固定在顶部
-          '[&>.page-wrap-header]:sticky [&>.page-wrap-header]:top-0 [&>.page-wrap-header]:z-10 [&>.page-wrap-header]:shadow-sm':
+          '[&>.page-wrap-header]:sticky [&>.page-wrap-header]:top-0 [&>.page-wrap-header]:z-10':
             sticky,
           '[&>.page-wrap-content]:overflow-y-auto': sticky,
         }
@@ -57,9 +55,7 @@ export function PageWrap({
         <div
           className={cn(
             'page-wrap-header relative w-full border-b px-5 py-4',
-            themeMode === 'dark'
-              ? 'bg-slate-900/80 border-slate-700'
-              : 'bg-white border-slate-200 shadow-sm'
+            'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/80'
           )}
         >
           {includeBreadcrumbs && breadcrumbItems.length > 0 && (
@@ -71,25 +67,11 @@ export function PageWrap({
               <Breadcrumb
                 className="app-breadcrumbs"
                 separator={
-                  <RightOutlined
-                    className={cn(
-                      'text-xs',
-                      themeMode === 'dark' ? 'text-slate-400' : 'text-gray-400'
-                    )}
-                  />
+                  <RightOutlined className="text-xs text-gray-400 dark:text-slate-400" />
                 }
-                items={breadcrumbItems.map((item, index) => ({
+                items={breadcrumbItems.map((item) => ({
                   ...item,
-                  className: cn(
-                    'text-sm',
-                    index === breadcrumbItems.length - 1
-                      ? themeMode === 'dark'
-                        ? 'text-slate-100 font-semibold'
-                        : 'text-gray-900 font-semibold'
-                      : themeMode === 'dark'
-                        ? 'text-slate-300 hover:text-slate-100 cursor-pointer'
-                        : 'text-gray-500 hover:text-blue-600 cursor-pointer'
-                  ),
+                  className: cn('text-sm text-gray-500 dark:text-slate-300'),
                 }))}
               />
             </div>
@@ -101,12 +83,7 @@ export function PageWrap({
                 'mb-5': !!header,
               })}
             >
-              <h1
-                className={cn(
-                  'm-0 min-w-0 text-xl font-bold leading-8',
-                  themeMode === 'dark' ? 'text-white' : 'text-black'
-                )}
-              >
+              <h1 className="m-0 min-w-0 text-xl font-bold leading-8 text-black dark:text-white">
                 {title}
               </h1>
               {titleRight && (
@@ -119,7 +96,7 @@ export function PageWrap({
         </div>
       )}
 
-      <div className="page-wrap-content flex-1 w-full overflow-auto p-4 lg:p-5">
+      <div className="page-wrap-content flex-1 w-full overflow-auto p-2 lg:p-3">
         <ErrorBoundary>{children}</ErrorBoundary>
       </div>
 
@@ -127,7 +104,7 @@ export function PageWrap({
         <div
           className={cn(
             'page-wrap-footer w-full border-t px-5 py-4',
-            themeMode === 'dark' ? 'bg-slate-900/80 border-slate-700' : 'bg-white border-gray-200'
+            'border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/80'
           )}
         >
           <ErrorBoundary>{footer}</ErrorBoundary>

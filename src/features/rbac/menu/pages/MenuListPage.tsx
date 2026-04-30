@@ -4,10 +4,10 @@
 
 import { useState } from 'react';
 import { Card, Button, Space } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { MenuTree } from '../components/MenuTree';
 import { MenuForm } from '../components/MenuForm';
-import { PageWrap } from '@/shared/components';
+import { PageWrap, PermissionGuard } from '@/shared/components';
 import {
   useMenuTree,
   useCreateMenu,
@@ -104,10 +104,15 @@ export function MenuListPage() {
           <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
             刷新
           </Button>
+          <PermissionGuard permissions={['menu:create']}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleCreate()}>
+              创建顶级菜单
+            </Button>
+          </PermissionGuard>
         </Space>
       }
     >
-      <Card>
+      <Card className="shadow-sm dark:border-slate-700">
         <MenuTree
           treeData={menuTree}
           loading={treeLoading}

@@ -101,65 +101,80 @@ export function MenuForm({
       onOk={handleSubmit}
       onCancel={onCancel}
       confirmLoading={loading}
-      width={700}
+      width={760}
       styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
     >
-      <Form form={form} layout="vertical" autoComplete="off">
-        <Form.Item
-          label="菜单名称"
-          name="name"
-          rules={[
-            { required: true, message: '请输入菜单名称' },
-            { min: 2, max: 50, message: '菜单名称长度为2-50个字符' },
-          ]}
-        >
-          <Input placeholder="输入菜单名称（如：用户管理）" />
-        </Form.Item>
+      <Form form={form} layout="vertical" autoComplete="off" className="pt-2">
+        <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+          <Form.Item
+            label="菜单名称"
+            name="name"
+            rules={[
+              { required: true, message: '请输入菜单名称' },
+              { min: 2, max: 50, message: '菜单名称长度为2-50个字符' },
+            ]}
+          >
+            <Input placeholder="输入菜单名称（如：用户管理）" />
+          </Form.Item>
 
-        <Form.Item
-          label="菜单类型"
-          name="type"
-          rules={[{ required: true, message: '请选择菜单类型' }]}
-        >
-          <Select placeholder="选择菜单类型">
-            <Option value="directory">目录（有子菜单，不对应路由）</Option>
-            <Option value="menu">菜单（对应具体页面）</Option>
-          </Select>
-        </Form.Item>
+          <Form.Item
+            label="菜单类型"
+            name="type"
+            rules={[{ required: true, message: '请选择菜单类型' }]}
+          >
+            <Select placeholder="选择菜单类型">
+              <Option value="directory">目录（有子菜单，不对应路由）</Option>
+              <Option value="menu">菜单（对应具体页面）</Option>
+            </Select>
+          </Form.Item>
+        </div>
 
-        <Form.Item label="父菜单" name="parentId">
-          <TreeSelect
-            treeData={parentMenuOptions}
-            placeholder="选择父菜单（留空为顶级菜单）"
-            allowClear
-            treeDefaultExpandAll
-          />
-        </Form.Item>
+        <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+          <Form.Item label="父菜单" name="parentId">
+            <TreeSelect
+              treeData={parentMenuOptions}
+              placeholder="选择父菜单（留空为顶级菜单）"
+              allowClear
+              treeDefaultExpandAll
+            />
+          </Form.Item>
 
-        <Form.Item
-          label="路由路径"
-          name="path"
-          rules={[
-            {
-              validator: (_, value?: string) => {
-                if (menuType === 'menu' && !value?.trim()) {
-                  return Promise.reject(new Error('菜单类型必须填写路由路径'));
-                }
-                return Promise.resolve();
+          <Form.Item label="排序" name="sort">
+            <InputNumber
+              min={0}
+              max={9999}
+              placeholder="数字越小越靠前"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        </div>
+
+        <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+          <Form.Item
+            label="路由路径"
+            name="path"
+            rules={[
+              {
+                validator: (_, value?: string) => {
+                  if (menuType === 'menu' && !value?.trim()) {
+                    return Promise.reject(new Error('菜单类型必须填写路由路径'));
+                  }
+                  return Promise.resolve();
+                },
               },
-            },
-            {
-              pattern: /^\/[a-zA-Z0-9/_-]*$/,
-              message: '路径必须以/开头，只能包含字母、数字、/、-、_',
-            },
-          ]}
-        >
-          <Input placeholder="输入路由路径（如：/system/users）" />
-        </Form.Item>
+              {
+                pattern: /^\/[a-zA-Z0-9/_-]*$/,
+                message: '路径必须以/开头，只能包含字母、数字、/、-、_',
+              },
+            ]}
+          >
+            <Input placeholder="输入路由路径（如：/system/users）" />
+          </Form.Item>
 
-        <Form.Item label="菜单图标" name="icon">
-          <IconSelector placeholder="输入Ant Design图标名称（如：UserOutlined）" />
-        </Form.Item>
+          <Form.Item label="菜单图标" name="icon">
+            <IconSelector placeholder="输入Ant Design图标名称（如：UserOutlined）" />
+          </Form.Item>
+        </div>
 
         {menuType === 'menu' && (
           <Form.Item
@@ -173,11 +188,7 @@ export function MenuForm({
           </Form.Item>
         )}
 
-        <Form.Item label="排序" name="sort">
-          <InputNumber min={0} max={9999} placeholder="数字越小越靠前" style={{ width: '100%' }} />
-        </Form.Item>
-
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 rounded-lg border border-slate-200 bg-slate-50/70 px-4 pt-4 dark:border-slate-700 dark:bg-slate-900/40 md:grid-cols-2">
           <Form.Item label="启用状态" name="isActive" valuePropName="checked">
             <Switch checkedChildren="启用" unCheckedChildren="禁用" />
           </Form.Item>

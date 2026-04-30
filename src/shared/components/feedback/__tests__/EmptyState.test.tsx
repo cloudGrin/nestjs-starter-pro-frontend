@@ -8,21 +8,12 @@
  * 4. 自定义插画渲染
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/test-utils';
 import { EmptyState } from '../EmptyState';
 import { Button } from 'antd';
-
-// Mock themeStore to avoid window.matchMedia error during initialization
-vi.mock('@/shared/stores/themeStore', () => ({
-  useThemeStore: vi.fn(() => ({
-    theme: 'light',
-    setTheme: vi.fn(),
-    toggleTheme: vi.fn(),
-  })),
-}));
 
 describe('EmptyState 组件', () => {
   it('应该渲染默认空状态', () => {
@@ -75,5 +66,14 @@ describe('EmptyState 组件', () => {
     expect(screen.getByText('空数据')).toBeInTheDocument();
     // 不应该有描述文字
     expect(screen.queryByText('还没有任何内容')).not.toBeInTheDocument();
+  });
+
+  it('应该同时声明浅色和深色文字类', () => {
+    renderWithProviders(<EmptyState title="空数据" description="暂无内容" />);
+
+    expect(screen.getByText('空数据').className).toContain('text-gray-900');
+    expect(screen.getByText('空数据').className).toContain('dark:text-gray-100');
+    expect(screen.getByText('暂无内容').className).toContain('text-gray-500');
+    expect(screen.getByText('暂无内容').className).toContain('dark:text-gray-400');
   });
 });

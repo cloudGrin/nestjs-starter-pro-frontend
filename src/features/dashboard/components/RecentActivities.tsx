@@ -6,8 +6,6 @@ import 'dayjs/locale/zh-cn';
 import { useUsers } from '@/features/rbac/user/hooks/useUsers';
 import { useNotifications } from '@/features/notification/hooks/useNotifications';
 import { EmptyState, PermissionGuard } from '@/shared/components';
-import { useThemeStore } from '@/shared/stores';
-import { cn } from '@/shared/utils/cn';
 import { UserStatus } from '@/shared/types/user.types';
 import {
   NotificationPriority,
@@ -19,7 +17,6 @@ dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
 
 function RecentUsersCard() {
-  const { mode: themeMode } = useThemeStore();
   const { data: usersData, isLoading: usersLoading } = useUsers({
     page: 1,
     limit: 5,
@@ -65,12 +62,7 @@ function RecentUsersCard() {
                   </div>
                 }
                 description={
-                  <span
-                    className={cn(
-                      'flex items-center gap-1 text-xs',
-                      themeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'
-                    )}
-                  >
+                  <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
                     <ClockCircleOutlined />
                     {dayjs(user.createdAt).fromNow()}
                   </span>
@@ -85,7 +77,6 @@ function RecentUsersCard() {
 }
 
 function RecentNotificationsCard() {
-  const { mode: themeMode } = useThemeStore();
   const { data: notificationsData, isLoading: notificationsLoading } = useNotifications({
     page: 1,
     limit: 5,
@@ -137,12 +128,7 @@ function RecentNotificationsCard() {
                   </div>
                 }
                 description={
-                  <span
-                    className={cn(
-                      'flex items-center gap-1 text-xs',
-                      themeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'
-                    )}
-                  >
+                  <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
                     <ClockCircleOutlined />
                     {dayjs(notification.createdAt).fromNow()}
                   </span>

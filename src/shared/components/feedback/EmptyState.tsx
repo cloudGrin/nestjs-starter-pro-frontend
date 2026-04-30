@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { EmptyIllustration } from '../illustrations';
-import { useThemeStore } from '@/shared/stores';
 
 interface EmptyStateProps {
   /** 图标 */
@@ -25,9 +24,6 @@ export function EmptyState({
   illustration,
   illustrationSize = 200,
 }: EmptyStateProps) {
-  const { mode } = useThemeStore();
-  const isDark = mode === 'dark';
-
   // 如果传入了icon，使用旧的图标样式（向后兼容）
   if (icon) {
     return (
@@ -39,22 +35,19 @@ export function EmptyState({
             mb-5
             relative
             overflow-hidden
-            ${isDark ? 'bg-gray-800' : 'bg-gray-100'}
+            bg-gray-100
+            dark:bg-gray-800
           `}
         >
           <div className="relative z-10">{icon}</div>
         </div>
 
-        <h3
-          className={`mb-2 text-base font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}
-        >
+        <h3 className="mb-2 text-base font-semibold text-gray-900 dark:text-gray-100">
           {title}
         </h3>
 
         {description && (
-          <p
-            className={`mb-6 max-w-md text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
-          >
+          <p className="mb-6 max-w-md text-center text-sm text-gray-500 dark:text-gray-400">
             {description}
           </p>
         )}
@@ -70,14 +63,12 @@ export function EmptyState({
         {illustration || <EmptyIllustration size={illustrationSize} />}
       </div>
 
-      <h3 className={`mb-2 text-base font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+      <h3 className="mb-2 text-base font-semibold text-gray-900 dark:text-gray-100">
         {title}
       </h3>
 
       {description && (
-        <p
-          className={`mb-6 max-w-md text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
-        >
+        <p className="mb-6 max-w-md text-center text-sm text-gray-500 dark:text-gray-400">
           {description}
         </p>
       )}

@@ -4,6 +4,10 @@ import { useUserMenus } from '@/features/rbac/menu/hooks/useMenus';
 import type { MenuTreeNode } from '@/features/rbac/menu/types/menu.types';
 import type { BreadcrumbItemType } from 'antd/es/breadcrumb/Breadcrumb';
 
+const BREADCRUMB_LINK_CLASS = 'app-breadcrumb-linkable';
+const BREADCRUMB_CURRENT_CLASS = 'app-breadcrumb-current';
+const BREADCRUMB_MUTED_CLASS = 'app-breadcrumb-muted';
+
 /**
  * 根据路径在菜单树中查找匹配的菜单项及其父级路径
  */
@@ -30,6 +34,30 @@ function findMenuPath(
   return null;
 }
 
+function getBreadcrumbPath(menu: MenuTreeNode): string | null {
+  if (menu.type === 'menu' && menu.path && !menu.isExternal) {
+    return menu.path;
+  }
+
+  return null;
+}
+
+function createBreadcrumbTitle(label: string, path: string | null, isCurrentPage: boolean) {
+  if (isCurrentPage) {
+    return createElement(
+      'a',
+      { href: path ?? '#', 'aria-current': 'page', className: BREADCRUMB_CURRENT_CLASS },
+      label
+    );
+  }
+
+  if (path) {
+    return createElement(Link, { to: path, className: BREADCRUMB_LINK_CLASS }, label);
+  }
+
+  return createElement('span', { className: BREADCRUMB_MUTED_CLASS }, label);
+}
+
 /**
  * 自动根据当前路径生成面包屑
  * 从菜单树中查找匹配的菜单项及其所有父级
@@ -42,7 +70,7 @@ export function useBreadcrumb(): BreadcrumbItemType[] {
     // 始终包含首页（使用 Ant Design 的图标字符串）
     const items: BreadcrumbItemType[] = [
       {
-        title: createElement(Link, { to: '/' }, '首页'),
+        title: createBreadcrumbTitle('首页', '/', location.pathname === '/'),
       },
     ];
 
@@ -57,11 +85,15 @@ export function useBreadcrumb(): BreadcrumbItemType[] {
     // 如果找到了匹配的菜单路径，添加到面包屑中
     if (menuPath && menuPath.length > 0) {
       menuPath.forEach((menu) => {
+        const isCurrentPage = menu.path === location.pathname;
+        const path = getBreadcrumbPath(menu);
+
         items.push({
-          title:
-            menu.type === 'menu' && menu.path
-              ? createElement(Link, { to: menu.path }, menu.name)
-              : menu.name,
+          title: createBreadcrumbTitle(
+            menu.name,
+            isCurrentPage ? location.pathname : path,
+            isCurrentPage
+          ),
         });
       });
     }

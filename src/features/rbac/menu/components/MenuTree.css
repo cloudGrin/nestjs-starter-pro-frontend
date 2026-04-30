@@ -5,8 +5,11 @@
 
 /* 树节点基础样式 */
 .menu-tree-custom .ant-tree-treenode {
-  padding: 4px 0;
-  border-radius: 6px;
+  padding: 2px 0;
+  border-radius: 8px;
+  transition:
+    background-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .menu-tree-custom .ant-tree-treenode:hover {
@@ -21,6 +24,7 @@
 .menu-tree-custom .ant-tree-node-content-wrapper {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
   padding: 0 !important;
   background: transparent !important;
 }
@@ -59,7 +63,7 @@
 .menu-tree-custom .ant-tree-treenode.drag-over {
   background-color: #eff6ff;
   border: 2px dashed #3b82f6;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .dark .menu-tree-custom .ant-tree-treenode.drag-over {
@@ -100,10 +104,26 @@
 /* 操作按钮hover效果 */
 .menu-tree-actions {
   opacity: 0;
+  pointer-events: none;
+  transform: translateX(4px);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 
-.menu-tree-node:hover .menu-tree-actions {
+.menu-tree-node:hover .menu-tree-actions,
+.menu-tree-node:focus-within .menu-tree-actions {
   opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+@media (hover: none) {
+  .menu-tree-actions {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
 }
 
 /* 确保菜单标题颜色不被覆盖 */

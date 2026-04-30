@@ -18,7 +18,6 @@ import { useUnreadNotifications, useMarkAsRead, useMarkAllAsRead } from '../hook
 import { NotificationType, NotificationPriority } from '../types/notification.types';
 import type { Notification } from '../types/notification.types';
 import { getNotificationLink } from '../utils/notificationLink';
-import { useThemeStore } from '@/shared/stores';
 
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
@@ -55,7 +54,6 @@ const getTypeIcon = (type: NotificationType): React.ReactNode => {
  */
 export const NotificationBell: React.FC = () => {
   const navigate = useNavigate();
-  const { mode: themeMode } = useThemeStore();
   const { data, isLoading } = useUnreadNotifications();
   const markAsReadMutation = useMarkAsRead();
   const markAllAsReadMutation = useMarkAllAsRead();
@@ -98,23 +96,8 @@ export const NotificationBell: React.FC = () => {
    * 下拉菜单内容
    */
   const dropdownContent = (
-    <div
-      className="w-[400px] max-h-[520px] rounded-lg overflow-hidden"
-      style={{
-        background: themeMode === 'dark' ? 'rgb(15, 23, 42)' : '#ffffff',
-        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.12)',
-        border:
-          themeMode === 'dark'
-            ? '1px solid rgba(71, 85, 105, 0.8)'
-            : '1px solid rgba(0, 0, 0, 0.06)',
-      }}
-    >
-      <div
-        className="flex items-center justify-between p-5"
-        style={{
-          background: themeMode === 'dark' ? '#1e293b' : '#1677ff',
-        }}
-      >
+    <div className="max-h-[520px] w-[400px] overflow-hidden rounded-lg border border-black/5 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:border-slate-600/80 dark:bg-slate-950">
+      <div className="flex items-center justify-between bg-[#1677ff] p-5 dark:bg-slate-800">
         <div className="font-bold text-lg text-white flex items-center gap-2">
           <BellOutlined />
           通知中心
@@ -157,28 +140,11 @@ export const NotificationBell: React.FC = () => {
             renderItem={(notification: Notification) => (
               <div
                 key={notification.id}
-                className={`mb-2 cursor-pointer rounded-lg p-3 ${
-                  themeMode === 'dark'
-                    ? 'hover:bg-gray-700/30 hover:border-blue-400/40'
-                    : 'hover:bg-indigo-50'
-                }`}
-                style={{
-                  background: themeMode === 'dark' ? 'rgba(30, 41, 59, 0.9)' : '#f8fafc',
-                  border:
-                    themeMode === 'dark'
-                      ? '1px solid rgba(71, 85, 105, 0.8)'
-                      : '1px solid rgba(226, 232, 240, 1)',
-                }}
+                className="mb-2 cursor-pointer rounded-lg border border-slate-200 bg-slate-50 p-3 hover:bg-indigo-50 dark:border-slate-600/80 dark:bg-slate-800/90 dark:hover:border-blue-400/40 dark:hover:bg-gray-700/30"
                 onClick={() => handleNotificationClick(notification)}
               >
                 <div className="flex items-start gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
-                    style={{
-                      background: themeMode === 'dark' ? '#334155' : '#e6f4ff',
-                      color: themeMode === 'dark' ? '#93c5fd' : '#1677ff',
-                    }}
-                  >
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#e6f4ff] text-xl text-[#1677ff] dark:bg-slate-700 dark:text-blue-300">
                     {getTypeIcon(notification.type)}
                   </div>
 
@@ -187,7 +153,7 @@ export const NotificationBell: React.FC = () => {
                     <div className="flex items-center gap-2 mb-1">
                       <Text
                         strong
-                        className={`text-sm ${themeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}
+                        className="text-sm text-gray-800 dark:text-gray-200"
                       >
                         {notification.title}
                       </Text>
@@ -197,15 +163,11 @@ export const NotificationBell: React.FC = () => {
                       />
                     </div>
                     <Text
-                      className={`text-xs line-clamp-2 block mb-1 ${
-                        themeMode === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                      }`}
+                      className="mb-1 block line-clamp-2 text-xs text-gray-600 dark:text-gray-400"
                     >
                       {notification.content}
                     </Text>
-                    <Text
-                      className={`text-xs ${themeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}
-                    >
+                    <Text className="text-xs text-gray-400 dark:text-gray-500">
                       {dayjs(notification.createdAt).fromNow()}
                     </Text>
                   </div>
@@ -218,18 +180,11 @@ export const NotificationBell: React.FC = () => {
 
       {/* 底部 */}
       {unreadNotifications.length > 0 && (
-        <div
-          className={`p-3 ${
-            themeMode === 'dark'
-              ? 'border-t border-gray-700/50 bg-gray-900/30'
-              : 'border-t bg-gray-50'
-          }`}
-        >
+        <div className="border-t bg-gray-50 p-3 dark:border-gray-700/50 dark:bg-gray-900/30">
           <Button
             type="link"
             onClick={handleViewAll}
-            className={`w-full font-medium ${themeMode === 'dark' ? 'hover:text-blue-400' : ''}`}
-            style={{ color: '#1677ff' }}
+            className="w-full font-medium text-[#1677ff]! dark:hover:text-blue-400!"
           >
             查看全部通知 <ArrowRightOutlined />
           </Button>
@@ -250,20 +205,8 @@ export const NotificationBell: React.FC = () => {
         >
           <Button
             type="text"
-            icon={<BellOutlined style={{ fontSize: '20px' }} />}
-            style={{
-              width: 40,
-              height: 40,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: themeMode === 'dark' ? '#a3a3a3' : '#64748b',
-            }}
-            className={
-              themeMode === 'dark'
-                ? 'rounded-lg hover:bg-gray-700 hover:text-blue-400'
-                : 'rounded-lg hover:bg-indigo-50 hover:text-indigo-600'
-            }
+            icon={<BellOutlined className="app-header-icon" />}
+            className="app-header-icon-button"
           />
         </Badge>
       </Tooltip>

@@ -333,6 +333,93 @@ describe('TaskFormModal', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('converts remindOffset to absolute remindAt on submit for recurring tasks', async () => {
+    const onSubmit = vi.fn();
+
+    renderWithProviders(
+      <TaskFormModal
+        open
+        task={{
+          ...task,
+          dueAt: '2026-06-15T10:00:00.000Z',
+          remindAt: '2026-06-12T10:00:00.000Z', // 3 days before = 4320 min
+          recurrenceType: 'monthly',
+          recurrenceInterval: 1,
+        }}
+        lists={[{ id: 1, name: '家庭计划', scope: 'family', sort: 0, isArchived: false }]}
+        users={[{ id: 2, username: 'family-user', nickname: 'Family' }]}
+        submitting={false}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const payload = onSubmit.mock.calls[0][0] as { remindAt?: string };
+    expect(payload.remindAt).toBe('2026-06-12T10:00:00.000Z');
+  });
+
+  it('preserves an existing custom recurring reminder when it does not match preset offsets', async () => {
+    const onSubmit = vi.fn();
+    const customRemindAt = '2026-06-15T08:45:00.000Z';
+
+    renderWithProviders(
+      <TaskFormModal
+        open
+        task={{
+          ...task,
+          dueAt: '2026-06-15T10:00:00.000Z',
+          remindAt: customRemindAt,
+          recurrenceType: 'monthly',
+          recurrenceInterval: 1,
+        }}
+        lists={[{ id: 1, name: '家庭计划', scope: 'family', sort: 0, isArchived: false }]}
+        users={[{ id: 2, username: 'family-user', nickname: 'Family' }]}
+        submitting={false}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ remindAt: customRemindAt })
+    );
+  });
+
+  it('sends remindAt null when no offset selected for recurring task', async () => {
+    const onSubmit = vi.fn();
+
+    renderWithProviders(
+      <TaskFormModal
+        open
+        task={{
+          ...task,
+          dueAt: '2026-06-15T10:00:00.000Z',
+          remindAt: null,
+          recurrenceType: 'monthly',
+          recurrenceInterval: 1,
+        }}
+        lists={[{ id: 1, name: '家庭计划', scope: 'family', sort: 0, isArchived: false }]}
+        users={[{ id: 2, username: 'family-user', nickname: 'Family' }]}
+        submitting={false}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ remindAt: null }),
+    );
+  });
+
   it('rejects reminders scheduled after the due date', async () => {
     const onSubmit = vi.fn();
 
@@ -356,5 +443,33 @@ describe('TaskFormModal', () => {
 
     expect(await screen.findAllByText('提醒时间不能晚于截止时间')).not.toHaveLength(0);
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['weekly', '52'],
+    ['monthly', '12'],
+    ['yearly', '10'],
+  ] as const)('caps %s recurrence interval by its display unit', (recurrenceType, max) => {
+    const { unmount } = renderWithProviders(
+      <TaskFormModal
+        open
+        task={{
+          ...task,
+          recurrenceType,
+          recurrenceInterval: 1,
+        }}
+        lists={[{ id: 1, name: '家庭计划', scope: 'family', sort: 0, isArchived: false }]}
+        users={[{ id: 2, username: 'family-user', nickname: 'Family' }]}
+        submitting={false}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('spinbutton', { name: '重复间隔' })).toHaveAttribute(
+      'aria-valuemax',
+      max
+    );
+    unmount();
   });
 });

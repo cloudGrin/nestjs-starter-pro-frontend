@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, DatePicker, Form, Input, Select, Space, Tabs } from 'antd';
+import { Button, Card, DatePicker, Form, Input, Select, Space, Tabs, Tooltip } from 'antd';
 import { PlusOutlined, ReloadOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { TablePaginationConfig } from 'antd/es/table';
 import type { SorterResult } from 'antd/es/table/interface';
@@ -42,7 +42,8 @@ interface TaskSearchValues {
 }
 
 const highVolumeViews = new Set<TaskView>(['calendar', 'matrix', 'anniversary']);
-const dateRangeViews = new Set<TaskView>(['list', 'calendar']);
+const aggregatedViews = new Set<TaskView>(['matrix', 'anniversary']);
+const dateRangeViews = new Set<TaskView>(['list']);
 const TASK_PAGE_LIMIT_MAX = 100;
 const taskSortFieldByColumn: Record<string, TaskSortField> = {
   title: 'title',
@@ -62,11 +63,15 @@ function getDefaultLimit(view: TaskView) {
   return highVolumeViews.has(view) ? TASK_PAGE_LIMIT_MAX : 10;
 }
 
-function getCalendarDefaultRange() {
+function getCalendarRange(month: Dayjs) {
   return {
-    startDate: dayjs().startOf('month').toISOString(),
-    endDate: dayjs().endOf('month').toISOString(),
+    startDate: month.startOf('month').toISOString(),
+    endDate: month.endOf('month').toISOString(),
   };
+}
+
+function getCalendarDefaultRange() {
+  return getCalendarRange(dayjs());
 }
 
 function getViewDefaults(view: TaskView): QueryTasksParams {
@@ -140,6 +145,27 @@ function toDateRangeParams(dateRange?: [Dayjs, Dayjs]) {
     : {};
 }
 
+function getDefaultCreateDueAt(view: TaskView, queryParams: QueryTasksParams) {
+  if (view !== 'calendar') {
+    return undefined;
+  }
+
+  const now = dayjs();
+  const start = queryParams.startDate ? dayjs(queryParams.startDate) : undefined;
+  const end = queryParams.endDate ? dayjs(queryParams.endDate) : undefined;
+  const nowInRange =
+    (!start || !now.isBefore(start)) &&
+    (!end || !now.isAfter(end));
+
+  if (nowInRange) {
+    return now;
+  }
+
+  return start?.isValid()
+    ? start.hour(9).minute(0).second(0).millisecond(0)
+    : now;
+}
+
 export function TaskCenterPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -150,6 +176,7 @@ export function TaskCenterPage() {
   const [manualDateRange, setManualDateRange] = useState<[Dayjs, Dayjs] | undefined>(() =>
     toDateRange(queryParams.startDate, queryParams.endDate)
   );
+  const [calendarMonth, setCalendarMonth] = useState(() => dayjs().startOf('month'));
   const [aggregatedTasks, setAggregatedTasks] = useState<Task[]>([]);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [listManageOpen, setListManageOpen] = useState(false);
@@ -157,6 +184,7 @@ export function TaskCenterPage() {
 
   const activeView = queryParams.view ?? 'list';
   const isHighVolumeView = highVolumeViews.has(activeView);
+  const isAggregatedView = aggregatedViews.has(activeView);
   const canUseDateRange = supportsDateRange(activeView);
   const aggregationKey = useMemo(() => getAggregationKey(queryParams), [queryParams]);
   const taskListsQuery = useTaskLists();
@@ -172,6 +200,12 @@ export function TaskCenterPage() {
   const activeTaskLists = taskLists.filter((list) => !list.isArchived);
   const users = assigneesQuery.data ?? [];
   const tasksLoading = tasksQuery.isLoading || tasksQuery.isFetching;
+  const createTaskDisabledReason = taskListsQuery.isLoading
+    ? '任务清单加载中'
+    : activeTaskLists.length === 0
+      ? '请先创建或启用一个任务清单'
+      : undefined;
+  const defaultCreateDueAt = getDefaultCreateDueAt(activeView, queryParams);
 
   useEffect(() => {
     const taskId = getTaskIdFromSearch(location.search);
@@ -229,8 +263,8 @@ export function TaskCenterPage() {
 
   useEffect(() => {
     const items = tasksQuery.data?.items;
-    if (!isHighVolumeView || !items) {
-      setAggregatedTasks([]);
+    if (!isAggregatedView || !items) {
+      setAggregatedTasks((previous) => (previous.length > 0 ? [] : previous));
       return;
     }
 
@@ -243,10 +277,10 @@ export function TaskCenterPage() {
       items.forEach((task) => merged.set(task.id, task));
       return Array.from(merged.values());
     });
-  }, [aggregationKey, isHighVolumeView, queryParams.page, tasksQuery.data?.items]);
+  }, [aggregationKey, isAggregatedView, queryParams.page, tasksQuery.data?.items]);
 
   const displayTasksData = useMemo(() => {
-    if (!tasksQuery.data || !isHighVolumeView) {
+    if (!tasksQuery.data || !isAggregatedView) {
       return tasksQuery.data;
     }
 
@@ -255,7 +289,7 @@ export function TaskCenterPage() {
       items: aggregatedTasks,
       page: queryParams.page ?? tasksQuery.data.page,
     };
-  }, [aggregatedTasks, isHighVolumeView, queryParams.page, tasksQuery.data]);
+  }, [aggregatedTasks, isAggregatedView, queryParams.page, tasksQuery.data]);
 
   const clearTaskIdFromUrl = () => {
     const searchParams = new URLSearchParams(location.search);
@@ -327,14 +361,29 @@ export function TaskCenterPage() {
     clearTaskIdFromUrl();
     const searchValues = values as TaskSearchValues;
     setManualDateRange(supportsDateRange(activeView) ? searchValues.dateRange : undefined);
-    setQueryParams(toQueryParams(values, activeView));
+    const nextParams = toQueryParams(values, activeView);
+    setQueryParams(
+      activeView === 'calendar'
+        ? {
+            ...nextParams,
+            ...getCalendarRange(calendarMonth),
+          }
+        : nextParams
+    );
   };
 
   const handleReset = () => {
     clearTaskIdFromUrl();
     setManualDateRange(undefined);
     searchForm.resetFields();
-    setQueryParams(getViewDefaults(activeView));
+    setQueryParams(
+      activeView === 'calendar'
+        ? {
+            ...getViewDefaults(activeView),
+            ...getCalendarRange(calendarMonth),
+          }
+        : getViewDefaults(activeView)
+    );
   };
 
   const handleTabChange = (key: string) => {
@@ -354,9 +403,19 @@ export function TaskCenterPage() {
       ...(supportsDateRange(view) && manualDateRange
         ? toDateRangeParams(manualDateRange)
         : {}),
-      ...(supportsDateRange(view) && view === 'calendar' && !manualDateRange
-        ? getCalendarDefaultRange()
-        : {}),
+      ...(view === 'calendar' ? getCalendarRange(calendarMonth) : {}),
+    }));
+  };
+
+  const handleCalendarMonthChange = (nextMonth: Dayjs) => {
+    const monthStart = nextMonth.startOf('month');
+    setCalendarMonth(monthStart);
+    setQueryParams((previous) => ({
+      ...previous,
+      view: 'calendar',
+      page: 1,
+      limit: getDefaultLimit('calendar'),
+      ...getCalendarRange(monthStart),
     }));
   };
 
@@ -386,6 +445,7 @@ export function TaskCenterPage() {
   };
 
   const canLoadMore =
+    activeView !== 'calendar' &&
     isHighVolumeView &&
     (displayTasksData?.items.length ?? 0) < (displayTasksData?.total ?? 0);
 
@@ -431,14 +491,18 @@ export function TaskCenterPage() {
             </Button>
           </PermissionGuard>
           <PermissionGuard permissions={['task:create']}>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              disabled={activeTaskLists.length === 0}
-              onClick={handleCreate}
-            >
-              新建任务
-            </Button>
+            <Tooltip title={createTaskDisabledReason}>
+              <span>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  disabled={Boolean(createTaskDisabledReason)}
+                  onClick={handleCreate}
+                >
+                  新建任务
+                </Button>
+              </span>
+            </Tooltip>
           </PermissionGuard>
         </Space>
       }
@@ -525,8 +589,10 @@ export function TaskCenterPage() {
             children: (
               <TaskCalendarView
                 {...sharedViewProps}
+                month={calendarMonth}
                 startDate={queryParams.startDate}
                 endDate={queryParams.endDate}
+                onMonthChange={handleCalendarMonthChange}
               />
             ),
           },
@@ -556,6 +622,7 @@ export function TaskCenterPage() {
         task={currentTask}
         lists={taskLists}
         users={users}
+        defaultDueAt={defaultCreateDueAt}
         submitting={createTask.isPending || updateTask.isPending}
         onCancel={closeTaskForm}
         onSubmit={handleTaskSubmit}

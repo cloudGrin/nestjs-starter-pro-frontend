@@ -3,7 +3,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Tree, Input, Button, Tag, Space, App } from 'antd';
+import { Tree, Input, Button, Tag, App, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import type { DataNode, TreeProps } from 'antd/es/tree';
 import { PermissionGuard } from '@/shared/components/auth/PermissionGuard';
@@ -36,6 +36,13 @@ export function MenuTree({
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
   const { message } = App.useApp();
 
+  const totalCount = useMemo(() => {
+    const countNodes = (nodes: MenuTreeNode[]): number =>
+      nodes.reduce((total, node) => total + 1 + countNodes(node.children || []), 0);
+
+    return countNodes(treeData);
+  }, [treeData]);
+
   /**
    * 将MenuTreeNode转换为Ant Design Tree的DataNode
    */
@@ -55,15 +62,36 @@ export function MenuTree({
     const IconComponent = getMenuIcon(node.icon);
 
     return (
-      <div className="menu-tree-node group flex items-center justify-between w-full pr-4 py-1">
-        <div className="flex flex-col gap-1 flex-1 min-w-0">
-          {/* 第一行：图标 + 名称 + 标签 */}
-          <div className="flex items-center gap-2">
-            {IconComponent && (
-              <IconComponent className="text-base text-blue-500 dark:text-blue-400 flex-shrink-0" />
+      <div className="menu-tree-node group flex min-h-12 w-full items-center justify-between gap-3 py-1.5 pr-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          {IconComponent && (
+            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-500 dark:bg-blue-950/50 dark:text-blue-300">
+              <IconComponent className="text-base" />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                {node.name}
+              </span>
+              <MenuTypeTag type={node.type} />
+            </div>
+
+            {(node.path || node.component) && (
+              <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                {node.path && <span className="truncate font-mono">{node.path}</span>}
+                {node.component && (
+                  <span className="hidden truncate text-slate-300 dark:text-slate-600 sm:inline">
+                    {node.component}
+                  </span>
+                )}
+              </div>
             )}
-            <span className="font-bold text-black dark:text-white truncate">{node.name}</span>
-            <MenuTypeTag type={node.type} />
+          </div>
+        </div>
+
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="hidden items-center gap-1 md:flex">
             <Tag color={node.isActive ? 'success' : 'default'} className="!m-0">
               {node.isActive ? '启用' : '禁用'}
             </Tag>
@@ -74,63 +102,56 @@ export function MenuTree({
             )}
           </div>
 
-          {/* 第二行：路径信息 */}
-          {node.path && (
-            <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 ml-6">
-              <span className="font-mono">{node.path}</span>
-              {node.component && (
-                <span className="text-gray-300 dark:text-gray-600">→ {node.component}</span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 操作按钮（hover时显示） */}
-        <div className="menu-tree-actions flex items-center ml-4">
-          <Space size="small">
+          <div className="menu-tree-actions flex items-center">
             <PermissionGuard permissions={['menu:create']}>
-              <Button
-                size="small"
-                type="text"
-                icon={<PlusOutlined />}
-                className="hover:text-blue-500 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-950/50"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAdd?.(node.id);
-                }}
-                title="添加子菜单"
-              />
+              <Tooltip title="添加子菜单">
+                <Button
+                  size="small"
+                  type="text"
+                  icon={<PlusOutlined />}
+                  aria-label="添加子菜单"
+                  className="hover:text-blue-500 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-950/50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAdd?.(node.id);
+                  }}
+                />
+              </Tooltip>
             </PermissionGuard>
 
             <PermissionGuard permissions={['menu:update']}>
-              <Button
-                size="small"
-                type="text"
-                icon={<EditOutlined />}
-                className="hover:text-green-500 hover:bg-green-50 dark:hover:text-green-400 dark:hover:bg-green-950/50"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit?.(node);
-                }}
-                title="编辑"
-              />
+              <Tooltip title="编辑">
+                <Button
+                  size="small"
+                  type="text"
+                  icon={<EditOutlined />}
+                  aria-label="编辑"
+                  className="hover:text-green-500 hover:bg-green-50 dark:hover:text-green-400 dark:hover:bg-green-950/50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit?.(node);
+                  }}
+                />
+              </Tooltip>
             </PermissionGuard>
 
             <PermissionGuard permissions={['menu:delete']}>
-              <Button
-                size="small"
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-                className="hover:bg-red-50 dark:hover:bg-red-950/50"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete?.(node.id);
-                }}
-                title="删除"
-              />
+              <Tooltip title="删除">
+                <Button
+                  size="small"
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  aria-label="删除"
+                  className="hover:bg-red-50 dark:hover:bg-red-950/50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete?.(node.id);
+                  }}
+                />
+              </Tooltip>
             </PermissionGuard>
-          </Space>
+          </div>
         </div>
       </div>
     );
@@ -305,20 +326,15 @@ export function MenuTree({
 
   return (
     <div className="menu-tree">
-      <Space direction="vertical" className="w-full" size="large">
+      <div className="flex w-full flex-col gap-4">
         {/* 顶部操作栏 */}
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4 shadow-sm transition-theme dark:border-blue-500/20">
-          <PermissionGuard permissions={['menu:create']}>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => onAdd?.()}
-              size="middle"
-              className="shadow-sm"
-            >
-              创建顶级菜单
-            </Button>
-          </PermissionGuard>
+        <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 transition-theme dark:border-slate-700 dark:bg-slate-900/40 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">菜单结构</div>
+            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              共 {totalCount} 项
+            </div>
+          </div>
 
           <Search
             placeholder="搜索菜单（支持名称、路径）"
@@ -326,9 +342,8 @@ export function MenuTree({
             allowClear
             onSearch={handleSearch}
             onChange={(e) => handleSearch(e.target.value)}
-            style={{ width: 360 }}
             size="middle"
-            className="shadow-sm"
+            className="w-full sm:max-w-sm"
             enterButton
           />
         </div>
@@ -360,7 +375,7 @@ export function MenuTree({
             />
           </div>
         )}
-      </Space>
+      </div>
     </div>
   );
 }

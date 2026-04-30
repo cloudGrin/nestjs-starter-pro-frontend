@@ -8,11 +8,10 @@
  * 4. 样式
  * 5. 边界情况
  */
-import { act, render, screen } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { StatusBadge } from '../StatusBadge';
 import { StarOutlined } from '@ant-design/icons';
-import { useThemeStore } from '@/shared/stores';
 
 // 测试辅助函数
 const expectHasClass = (element: HTMLElement, className: string) => {
@@ -20,11 +19,6 @@ const expectHasClass = (element: HTMLElement, className: string) => {
 };
 
 describe('StatusBadge 组件', () => {
-  beforeEach(() => {
-    // 每次测试前重置主题为浅色模式
-    useThemeStore.getState().setTheme('light');
-  });
-
   // ==================== 基础渲染测试 ====================
 
   describe('基础渲染', () => {
@@ -128,40 +122,22 @@ describe('StatusBadge 组件', () => {
   // ==================== 深色模式测试 ====================
 
   describe('深色模式', () => {
-    it('应该在浅色模式下使用浅色配色', () => {
-      useThemeStore.getState().setTheme('light');
-
+    it('应该同时声明浅色和深色配色类', () => {
       render(<StatusBadge status="success" text="成功" />);
 
       const badge = screen.getByText('成功');
       expectHasClass(badge, 'bg-green-50');
       expectHasClass(badge, 'text-green-700');
+      expectHasClass(badge, 'dark:bg-green-900/30');
+      expectHasClass(badge, 'dark:text-green-300');
     });
 
-    it('应该在深色模式下使用深色配色', () => {
-      useThemeStore.getState().setTheme('dark');
+    it('错误状态应该同时声明浅色和深色配色类', () => {
+      render(<StatusBadge status="error" text="失败" />);
 
-      render(<StatusBadge status="success" text="成功" />);
-
-      const badge = screen.getByText('成功');
-      expectHasClass(badge, 'bg-green-900/30');
-      expectHasClass(badge, 'text-green-300');
-    });
-
-    it('应该在切换主题后更新样式', () => {
-      const { rerender } = render(<StatusBadge status="error" text="失败" />);
-
-      let badge = screen.getByText('失败');
+      const badge = screen.getByText('失败');
       expectHasClass(badge, 'bg-red-50');
-
-      // 切换到深色模式
-      act(() => {
-        useThemeStore.getState().setTheme('dark');
-      });
-      rerender(<StatusBadge status="error" text="失败" />);
-
-      badge = screen.getByText('失败');
-      expectHasClass(badge, 'bg-red-900/30');
+      expectHasClass(badge, 'dark:bg-red-900/30');
     });
   });
 

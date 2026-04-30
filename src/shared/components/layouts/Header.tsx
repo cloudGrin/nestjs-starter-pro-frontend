@@ -17,7 +17,6 @@ import { NotificationBell } from '@/features/notification/components/Notificatio
 import { PermissionGuard } from '@/shared/components/auth/PermissionGuard';
 import { useThemeStore } from '@/shared/stores';
 import { useBreadcrumb } from '@/shared/hooks/useBreadcrumb';
-import { cn } from '@/shared/utils/cn';
 import type { MenuProps } from 'antd';
 
 const { Header: AntHeader } = Layout;
@@ -78,39 +77,26 @@ export function Header({ collapsed, onToggleCollapsed }: HeaderProps) {
       <div className="flex min-w-0 items-center gap-3">
         <Button
           type="text"
-          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          icon={
+            collapsed ? (
+              <MenuUnfoldOutlined className="app-header-icon" />
+            ) : (
+              <MenuFoldOutlined className="app-header-icon" />
+            )
+          }
           onClick={onToggleCollapsed}
-          className={cn(
-            'h-10 w-10 rounded-lg text-lg',
-            themeMode === 'dark'
-              ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-              : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-600'
-          )}
+          className="app-header-icon-button"
         />
 
         {breadcrumbItems.length > 0 && (
           <Breadcrumb
             className="app-breadcrumbs hidden min-w-0 sm:block"
             separator={
-              <RightOutlined
-                className={cn(
-                  'text-[10px]',
-                  themeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'
-                )}
-              />
+              <RightOutlined className="text-[10px] text-slate-400 dark:text-slate-500" />
             }
-            items={breadcrumbItems.map((item, index) => ({
+            items={breadcrumbItems.map((item) => ({
               ...item,
-              className: cn(
-                'text-sm',
-                index === breadcrumbItems.length - 1
-                  ? themeMode === 'dark'
-                    ? 'font-semibold text-slate-100'
-                    : 'font-semibold text-slate-900'
-                  : themeMode === 'dark'
-                    ? 'text-slate-400 hover:text-slate-100'
-                    : 'text-slate-500 hover:text-indigo-600'
-              ),
+              className: 'text-sm text-slate-500 dark:text-slate-400',
             }))}
           />
         )}
@@ -126,24 +112,13 @@ export function Header({ collapsed, onToggleCollapsed }: HeaderProps) {
             type="text"
             icon={
               themeMode === 'dark' ? (
-                <BulbFilled style={{ fontSize: '20px' }} className="text-yellow-500" />
+                <BulbFilled className="app-header-icon" />
               ) : (
-                <BulbOutlined style={{ fontSize: '20px' }} className="text-gray-600" />
+                <BulbOutlined className="app-header-icon" />
               )
             }
             onClick={toggleTheme}
-            style={{
-              width: 40,
-              height: 40,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            className={
-              themeMode === 'dark'
-                ? 'rounded-lg hover:bg-slate-800 hover:text-yellow-400'
-                : 'rounded-lg hover:bg-amber-50 hover:text-amber-600'
-            }
+            className="app-header-icon-button"
           />
         </Tooltip>
 
@@ -155,12 +130,7 @@ export function Header({ collapsed, onToggleCollapsed }: HeaderProps) {
           placement="bottomRight"
           overlayClassName="min-w-[188px] rounded-lg p-2"
         >
-          <div
-            className={cn(
-              'user-info-trigger flex cursor-pointer items-center rounded-lg px-2 py-1.5',
-              themeMode === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-indigo-50'
-            )}
-          >
+          <div className="user-info-trigger flex cursor-pointer items-center rounded-lg px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800">
             <div className="relative shrink-0">
               <Avatar
                 icon={<UserOutlined />}

@@ -4,7 +4,6 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { appConfig } from '@/shared/config/app.config';
-import { useThemeStore } from '@/shared/stores/themeStore';
 
 interface LoginFormValues {
   account: string; // 与后端API字段名保持一致
@@ -23,8 +22,6 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-  const { mode: themeMode } = useThemeStore();
-  const isDark = themeMode === 'dark';
 
   const handleLogin = async (values: LoginFormValues) => {
     setLoading(true);
@@ -37,13 +34,7 @@ export function LoginPage() {
   };
 
   return (
-    <div
-      className={
-        isDark
-          ? 'min-h-screen flex items-center justify-center px-4 py-8 bg-slate-950'
-          : 'min-h-screen flex items-center justify-center px-4 py-8 bg-[linear-gradient(135deg,#f8fafc_0%,#eef2ff_48%,#f5f3ff_100%)]'
-      }
-    >
+    <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(135deg,#f8fafc_0%,#eef2ff_48%,#f5f3ff_100%)] px-4 py-8 dark:bg-slate-950 dark:bg-none">
       <div className="grid w-full max-w-[1040px] grid-cols-1 overflow-hidden rounded-lg border border-white/60 bg-white/80 shadow-[0_24px_70px_rgba(15,23,42,0.12)] dark:border-indigo-400/20 dark:bg-slate-900/90 lg:grid-cols-[1fr_420px]">
         <div className="hidden lg:flex min-h-[560px] flex-col justify-between p-10 bg-[linear-gradient(135deg,rgba(102,126,234,0.12),rgba(118,75,162,0.12))] dark:bg-[linear-gradient(135deg,rgba(102,126,234,0.16),rgba(118,75,162,0.12))]">
           <div>

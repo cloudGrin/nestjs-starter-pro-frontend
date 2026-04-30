@@ -10,11 +10,10 @@
  * 6. 样式类
  * 7. 组合使用
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PageWrap } from '../PageWrap';
 import { Button } from 'antd';
-import { useThemeStore } from '@/shared/stores';
 import type { BreadcrumbItemType } from 'antd/es/breadcrumb/Breadcrumb';
 
 // Mock useBreadcrumb hook
@@ -36,8 +35,7 @@ const expectHasClass = (element: HTMLElement, className: string) => {
 
 describe('PageWrap 组件', () => {
   beforeEach(() => {
-    // 每次测试前重置主题为浅色模式
-    useThemeStore.getState().setTheme('light');
+    vi.clearAllMocks();
   });
 
   // ==================== 基础渲染测试 ====================
@@ -178,9 +176,7 @@ describe('PageWrap 组件', () => {
   // ==================== 深色模式测试 ====================
 
   describe('深色模式', () => {
-    it('应该在浅色模式下使用浅色背景', () => {
-      useThemeStore.getState().setTheme('light');
-
+    it('应该同时声明浅色和深色背景类', () => {
       const { container } = render(
         <PageWrap title="用户管理">
           <div>内容</div>
@@ -189,61 +185,10 @@ describe('PageWrap 组件', () => {
 
       const wrapper = container.firstChild as HTMLElement;
       expectHasClass(wrapper, 'bg-gray-50');
+      expectHasClass(wrapper, 'dark:bg-gray-900');
     });
 
-    it('应该在深色模式下使用深色背景', () => {
-      useThemeStore.getState().setTheme('dark');
-
-      const { container } = render(
-        <PageWrap title="用户管理">
-          <div>内容</div>
-        </PageWrap>
-      );
-
-      const wrapper = container.firstChild as HTMLElement;
-      expectHasClass(wrapper, 'bg-gray-900');
-    });
-
-    it('应该在切换主题后更新样式', () => {
-      const { container, rerender } = render(
-        <PageWrap title="用户管理">
-          <div>内容</div>
-        </PageWrap>
-      );
-
-      let wrapper = container.firstChild as HTMLElement;
-      expectHasClass(wrapper, 'bg-gray-50');
-
-      // 切换到深色模式
-      act(() => {
-        useThemeStore.getState().setTheme('dark');
-      });
-      rerender(
-        <PageWrap title="用户管理">
-          <div>内容</div>
-        </PageWrap>
-      );
-
-      wrapper = container.firstChild as HTMLElement;
-      expectHasClass(wrapper, 'bg-gray-900');
-    });
-
-    it('应该在深色模式下标题使用白色文字', () => {
-      useThemeStore.getState().setTheme('dark');
-
-      render(
-        <PageWrap title="用户管理">
-          <div>内容</div>
-        </PageWrap>
-      );
-
-      const title = screen.getByRole('heading', { name: '用户管理' });
-      expectHasClass(title, 'text-white');
-    });
-
-    it('应该在浅色模式下标题使用黑色文字', () => {
-      useThemeStore.getState().setTheme('light');
-
+    it('标题应该同时声明浅色和深色文字类', () => {
       render(
         <PageWrap title="用户管理">
           <div>内容</div>
@@ -252,6 +197,7 @@ describe('PageWrap 组件', () => {
 
       const title = screen.getByRole('heading', { name: '用户管理' });
       expectHasClass(title, 'text-black');
+      expectHasClass(title, 'dark:text-white');
     });
   });
 
@@ -340,7 +286,8 @@ describe('PageWrap 组件', () => {
       );
 
       const content = container.querySelector('.page-wrap-content');
-      expectHasClass(content as HTMLElement, 'p-4');
+      expectHasClass(content as HTMLElement, 'p-2');
+      expectHasClass(content as HTMLElement, 'lg:p-3');
       expectHasClass(content as HTMLElement, 'overflow-auto');
     });
   });

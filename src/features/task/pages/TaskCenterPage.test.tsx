@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { TaskCenterPage } from './TaskCenterPage';
 import {
   createMockUser,
@@ -50,6 +51,14 @@ function mockMutation() {
   };
 }
 
+function mockMutationWithSuccess() {
+  return {
+    mutate: vi.fn((_variables, options) => options?.onSuccess?.()),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  };
+}
+
 function renderTaskCenter(initialPath = '/tasks') {
   window.history.pushState({}, '', initialPath);
   return renderWithProviders(
@@ -62,6 +71,25 @@ function renderTaskCenter(initialPath = '/tasks') {
 function getLastTaskQueryParams() {
   const calls = taskHookMocks.useTasks.mock.calls;
   return calls[calls.length - 1]?.[0];
+}
+
+function createTaskFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 31,
+    title: '日历任务',
+    listId: 1,
+    status: 'pending',
+    taskType: 'task',
+    dueAt: dayjs().hour(10).minute(0).second(0).millisecond(0).toISOString(),
+    remindAt: null,
+    important: false,
+    urgent: false,
+    recurrenceType: 'none',
+    sendExternalReminder: false,
+    createdAt: '2026-04-01T00:00:00.000Z',
+    updatedAt: '2026-04-01T00:00:00.000Z',
+    ...overrides,
+  };
 }
 
 function TaskCenterWithNotificationJump() {
@@ -168,6 +196,38 @@ describe('TaskCenterPage', () => {
     expect(screen.getByPlaceholderText('例如：给家里买菜、准备周会、结婚纪念日')).toBeInTheDocument();
   });
 
+  it('defaults new calendar tasks into the current calendar date range', async () => {
+    const createMutation = mockMutationWithSuccess();
+    taskHookMocks.useCreateTask.mockReturnValue(createMutation);
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read', 'task:create'],
+      })
+    );
+
+    renderTaskCenter();
+    await userEvent.click(screen.getByRole('tab', { name: '日历' }));
+    const calendarParams = getLastTaskQueryParams();
+
+    await userEvent.click(screen.getByRole('button', { name: /新建任务/ }));
+    await userEvent.type(
+      screen.getByPlaceholderText('例如：给家里买菜、准备周会、结婚纪念日'),
+      '日历里新建的任务'
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    expect(createMutation.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dueAt: expect.any(String),
+      }),
+      expect.any(Object)
+    );
+
+    const payload = createMutation.mutate.mock.calls[0][0] as { dueAt: string };
+    expect(dayjs(payload.dueAt).isBefore(dayjs(calendarParams.startDate))).toBe(false);
+    expect(dayjs(payload.dueAt).isAfter(dayjs(calendarParams.endDate))).toBe(false);
+  });
+
   it('initializes task query from notification taskId links', () => {
     window.history.pushState({}, '', '/tasks?taskId=42');
     setMockUser(
@@ -216,7 +276,79 @@ describe('TaskCenterPage', () => {
     );
   });
 
-  it('shows the calendar default date range in the search form', async () => {
+  it('shows calendar tasks immediately after switching to calendar view', async () => {
+    taskHookMocks.useTasks.mockImplementation((params) => ({
+      data:
+        params.view === 'calendar'
+          ? { items: [createTaskFixture()], total: 1, page: 1, pageSize: 100 }
+          : emptyTasks,
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    }));
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read'],
+      })
+    );
+
+    renderTaskCenter();
+    await userEvent.click(screen.getByRole('tab', { name: '日历' }));
+
+    const calendarGrid = await screen.findByTestId('task-calendar-grid');
+    expect(calendarGrid).toBeInTheDocument();
+    expect(within(calendarGrid).getByText('日历任务')).toBeInTheDocument();
+  });
+
+  it('keeps calendar grid and month range after searching on the calendar view', async () => {
+    taskHookMocks.useTasks.mockImplementation((params) => ({
+      data:
+        params.view === 'calendar'
+          ? { items: [createTaskFixture({ title: '筛选后的日历任务' })], total: 1, page: 1, pageSize: 100 }
+          : emptyTasks,
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    }));
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read'],
+      })
+    );
+
+    renderTaskCenter();
+    await userEvent.click(screen.getByRole('tab', { name: '日历' }));
+    await userEvent.click(screen.getByRole('button', { name: /查询/ }));
+
+    expect(getLastTaskQueryParams()).toEqual(
+      expect.objectContaining({
+        view: 'calendar',
+        startDate: expect.any(String),
+        endDate: expect.any(String),
+      })
+    );
+    const calendarGrid = screen.getByTestId('task-calendar-grid');
+    expect(calendarGrid).toBeInTheDocument();
+    expect(within(calendarGrid).getByText('筛选后的日历任务')).toBeInTheDocument();
+  });
+
+  it('hides date range filter and load-more pagination on the calendar view', async () => {
+    taskHookMocks.useTasks.mockReturnValue({
+      data: {
+        items: Array.from({ length: 100 }, (_, index) =>
+          createTaskFixture({
+            id: index + 1,
+            title: `任务 ${index + 1}`,
+          })
+        ),
+        total: 101,
+        page: 1,
+        pageSize: 100,
+      },
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
     setMockUser(
       createMockUser({
         permissions: ['task:read'],
@@ -227,15 +359,11 @@ describe('TaskCenterPage', () => {
     await userEvent.click(screen.getByRole('tab', { name: '日历' }));
     await userEvent.click(screen.getByRole('button', { name: /展开/ }));
 
-    const dateRangeItem = (await screen.findByText('日期范围')).closest('.ant-form-item');
-    expect(dateRangeItem).not.toBeNull();
-    const dateInputs = within(dateRangeItem as HTMLElement).getAllByRole('textbox');
-    expect(dateInputs).toHaveLength(2);
-    expect(dateInputs[0]).not.toHaveValue('');
-    expect(dateInputs[1]).not.toHaveValue('');
+    expect(screen.queryByText('日期范围')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /加载更多/ })).not.toBeInTheDocument();
   });
 
-  it('loads the next non-table page without exceeding the backend limit', async () => {
+  it('loads the next matrix page without exceeding the backend limit', async () => {
     taskHookMocks.useTasks.mockReturnValue({
       data: {
         items: Array.from({ length: 100 }, (_, index) => ({
@@ -265,12 +393,12 @@ describe('TaskCenterPage', () => {
     );
 
     renderTaskCenter();
-    await userEvent.click(screen.getByRole('tab', { name: '日历' }));
+    await userEvent.click(screen.getByRole('tab', { name: '四象限' }));
     await userEvent.click(await screen.findByRole('button', { name: /加载更多/ }));
 
     expect(taskHookMocks.useTasks).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        view: 'calendar',
+        view: 'matrix',
         page: 2,
         limit: 100,
       })
@@ -382,7 +510,7 @@ describe('TaskCenterPage', () => {
     );
   });
 
-  it('disables creating tasks when every task list is archived', () => {
+  it('disables creating tasks with a tooltip when every task list is archived', async () => {
     taskHookMocks.useTaskLists.mockReturnValue({
       data: [{ id: 1, name: '归档清单', scope: 'family', sort: 0, isArchived: true }],
       isLoading: false,
@@ -395,7 +523,11 @@ describe('TaskCenterPage', () => {
 
     renderTaskCenter();
 
-    expect(screen.getByRole('button', { name: /新建任务/ })).toBeDisabled();
+    const createButton = screen.getByRole('button', { name: /新建任务/ });
+    expect(createButton).toBeDisabled();
+
+    await userEvent.hover(createButton.parentElement ?? createButton);
+    expect(await screen.findByText('请先创建或启用一个任务清单')).toBeInTheDocument();
   });
 
   it('disables row actions while the matching task action is pending', () => {

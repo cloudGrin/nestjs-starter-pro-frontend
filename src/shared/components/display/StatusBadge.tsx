@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/shared/utils/cn';
-import { useThemeStore } from '@/shared/stores';
 
 type StatusType = 'success' | 'error' | 'warning' | 'processing' | 'default';
 
@@ -15,42 +14,41 @@ interface StatusBadgeProps {
   icon?: ReactNode;
 }
 
-const getStatusConfig = (isDark: boolean) => ({
+const statusConfig = {
   success: {
-    bgColor: isDark ? 'bg-green-900/30' : 'bg-green-50',
-    textColor: isDark ? 'text-green-300' : 'text-green-700',
-    borderColor: isDark ? 'border-green-700/50' : 'border-green-200',
-    dotColor: isDark ? 'bg-green-400' : 'bg-green-500',
+    bgColor: 'bg-green-50 dark:bg-green-900/30',
+    textColor: 'text-green-700 dark:text-green-300',
+    borderColor: 'border-green-200 dark:border-green-700/50',
+    dotColor: 'bg-green-500 dark:bg-green-400',
   },
   error: {
-    bgColor: isDark ? 'bg-red-900/30' : 'bg-red-50',
-    textColor: isDark ? 'text-red-300' : 'text-red-700',
-    borderColor: isDark ? 'border-red-700/50' : 'border-red-200',
-    dotColor: isDark ? 'bg-red-400' : 'bg-red-500',
+    bgColor: 'bg-red-50 dark:bg-red-900/30',
+    textColor: 'text-red-700 dark:text-red-300',
+    borderColor: 'border-red-200 dark:border-red-700/50',
+    dotColor: 'bg-red-500 dark:bg-red-400',
   },
   warning: {
-    bgColor: isDark ? 'bg-yellow-900/30' : 'bg-yellow-50',
-    textColor: isDark ? 'text-yellow-300' : 'text-yellow-700',
-    borderColor: isDark ? 'border-yellow-700/50' : 'border-yellow-200',
-    dotColor: isDark ? 'bg-yellow-400' : 'bg-yellow-500',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-900/30',
+    textColor: 'text-yellow-700 dark:text-yellow-300',
+    borderColor: 'border-yellow-200 dark:border-yellow-700/50',
+    dotColor: 'bg-yellow-500 dark:bg-yellow-400',
   },
   processing: {
-    bgColor: isDark ? 'bg-blue-900/30' : 'bg-blue-50',
-    textColor: isDark ? 'text-blue-300' : 'text-blue-700',
-    borderColor: isDark ? 'border-blue-700/50' : 'border-blue-200',
-    dotColor: isDark ? 'bg-blue-400' : 'bg-blue-500',
+    bgColor: 'bg-blue-50 dark:bg-blue-900/30',
+    textColor: 'text-blue-700 dark:text-blue-300',
+    borderColor: 'border-blue-200 dark:border-blue-700/50',
+    dotColor: 'bg-blue-500 dark:bg-blue-400',
   },
   default: {
-    bgColor: isDark ? 'bg-gray-800/50' : 'bg-gray-50',
-    textColor: isDark ? 'text-gray-300' : 'text-gray-700',
-    borderColor: isDark ? 'border-gray-700/50' : 'border-gray-200',
-    dotColor: isDark ? 'bg-gray-500' : 'bg-gray-400',
+    bgColor: 'bg-gray-50 dark:bg-gray-800/50',
+    textColor: 'text-gray-700 dark:text-gray-300',
+    borderColor: 'border-gray-200 dark:border-gray-700/50',
+    dotColor: 'bg-gray-400 dark:bg-gray-500',
   },
-});
+};
 
 export function StatusBadge({ status, text, showIcon = true, icon }: StatusBadgeProps) {
-  const { mode } = useThemeStore();
-  const config = getStatusConfig(mode === 'dark')[status];
+  const config = statusConfig[status];
 
   return (
     <span

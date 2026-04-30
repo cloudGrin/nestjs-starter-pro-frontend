@@ -17,6 +17,7 @@ interface TaskFormModalProps {
   task: Task | null;
   lists: TaskList[];
   users: TaskAssignee[];
+  defaultDueAt?: Dayjs;
   submitting?: boolean;
   onCancel: () => void;
   onSubmit: (data: CreateTaskDto | UpdateTaskDto) => void;
@@ -30,6 +31,7 @@ interface TaskFormValues {
   taskType: TaskType;
   dueAt?: Dayjs;
   remindAt?: Dayjs;
+  remindOffset?: RemindOffsetValue;
   important: boolean;
   urgent: boolean;
   tags?: string[];
@@ -57,16 +59,36 @@ const reminderChannelOptions: Array<{ label: string; value: TaskReminderChannel;
 
 const externalReminderChannels = new Set<TaskReminderChannel>(['bark', 'feishu']);
 
-const recurrenceTypesWithInterval = new Set<TaskRecurrenceType>([
-  'daily',
-  'weekly',
-  'monthly',
-  'yearly',
-  'custom',
-]);
+const CUSTOM_REMIND_OFFSET = 'custom';
+type RemindOffsetValue = number | typeof CUSTOM_REMIND_OFFSET;
+
+const remindOffsetOptions: Array<{ label: string; value: number }> = [
+  { label: '提前 15 分钟', value: 15 },
+  { label: '提前 30 分钟', value: 30 },
+  { label: '提前 1 小时', value: 60 },
+  { label: '提前 2 小时', value: 120 },
+  { label: '提前 1 天', value: 24 * 60 },
+  { label: '提前 2 天', value: 2 * 24 * 60 },
+  { label: '提前 3 天', value: 3 * 24 * 60 },
+  { label: '提前 1 周', value: 7 * 24 * 60 },
+];
+
+function toRemindOffset(dueAt?: string | null, remindAt?: string | null): RemindOffsetValue | undefined {
+  if (!dueAt || !remindAt) return undefined;
+  const diff = dayjs(dueAt).diff(dayjs(remindAt), 'minute');
+  return remindOffsetOptions.some((o) => o.value === diff) ? diff : CUSTOM_REMIND_OFFSET;
+}
+
+const recurrenceIntervalConfig: Partial<Record<TaskRecurrenceType, { unit: string; max: number }>> = {
+  daily: { unit: '天', max: 365 },
+  weekly: { unit: '周', max: 52 },
+  monthly: { unit: '月', max: 12 },
+  yearly: { unit: '年', max: 10 },
+  custom: { unit: '天', max: 365 },
+};
 
 function supportsRecurrenceInterval(type: TaskRecurrenceType) {
-  return recurrenceTypesWithInterval.has(type);
+  return type in recurrenceIntervalConfig;
 }
 
 function toDateValue(value?: string | null) {
@@ -82,6 +104,8 @@ function hasExternalChannel(channels?: TaskReminderChannel[] | null) {
 }
 
 function toPayload(values: TaskFormValues, isEditing: boolean): CreateTaskDto | UpdateTaskDto {
+  const isRecurring = values.recurrenceType !== 'none';
+
   const payload: CreateTaskDto = {
     title: values.title.trim(),
     listId: values.listId,
@@ -110,11 +134,27 @@ function toPayload(values: TaskFormValues, isEditing: boolean): CreateTaskDto | 
   } else if (isEditing) {
     payload.dueAt = null;
   }
-  if (values.remindAt) {
-    payload.remindAt = values.remindAt.toISOString();
-  } else if (isEditing) {
-    payload.remindAt = null;
+
+  if (isRecurring) {
+    const computedRemindAt =
+      values.dueAt && typeof values.remindOffset === 'number'
+        ? values.dueAt.subtract(values.remindOffset, 'minute').toISOString()
+        : null;
+    if (values.remindOffset === CUSTOM_REMIND_OFFSET && values.remindAt) {
+      payload.remindAt = values.remindAt.toISOString();
+    } else if (computedRemindAt) {
+      payload.remindAt = computedRemindAt;
+    } else if (isEditing) {
+      payload.remindAt = null;
+    }
+  } else {
+    if (values.remindAt) {
+      payload.remindAt = values.remindAt.toISOString();
+    } else if (isEditing) {
+      payload.remindAt = null;
+    }
   }
+
   if (supportsRecurrenceInterval(values.recurrenceType) && values.recurrenceInterval) {
     payload.recurrenceInterval = values.recurrenceInterval;
   } else if (isEditing) {
@@ -129,6 +169,7 @@ export function TaskFormModal({
   task,
   lists,
   users,
+  defaultDueAt,
   submitting,
   onCancel,
   onSubmit,
@@ -137,10 +178,34 @@ export function TaskFormModal({
   const activeLists = lists.filter((list) => !list.isArchived);
   const firstActiveListId = activeLists[0]?.id;
   const initializedKeyRef = useRef<number | 'create' | null>(null);
+
+  const handleRecurrenceTypeChange = (value: TaskRecurrenceType) => {
+    if (value === 'none') {
+      form.setFieldValue('remindOffset', undefined);
+    } else {
+      form.setFieldValue('remindAt', undefined);
+    }
+  };
   const currentList = task
     ? lists.find((list) => list.id === task.listId) ?? task.list
     : undefined;
   const mustMigrateArchivedList = Boolean(task && currentList?.isArchived);
+  const customRecurringReminder =
+    task?.recurrenceType !== 'none' &&
+    task?.remindAt &&
+    toRemindOffset(task.dueAt, task.remindAt) === CUSTOM_REMIND_OFFSET
+      ? task.remindAt
+      : null;
+  const currentRemindOffsetOptions: Array<{ label: string; value: RemindOffsetValue }> =
+    customRecurringReminder
+      ? [
+          {
+            label: `保留当前提醒时间（${dayjs(customRecurringReminder).format('YYYY-MM-DD HH:mm')}）`,
+            value: CUSTOM_REMIND_OFFSET,
+          },
+          ...remindOffsetOptions,
+        ]
+      : remindOffsetOptions;
 
   useEffect(() => {
     if (!open) {
@@ -156,6 +221,8 @@ export function TaskFormModal({
     initializedKeyRef.current = nextKey;
 
     if (task) {
+      const isRecurring = task.recurrenceType !== 'none';
+      const remindOffset = isRecurring ? toRemindOffset(task.dueAt, task.remindAt) : undefined;
       form.setFieldsValue({
         title: task.title,
         description: task.description ?? undefined,
@@ -163,7 +230,11 @@ export function TaskFormModal({
         assigneeId: task.assigneeId ?? undefined,
         taskType: task.taskType,
         dueAt: toDateValue(task.dueAt),
-        remindAt: toDateValue(task.remindAt),
+        remindAt:
+          isRecurring && remindOffset !== CUSTOM_REMIND_OFFSET
+            ? undefined
+            : toDateValue(task.remindAt),
+        remindOffset,
         important: task.important,
         urgent: task.urgent,
         tags: task.tags ?? [],
@@ -181,8 +252,9 @@ export function TaskFormModal({
       listId: firstActiveListId,
       assigneeId: undefined,
       taskType: 'task',
-      dueAt: undefined,
+      dueAt: defaultDueAt,
       remindAt: undefined,
+      remindOffset: undefined,
       important: false,
       urgent: false,
       tags: [],
@@ -191,7 +263,7 @@ export function TaskFormModal({
       reminderChannels: ['internal'],
       sendExternalReminder: false,
     });
-  }, [firstActiveListId, form, mustMigrateArchivedList, open, task]);
+  }, [defaultDueAt, firstActiveListId, form, mustMigrateArchivedList, open, task]);
 
   useEffect(() => {
     if (!open || task || form.getFieldValue('listId') || !firstActiveListId) {
@@ -315,21 +387,28 @@ export function TaskFormModal({
           <Form.Item
             name="dueAt"
             label="截止时间"
-            dependencies={['taskType', 'recurrenceType', 'remindAt']}
+            dependencies={['taskType', 'recurrenceType', 'remindAt', 'remindOffset']}
             rules={[
               {
                 validator: (_, value?: Dayjs) => {
                   const taskType = form.getFieldValue('taskType');
                   const recurrenceType = form.getFieldValue('recurrenceType');
+                  const isRecurring = recurrenceType !== 'none';
                   const remindAt = form.getFieldValue('remindAt');
+                  const remindOffset = form.getFieldValue('remindOffset');
 
                   if (taskType === 'anniversary' && !value) {
                     return Promise.reject(new Error('纪念日必须设置日期'));
                   }
-                  if (recurrenceType !== 'none' && !value) {
+                  if (isRecurring && !value) {
                     return Promise.reject(new Error('重复任务必须设置截止时间'));
                   }
-                  if (value && remindAt && dayjs(remindAt).isAfter(value)) {
+                  if (
+                    value &&
+                    remindAt &&
+                    (!isRecurring || remindOffset === CUSTOM_REMIND_OFFSET) &&
+                    dayjs(remindAt).isAfter(value)
+                  ) {
                     return Promise.reject(new Error('提醒时间不能晚于截止时间'));
                   }
 
@@ -341,47 +420,73 @@ export function TaskFormModal({
             <DatePicker showTime className="w-full" placeholder="请选择截止时间" />
           </Form.Item>
 
-          <Form.Item
-            name="remindAt"
-            label="提醒时间"
-            dependencies={['dueAt']}
-            rules={[
-              {
-                validator: (_, value?: Dayjs) => {
-                  const dueAt = form.getFieldValue('dueAt');
-                  if (value && dueAt && dayjs(value).isAfter(dueAt)) {
-                    return Promise.reject(new Error('提醒时间不能晚于截止时间'));
-                  }
+          <Form.Item noStyle shouldUpdate={(prev, next) => prev.recurrenceType !== next.recurrenceType}>
+            {({ getFieldValue }) => {
+              const isRecurring = getFieldValue('recurrenceType') !== 'none';
 
-                  return Promise.resolve();
-                },
-              },
-            ]}
-          >
-            <DatePicker showTime className="w-full" placeholder="请选择提醒时间" />
+              return isRecurring ? (
+                <>
+                  <Form.Item name="remindOffset" label="提醒时间">
+                    <Select
+                      allowClear
+                      placeholder="不提醒"
+                      options={currentRemindOffsetOptions}
+                    />
+                  </Form.Item>
+                  <Form.Item name="remindAt" hidden>
+                    <DatePicker />
+                  </Form.Item>
+                </>
+              ) : (
+                <Form.Item
+                  name="remindAt"
+                  label="提醒时间"
+                  dependencies={['dueAt']}
+                  rules={[
+                    {
+                      validator: (_, value?: Dayjs) => {
+                        const dueAt = form.getFieldValue('dueAt');
+                        if (value && dueAt && dayjs(value).isAfter(dueAt)) {
+                          return Promise.reject(new Error('提醒时间不能晚于截止时间'));
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
+                >
+                  <DatePicker showTime className="w-full" placeholder="请选择提醒时间" />
+                </Form.Item>
+              );
+            }}
           </Form.Item>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Form.Item name="recurrenceType" label="重复规则">
-            <Select options={recurrenceOptions} />
+            <Select options={recurrenceOptions} onChange={handleRecurrenceTypeChange} />
           </Form.Item>
 
           <Form.Item noStyle shouldUpdate={(prev, next) => prev.recurrenceType !== next.recurrenceType}>
-            {({ getFieldValue }) =>
-              supportsRecurrenceInterval(getFieldValue('recurrenceType')) ? (
-                <Form.Item
-                  name="recurrenceInterval"
-                  label="重复间隔"
-                >
-                  <InputNumber min={1} max={365} className="w-full" />
+            {({ getFieldValue }) => {
+              const recurrenceType = getFieldValue('recurrenceType') as TaskRecurrenceType;
+              const config = recurrenceIntervalConfig[recurrenceType];
+
+              return config ? (
+                <Form.Item name="recurrenceInterval" label="重复间隔">
+                  <InputNumber
+                    min={1}
+                    max={config.max}
+                    addonAfter={config.unit}
+                    className="w-full"
+                    placeholder="留空则为 1"
+                  />
                 </Form.Item>
               ) : (
                 <Form.Item label="重复间隔">
                   <InputNumber disabled className="w-full" placeholder="当前规则无需填写" />
                 </Form.Item>
-              )
-            }
+              );
+            }}
           </Form.Item>
         </div>
 

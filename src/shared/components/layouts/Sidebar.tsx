@@ -134,17 +134,16 @@ export function Sidebar({ collapsed }: SidebarProps) {
       width={SIDEBAR_WIDTH}
       collapsedWidth={SIDEBAR_COLLAPSED_WIDTH}
       theme={themeMode === 'dark' ? 'dark' : 'light'}
-      className="sidebar-bg flex-none transition-theme"
+      className="sidebar-bg flex-none border-r transition-theme"
     >
       <div
         className={cn(
-          'sidebar-logo-bg relative flex items-center overflow-hidden border-b px-4 transition-theme',
+          'sidebar-logo-bg relative flex items-center overflow-hidden border-b border-slate-200 px-4 transition-theme dark:border-slate-700',
           collapsed ? 'justify-center' : 'justify-start'
         )}
         style={{
           height: 'var(--app-header-height)',
           minHeight: 'var(--app-header-height)',
-          borderColor: themeMode === 'dark' ? '#334155' : '#e2e8f0',
         }}
       >
         <div className="flex min-w-0 items-center gap-3">
@@ -163,10 +162,11 @@ export function Sidebar({ collapsed }: SidebarProps) {
           <Spin />
         </div>
       ) : (
-        <div className="w-full flex-1 overflow-y-auto py-3">
+        <div className="w-full flex-1 overflow-y-auto">
           <Menu
             theme={themeMode === 'dark' ? 'dark' : 'light'}
             mode="inline"
+            inlineIndent={16}
             selectedKeys={selectedKey ? [selectedKey] : []}
             {...(!collapsed && { openKeys })}
             onOpenChange={(keys) => {
@@ -175,7 +175,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
               }
             }}
             items={menuItems}
-            className="sidebar-menu w-full border-r-0 bg-transparent"
+            className="sidebar-menu w-full border-r-0 bg-transparent min-h-full"
           />
         </div>
       )}

@@ -7,8 +7,6 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { PermissionGuard } from '@/shared/components';
-import { useThemeStore } from '@/shared/stores';
-import { cn } from '@/shared/utils/cn';
 
 interface QuickAction {
   label: string;
@@ -24,7 +22,6 @@ interface QuickAction {
  */
 export function QuickActions() {
   const navigate = useNavigate();
-  const { mode: themeMode } = useThemeStore();
 
   const actions: QuickAction[] = [
     {
@@ -65,12 +62,7 @@ export function QuickActions() {
             <button
               type="button"
               onClick={() => navigate(action.path)}
-              className={cn(
-                'flex h-24 w-full items-center gap-3 rounded-lg border px-4 text-left',
-                themeMode === 'dark'
-                  ? 'bg-slate-800/40 hover:bg-slate-800/70'
-                  : 'bg-white hover:bg-indigo-50'
-              )}
+              className="flex h-24 w-full items-center gap-3 rounded-lg border bg-white px-4 text-left hover:bg-indigo-50 dark:bg-slate-800/40 dark:hover:bg-slate-800/70"
               style={{ borderColor: `${action.color}66` }}
             >
               <span
@@ -80,20 +72,10 @@ export function QuickActions() {
                 {action.icon}
               </span>
               <span className="min-w-0">
-                <span
-                  className={cn(
-                    'block truncate text-sm font-semibold',
-                    themeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'
-                  )}
-                >
+                <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                   {action.label}
                 </span>
-                <span
-                  className={cn(
-                    'mt-0.5 block truncate text-xs',
-                    themeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'
-                  )}
-                >
+                <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
                   快速进入
                 </span>
               </span>
