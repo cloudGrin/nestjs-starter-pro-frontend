@@ -1,11 +1,32 @@
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { FileList } from './FileList';
 
 const hookMocks = vi.hoisted(() => ({
   previewFile: vi.fn(),
+  createAccessLink: vi.fn(),
+  storageOptionsResult: {
+    data: {
+      defaultStorage: 'local',
+      options: [
+        { value: 'local', label: '本地存储' },
+        { value: 'oss', label: '阿里云 OSS' },
+      ],
+    } as
+      | undefined
+      | {
+          defaultStorage: string;
+          options: Array<{ value: string; label: string }>;
+        },
+  },
+}));
+
+vi.mock('@/shared/config/app.config', () => ({
+  appConfig: {
+    apiBaseUrl: 'http://api.example.com/api/v1',
+  },
 }));
 
 vi.mock('antd', () => {
@@ -42,20 +63,12 @@ vi.mock('antd', () => {
       <div className="ant-table-wrapper">
         {dataSource.map((record) => (
           <div key={record.id}>
-            {columns
-              .find((column) => column.key === 'actions')
-              ?.render(undefined, record)}
+            {columns.find((column) => column.key === 'actions')?.render(undefined, record)}
           </div>
         ))}
       </div>
     ),
-    Button: ({
-      children,
-      onClick,
-    }: {
-      children?: ReactNode;
-      onClick?: () => void;
-    }) => (
+    Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
       <button type="button" onClick={onClick}>
         {children}
       </button>
@@ -69,7 +82,20 @@ vi.mock('antd', () => {
     Select,
     Switch: () => <input type="checkbox" />,
     Tag: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
-    Image: () => null,
+    Image: ({
+      preview,
+    }: {
+      preview?: {
+        visible?: boolean;
+        src?: string;
+      };
+    }) => (
+      <img
+        alt="preview-proxy"
+        data-visible={preview?.visible ? 'true' : 'false'}
+        src={preview?.src || ''}
+      />
+    ),
     Tooltip: ({ children }: { children?: ReactNode }) => <>{children}</>,
     Upload,
     Form,
@@ -123,6 +149,13 @@ vi.mock('../hooks/useFiles', () => ({
     mutate: hookMocks.previewFile,
     isPending: false,
   }),
+  useCreateFileAccessLink: () => ({
+    mutate: hookMocks.createAccessLink,
+    isPending: false,
+  }),
+  useFileStorageOptions: () => ({
+    data: hookMocks.storageOptionsResult.data,
+  }),
   useUploadFile: () => ({
     mutate: vi.fn(),
     isPending: false,
@@ -154,6 +187,17 @@ vi.mock('@/shared/components/table/TableActions', () => ({
 }));
 
 describe('FileList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hookMocks.storageOptionsResult.data = {
+      defaultStorage: 'local',
+      options: [
+        { value: 'local', label: '本地存储' },
+        { value: 'oss', label: '阿里云 OSS' },
+      ],
+    };
+  });
+
   it('wraps the file table in a card like the other list pages', () => {
     const { container } = render(
       <MemoryRouter>
@@ -179,7 +223,7 @@ describe('FileList', () => {
     expect(screen.getByText('压缩包')).toBeInTheDocument();
   });
 
-  it('uses authenticated blob preview for private images without a public URL', () => {
+  it('uses a temporary access link for private image preview', () => {
     render(
       <MemoryRouter>
         <FileList />
@@ -188,7 +232,62 @@ describe('FileList', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '预览' }));
 
-    expect(hookMocks.previewFile).toHaveBeenCalledWith(1, expect.any(Object));
+    expect(hookMocks.createAccessLink).toHaveBeenCalledWith(
+      { id: 1, disposition: 'inline' },
+      expect.any(Object)
+    );
+    expect(hookMocks.previewFile).not.toHaveBeenCalled();
+  });
+
+  it('resolves private preview links against the configured API origin', () => {
+    render(
+      <MemoryRouter>
+        <FileList />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '预览' }));
+
+    const [, options] = hookMocks.createAccessLink.mock.calls[0];
+    act(() => {
+      options.onSuccess({
+        url: '/api/v1/files/1/access?token=abc',
+        expiresAt: '2026-05-02T00:00:00.000Z',
+      });
+    });
+
+    expect(screen.getByAltText('preview-proxy')).toHaveAttribute(
+      'src',
+      'http://api.example.com/api/v1/files/1/access?token=abc'
+    );
+  });
+
+  it('resolves private copied links against the configured API origin', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(
+      <MemoryRouter>
+        <FileList />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '复制链接' }));
+
+    const [, options] = hookMocks.createAccessLink.mock.calls[0];
+    act(() => {
+      options.onSuccess({
+        url: '/api/v1/files/1/access?token=abc',
+        expiresAt: '2026-05-02T00:00:00.000Z',
+      });
+    });
+
+    expect(writeText).toHaveBeenCalledWith(
+      'http://api.example.com/api/v1/files/1/access?token=abc'
+    );
   });
 
   it('uses a creatable tag selector for upload tags', () => {
@@ -202,5 +301,34 @@ describe('FileList', () => {
 
     const tagSelector = screen.getByTestId('upload-tags-selector');
     expect(tagSelector).toHaveAttribute('data-mode', 'tags');
+  });
+
+  it('lets users choose the upload storage when OSS is available', () => {
+    render(
+      <MemoryRouter>
+        <FileList />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '上传文件' }));
+
+    const storageSelector = screen.getByTestId('upload-storage-selector');
+    expect(storageSelector).toBeInTheDocument();
+    expect(within(storageSelector).getByText('阿里云 OSS')).toBeInTheDocument();
+  });
+
+  it('does not show OSS upload option before backend storage options load', () => {
+    hookMocks.storageOptionsResult.data = undefined;
+
+    render(
+      <MemoryRouter>
+        <FileList />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '上传文件' }));
+
+    expect(screen.queryByTestId('upload-storage-selector')).not.toBeInTheDocument();
+    expect(screen.queryByText('阿里云 OSS')).not.toBeInTheDocument();
   });
 });

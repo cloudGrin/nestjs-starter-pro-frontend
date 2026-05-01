@@ -3,7 +3,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { QueryFileDto } from '../types/file.types';
+import type { FileAccessDisposition, QueryFileDto } from '../types/file.types';
 import * as fileService from '../services/file.service';
 
 const FILE_QUERY_KEY = 'files';
@@ -15,6 +15,16 @@ export const useFiles = (params: QueryFileDto) => {
   return useQuery({
     queryKey: [FILE_QUERY_KEY, 'list', params],
     queryFn: () => fileService.getFiles(params),
+  });
+};
+
+/**
+ * 获取文件存储选项
+ */
+export const useFileStorageOptions = () => {
+  return useQuery({
+    queryKey: [FILE_QUERY_KEY, 'storage-options'],
+    queryFn: fileService.getFileStorageOptions,
   });
 };
 
@@ -31,12 +41,25 @@ export const useUploadFile = () => {
     }: {
       file: File;
       options?: Parameters<typeof fileService.uploadFile>[1];
-    }) => fileService.uploadFile(file, options),
+    }) =>
+      options?.storage === 'oss'
+        ? fileService.directUploadFile(file, options)
+        : fileService.uploadFile(file, options),
     onSuccess: () => {
       // Service层已配置successMessage，不需要在这里显示
       queryClient.invalidateQueries({ queryKey: [FILE_QUERY_KEY, 'list'] });
     },
     // onError已由axios拦截器统一处理
+  });
+};
+
+/**
+ * 创建临时访问链接
+ */
+export const useCreateFileAccessLink = () => {
+  return useMutation({
+    mutationFn: ({ id, disposition }: { id: number; disposition?: FileAccessDisposition }) =>
+      fileService.createFileAccessLink(id, disposition),
   });
 };
 

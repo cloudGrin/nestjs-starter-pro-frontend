@@ -43,11 +43,13 @@ import {
   useFiles,
   useDeleteFile,
   useDownloadFile,
-  usePreviewFile,
   useUploadFile,
+  useCreateFileAccessLink,
+  useFileStorageOptions,
 } from '../hooks/useFiles';
-import type { FileEntity, FileModule } from '../types/file.types';
+import type { FileEntity, FileModule, FileStorage, FileStorageOption } from '../types/file.types';
 import { FILE_SIZE_LIMITS } from '../types/file.types';
+import { resolveFileAccessUrl } from '../utils/file-url';
 import { PermissionGuard } from '@/shared/components/auth/PermissionGuard';
 import { PageWrap } from '@/shared/components/layouts/PageWrap';
 import { SearchForm } from '@/shared/components/search/SearchForm';
@@ -99,10 +101,9 @@ const FILE_CATEGORY_OPTIONS = [
   { value: 'other', label: '其他' },
 ] as const;
 
-const FILE_STORAGE_OPTIONS = [
+const LOCAL_FILE_STORAGE_OPTIONS = [
   { value: 'local', label: '本地存储' },
-  { value: 'oss', label: 'OSS' },
-] as const;
+] satisfies FileStorageOption[];
 
 export const FileList: React.FC = () => {
   // 搜索参数
@@ -111,8 +112,14 @@ export const FileList: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [module, setModule] = useState<FileModule | undefined>(undefined);
   const [category, setCategory] = useState<string | undefined>(undefined);
-  const [storage, setStorage] = useState<'local' | 'oss' | undefined>(undefined);
+  const [storage, setStorage] = useState<FileStorage | undefined>(undefined);
   const [isPublic, setIsPublic] = useState<boolean | undefined>(undefined);
+
+  const { data: storageOptionsData } = useFileStorageOptions();
+  const availableStorageOptions = storageOptionsData?.options?.length
+    ? storageOptionsData.options
+    : LOCAL_FILE_STORAGE_OPTIONS;
+  const defaultUploadStorage = storageOptionsData?.defaultStorage ?? 'local';
 
   // 查询文件列表
   const { data, isLoading, refetch } = useFiles({
@@ -128,30 +135,26 @@ export const FileList: React.FC = () => {
   // Mutations
   const { mutate: deleteFile, isPending: isDeleting } = useDeleteFile();
   const { mutate: downloadFile } = useDownloadFile();
-  const { mutate: previewFile, isPending: isPreviewing } = usePreviewFile();
   const { mutate: uploadFile, isPending: isUploading } = useUploadFile();
+  const { mutate: createAccessLink, isPending: isCreatingAccessLink } = useCreateFileAccessLink();
 
   // 预览图片
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
-  const [previewObjectUrl, setPreviewObjectUrl] = useState<string>();
 
   // 上传表单
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
   const [uploadModule, setUploadModule] = useState<FileModule | undefined>(module);
+  const [uploadStorage, setUploadStorage] = useState<FileStorage>(defaultUploadStorage);
   const [uploadTags, setUploadTags] = useState<string[]>([]);
   const [uploadIsPublic, setUploadIsPublic] = useState(false);
   const [uploadRemark, setUploadRemark] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
-    return () => {
-      if (previewObjectUrl) {
-        window.URL.revokeObjectURL(previewObjectUrl);
-      }
-    };
-  }, [previewObjectUrl]);
+    setUploadStorage(defaultUploadStorage);
+  }, [defaultUploadStorage]);
 
   /**
    * 处理搜索
@@ -160,7 +163,7 @@ export const FileList: React.FC = () => {
     setKeyword(values.keyword as string);
     setModule(values.module as FileModule);
     setCategory(values.category as string);
-    setStorage(values.storage as 'local' | 'oss');
+    setStorage(values.storage as FileStorage);
     setIsPublic(values.isPublic === undefined ? undefined : values.isPublic === 'true');
     setPage(1);
   };
@@ -196,26 +199,49 @@ export const FileList: React.FC = () => {
    */
   const handlePreview = (record: FileEntity) => {
     if (record.mimeType.startsWith('image/')) {
-      if (record.url) {
-        setPreviewImage(record.url);
+      if (record.isPublic && record.url) {
+        setPreviewImage(resolveFileAccessUrl(record.url));
         setPreviewVisible(true);
         return;
       }
 
-      previewFile(record.id, {
-        onSuccess: (blob) => {
-          if (previewObjectUrl) {
-            window.URL.revokeObjectURL(previewObjectUrl);
-          }
-          const url = window.URL.createObjectURL(blob);
-          setPreviewObjectUrl(url);
-          setPreviewImage(url);
-          setPreviewVisible(true);
-        },
-      });
+      createAccessLink(
+        { id: record.id, disposition: 'inline' },
+        {
+          onSuccess: ({ url }) => {
+            setPreviewImage(resolveFileAccessUrl(url));
+            setPreviewVisible(true);
+          },
+        }
+      );
     } else {
       antdMessage.info('该文件类型不支持预览');
     }
+  };
+
+  const copyUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(resolveFileAccessUrl(url));
+      antdMessage.success('链接已复制');
+    } catch {
+      antdMessage.error('复制失败，请手动复制链接');
+    }
+  };
+
+  const handleCopyLink = (record: FileEntity) => {
+    if (record.isPublic && record.url) {
+      void copyUrl(record.url);
+      return;
+    }
+
+    createAccessLink(
+      { id: record.id, disposition: 'inline' },
+      {
+        onSuccess: ({ url }) => {
+          void copyUrl(url);
+        },
+      }
+    );
   };
 
   /**
@@ -234,6 +260,7 @@ export const FileList: React.FC = () => {
   const resetUploadState = () => {
     setSelectedUploadFile(null);
     setUploadModule(module);
+    setUploadStorage(defaultUploadStorage);
     setUploadTags([]);
     setUploadIsPublic(false);
     setUploadRemark('');
@@ -250,6 +277,7 @@ export const FileList: React.FC = () => {
       {
         file: selectedUploadFile,
         options: {
+          storage: uploadStorage,
           module: uploadModule,
           tags:
             uploadTags
@@ -268,23 +296,6 @@ export const FileList: React.FC = () => {
         },
       }
     );
-  };
-
-  const handleCopyPublicUrl = async (record: FileEntity) => {
-    if (!record.url) {
-      antdMessage.warning('该文件没有公开链接');
-      return;
-    }
-
-    const url = record.url.startsWith('http')
-      ? record.url
-      : `${window.location.origin}${record.url}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      antdMessage.success('公开链接已复制');
-    } catch {
-      antdMessage.error('复制失败，请手动复制链接');
-    }
   };
 
   // 表格列定义
@@ -397,19 +408,16 @@ export const FileList: React.FC = () => {
                     label: '预览',
                     icon: <EyeOutlined />,
                     onClick: () => handlePreview(record),
-                    loading: isPreviewing,
+                    loading: isCreatingAccessLink,
                   },
                 ]
               : []),
-            ...(record.isPublic && record.url
-              ? [
-                  {
-                    label: '复制链接',
-                    icon: <CopyOutlined />,
-                    onClick: () => handleCopyPublicUrl(record),
-                  },
-                ]
-              : []),
+            {
+              label: '复制链接',
+              icon: <CopyOutlined />,
+              onClick: () => handleCopyLink(record),
+              permission: record.isPublic && record.url ? undefined : 'file:download',
+            },
             {
               label: '下载',
               icon: <DownloadOutlined />,
@@ -478,7 +486,7 @@ export const FileList: React.FC = () => {
           </Form.Item>
           <Form.Item name="storage" label="存储">
             <Select placeholder="选择存储" allowClear>
-              {FILE_STORAGE_OPTIONS.map((item) => (
+              {availableStorageOptions.map((item) => (
                 <Select.Option key={item.value} value={item.value}>
                   {item.label}
                 </Select.Option>
@@ -544,12 +552,25 @@ export const FileList: React.FC = () => {
               {selectedUploadFile ? (
                 <Tag color="blue">{selectedUploadFile.name}</Tag>
               ) : (
-                <p className="ant-upload-hint">
-                  最大 {formatFileSize(FILE_SIZE_LIMITS.default)}
-                </p>
+                <p className="ant-upload-hint">最大 {formatFileSize(FILE_SIZE_LIMITS.default)}</p>
               )}
             </Upload.Dragger>
           </Form.Item>
+          {availableStorageOptions.length > 1 ? (
+            <Form.Item label="存储">
+              <Select
+                data-testid="upload-storage-selector"
+                value={uploadStorage}
+                onChange={(value) => setUploadStorage(value)}
+              >
+                {availableStorageOptions.map((item) => (
+                  <Select.Option key={item.value} value={item.value}>
+                    {item.label}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          ) : null}
           <Form.Item label="模块">
             <Select
               placeholder="选择模块"
