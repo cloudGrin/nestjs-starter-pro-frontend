@@ -22,11 +22,12 @@ export function useMenus(params?: QueryMenuDto) {
 /**
  * 获取菜单树
  */
-export function useMenuTree() {
+export function useMenuTree(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['menus', 'tree'],
     queryFn: () => menuService.getMenuTree(),
     staleTime: 5 * 60 * 1000, // 5分钟内不会重新请求
+    enabled: options?.enabled ?? true,
   });
 }
 

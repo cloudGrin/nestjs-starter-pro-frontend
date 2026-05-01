@@ -26,11 +26,12 @@ export function usePermissions(params: QueryPermissionDto) {
 /**
  * 获取权限树（按模块分组）
  */
-export function usePermissionTree() {
+export function usePermissionTree(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['permissions', 'tree'],
     queryFn: () => permissionService.getPermissionTree(),
     staleTime: 5 * 60 * 1000, // 5分钟内不会重新请求
+    enabled: options?.enabled ?? true,
   });
 }
 

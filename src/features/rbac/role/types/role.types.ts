@@ -87,3 +87,16 @@ export interface AssignPermissionsDto {
 export interface AssignMenusDto {
   menuIds: number[];
 }
+
+/**
+ * 角色统一授权详情
+ */
+export interface RoleAccess {
+  menuIds: number[];
+  permissionIds: number[];
+}
+
+/**
+ * 统一分配菜单和权限DTO
+ */
+export type AssignRoleAccessDto = RoleAccess;

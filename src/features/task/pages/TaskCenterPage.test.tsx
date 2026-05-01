@@ -268,6 +268,27 @@ describe('TaskCenterPage', () => {
     expect(taskHookMocks.useTaskAssignees).toHaveBeenCalled();
   });
 
+  it('shows task list scope labels in the list filter options', async () => {
+    taskHookMocks.useTaskLists.mockReturnValue({
+      data: [
+        { id: 1, name: '家庭计划', scope: 'family', sort: 0, isArchived: false },
+        { id: 2, name: '个人事项', scope: 'personal', sort: 1, isArchived: false },
+      ],
+      isLoading: false,
+    });
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read'],
+      })
+    );
+
+    renderTaskCenter();
+    await userEvent.click(screen.getByText('全部清单'));
+
+    expect(await screen.findByText('家庭计划（家庭）')).toBeInTheDocument();
+    expect(await screen.findByText('个人事项（个人）')).toBeInTheDocument();
+  });
+
   it('adds a default date range when switching to calendar view', async () => {
     setMockUser(
       createMockUser({

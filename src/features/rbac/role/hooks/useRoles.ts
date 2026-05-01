@@ -6,11 +6,15 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roleService } from '../services/role.service';
+import { authService } from '@/features/auth/services/auth.service';
+import { useAuthStore } from '@/features/auth/stores/authStore';
+import { usePermission } from '@/shared/hooks';
 import type {
   QueryRoleDto,
   CreateRoleDto,
   UpdateRoleDto,
   AssignMenusDto,
+  AssignRoleAccessDto,
 } from '../types/role.types';
 
 /**
@@ -133,5 +137,106 @@ export function useRoleMenus(id: number) {
     queryFn: () => roleService.getRoleMenus(id),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * 获取角色统一授权
+ */
+export function useRoleAccess(id: number) {
+  return useQuery({
+    queryKey: ['roles', id, 'access'],
+    queryFn: () => roleService.getRoleAccess(id),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * 统一分配角色菜单和权限
+ */
+export function useAssignAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: AssignRoleAccessDto }) =>
+      roleService.assignAccess(id, data),
+    onSuccess: async (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      queryClient.invalidateQueries({ queryKey: ['roles', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'access'] });
+      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'permissions'] });
+      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'menus'] });
+      queryClient.invalidateQueries({ queryKey: ['menus', 'user'] });
+
+      const currentUser = useAuthStore.getState().user;
+      const affectsCurrentUser = currentUser?.roles?.some((role) => role.id === variables.id);
+      if (!affectsCurrentUser) {
+        return;
+      }
+
+      try {
+        const profile = await authService.getProfile();
+        useAuthStore.getState().setUser(profile);
+        queryClient.setQueryData(['profile'], profile);
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+      }
+    },
+  });
+}
+
+/**
+ * 保存角色授权。
+ * 新权限走统一接口；旧菜单/权限分配权限只保存各自有权修改的部分。
+ */
+export function useSaveRoleAccess() {
+  const queryClient = useQueryClient();
+  const { hasPermission } = usePermission();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: AssignRoleAccessDto }) => {
+      if (hasPermission(['role:access:assign'])) {
+        return roleService.assignAccess(id, data);
+      }
+
+      const operations: Array<Promise<unknown>> = [];
+      if (hasPermission(['role:menu:assign'])) {
+        operations.push(roleService.assignMenus(id, { menuIds: data.menuIds }));
+      }
+
+      if (hasPermission(['role:permission:assign'])) {
+        operations.push(roleService.assignPermissions(id, data.permissionIds));
+      }
+
+      if (operations.length === 0) {
+        throw new Error('缺少角色授权权限');
+      }
+
+      const results = await Promise.all(operations);
+      return results[results.length - 1];
+    },
+    onSuccess: async (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      queryClient.invalidateQueries({ queryKey: ['roles', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'access'] });
+      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'permissions'] });
+      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'menus'] });
+      queryClient.invalidateQueries({ queryKey: ['menus', 'user'] });
+
+      const currentUser = useAuthStore.getState().user;
+      const affectsCurrentUser = currentUser?.roles?.some((role) => role.id === variables.id);
+      if (!affectsCurrentUser) {
+        return;
+      }
+
+      try {
+        const profile = await authService.getProfile();
+        useAuthStore.getState().setUser(profile);
+        queryClient.setQueryData(['profile'], profile);
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+      }
+    },
   });
 }

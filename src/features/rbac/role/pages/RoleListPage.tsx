@@ -7,8 +7,7 @@ import { Card, Button, Space, Form, Input } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { RoleList } from '../components/RoleList';
 import { RoleForm } from '../components/RoleForm';
-import { RolePermissionModal } from '../components/RolePermissionModal';
-import { RoleMenuModal } from '../components/RoleMenuModal';
+import { RoleAccessModal } from '../components/RoleAccessModal';
 import { PageWrap, SearchForm, PermissionGuard, EmptyState } from '@/shared/components';
 import { useRoles, useCreateRole, useUpdateRole, useDeleteRole } from '../hooks/useRoles';
 import type { Role, QueryRoleDto, CreateRoleDto, UpdateRoleDto } from '../types/role.types';
@@ -30,16 +29,8 @@ export function RoleListPage() {
     mode: 'create',
   });
 
-  // 权限Modal状态
-  const [permissionModal, setPermissionModal] = useState<{
-    open: boolean;
-    role?: Role;
-  }>({
-    open: false,
-  });
-
-  // 菜单Modal状态
-  const [menuModal, setMenuModal] = useState<{
+  // 授权Modal状态
+  const [accessModal, setAccessModal] = useState<{
     open: boolean;
     role?: Role;
   }>({
@@ -105,20 +96,10 @@ export function RoleListPage() {
   };
 
   /**
-   * 打开分配权限弹窗
+   * 打开角色授权弹窗
    */
-  const handleAssignPermissions = (role: Role) => {
-    setPermissionModal({
-      open: true,
-      role,
-    });
-  };
-
-  /**
-   * 打开分配菜单弹窗
-   */
-  const handleAssignMenus = (role: Role) => {
-    setMenuModal({
+  const handleAssignAccess = (role: Role) => {
+    setAccessModal({
       open: true,
       role,
     });
@@ -208,8 +189,7 @@ export function RoleListPage() {
             }}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onAssignPermissions={handleAssignPermissions}
-            onAssignMenus={handleAssignMenus}
+            onAssignAccess={handleAssignAccess}
             onPageChange={handlePageChange}
           />
         )}
@@ -225,20 +205,12 @@ export function RoleListPage() {
         onCancel={() => setFormModal({ open: false, mode: 'create' })}
       />
 
-      {/* 分配权限Modal */}
-      <RolePermissionModal
-        open={permissionModal.open}
-        role={permissionModal.role}
-        onSuccess={() => setPermissionModal({ open: false })}
-        onCancel={() => setPermissionModal({ open: false })}
-      />
-
-      {/* 分配菜单Modal */}
-      <RoleMenuModal
-        open={menuModal.open}
-        role={menuModal.role}
-        onSuccess={() => setMenuModal({ open: false })}
-        onCancel={() => setMenuModal({ open: false })}
+      {/* 角色授权Modal */}
+      <RoleAccessModal
+        open={accessModal.open}
+        role={accessModal.role}
+        onSuccess={() => setAccessModal({ open: false })}
+        onCancel={() => setAccessModal({ open: false })}
       />
     </PageWrap>
   );

@@ -22,6 +22,7 @@ import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskListManageModal } from '../components/TaskListManageModal';
 import { TaskMatrixView } from '../components/TaskMatrixView';
 import { TaskTable } from '../components/TaskTable';
+import { formatTaskListOptionLabel } from '../utils/taskList';
 import type {
   CreateTaskDto,
   QueryTasksParams,
@@ -543,7 +544,7 @@ export function TaskCenterPage() {
               allowClear
               placeholder="全部清单"
               options={taskLists.map((list) => ({
-                label: list.name,
+                label: formatTaskListOptionLabel(list),
                 value: list.id,
               }))}
             />

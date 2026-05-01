@@ -12,6 +12,8 @@ import type {
   UpdateRoleDto,
   AssignPermissionsDto,
   AssignMenusDto,
+  AssignRoleAccessDto,
+  RoleAccess,
 } from '../types/role.types';
 import type { Menu } from '../../menu/types/menu.types';
 
@@ -79,6 +81,23 @@ export const roleService = {
       requestOptions: {
         messageConfig: {
           successMessage: '分配权限成功',
+        },
+      },
+    }),
+
+  /**
+   * 获取角色统一授权
+   */
+  getRoleAccess: (id: number) => request.get<RoleAccess>(`/roles/${id}/access`),
+
+  /**
+   * 统一分配菜单和权限
+   */
+  assignAccess: (id: number, data: AssignRoleAccessDto) =>
+    request.put(`/roles/${id}/access`, data, {
+      requestOptions: {
+        messageConfig: {
+          successMessage: '保存角色授权成功',
         },
       },
     }),

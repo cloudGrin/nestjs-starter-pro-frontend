@@ -7,7 +7,6 @@ import {
   EditOutlined,
   DeleteOutlined,
   SafetyCertificateOutlined,
-  MenuOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { TableActions, StatusBadge } from '@/shared/components';
@@ -24,8 +23,7 @@ interface RoleListProps {
   };
   onEdit?: (role: Role) => void;
   onDelete?: (id: number) => void;
-  onAssignPermissions?: (role: Role) => void;
-  onAssignMenus?: (role: Role) => void;
+  onAssignAccess?: (role: Role) => void;
   onPageChange?: (page: number, pageSize: number) => void;
 }
 
@@ -36,8 +34,7 @@ export function RoleList({
   pagination = { current: 1, pageSize: 10 },
   onEdit,
   onDelete,
-  onAssignPermissions,
-  onAssignMenus,
+  onAssignAccess,
   onPageChange,
 }: RoleListProps) {
   const isProtectedRole = (role: Role) => role.code === 'super_admin' || role.isSystem;
@@ -123,21 +120,13 @@ export function RoleList({
               permission: 'role:update',
             },
             {
-              label: '权限',
+              label: '授权',
               icon: <SafetyCertificateOutlined />,
-              onClick: () => onAssignPermissions?.(record),
+              onClick: () => onAssignAccess?.(record),
               disabled: isProtectedRole(record),
               tooltip:
-                record.code === 'super_admin' ? '超级管理员默认拥有所有权限' : undefined,
-              permission: 'role:permission:assign',
-            },
-            {
-              label: '菜单',
-              icon: <MenuOutlined />,
-              onClick: () => onAssignMenus?.(record),
-              disabled: isProtectedRole(record),
-              tooltip: record.code === 'super_admin' ? '超级管理员默认拥有所有菜单' : undefined,
-              permission: 'role:menu:assign',
+                record.code === 'super_admin' ? '超级管理员默认拥有所有权限和菜单' : undefined,
+              permission: ['role:access:assign', 'role:permission:assign', 'role:menu:assign'],
             },
             {
               label: '删除',

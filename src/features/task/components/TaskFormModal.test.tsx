@@ -200,6 +200,45 @@ describe('TaskFormModal', () => {
     );
   });
 
+  it('shows task list scope labels without changing the submitted list id', async () => {
+    const onSubmit = vi.fn();
+
+    renderWithProviders(
+      <TaskFormModal
+        open
+        task={null}
+        lists={[
+          { id: 1, name: '家庭计划', scope: 'family', sort: 0, isArchived: false },
+          { id: 2, name: '个人事项', scope: 'personal', sort: 1, isArchived: false },
+        ]}
+        users={[]}
+        submitting={false}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await userEvent.click(screen.getByLabelText('所属清单'));
+
+    expect((await screen.findAllByText('家庭计划（家庭）')).length).toBeGreaterThan(0);
+    const personalListOptions = await screen.findAllByText('个人事项（个人）');
+    expect(personalListOptions.length).toBeGreaterThan(0);
+
+    await userEvent.click(personalListOptions[0]);
+    await userEvent.type(
+      screen.getByPlaceholderText('例如：给家里买菜、准备周会、结婚纪念日'),
+      '区分清单范围'
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        listId: 2,
+      })
+    );
+  });
+
   it('requires moving a task out of an archived list before saving', async () => {
     const onSubmit = vi.fn();
 

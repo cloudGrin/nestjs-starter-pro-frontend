@@ -11,6 +11,7 @@ import type {
   TaskType,
   UpdateTaskDto,
 } from '../types/task.types';
+import { formatTaskListOptionLabel } from '../utils/taskList';
 
 interface TaskFormModalProps {
   open: boolean;
@@ -344,7 +345,7 @@ export function TaskFormModal({
             <Select
               placeholder="请选择清单"
               options={activeLists.map((list) => ({
-                label: list.name,
+                label: formatTaskListOptionLabel(list),
                 value: list.id,
               }))}
             />
