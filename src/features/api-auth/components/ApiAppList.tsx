@@ -2,12 +2,21 @@
  * API应用列表组件
  */
 import { useState } from 'react';
-import { Card, Table, Button, Space, Tag, Modal, Form, Input } from 'antd';
+import { Card, Table, Button, Space, Tag, Modal, Form, Input, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, KeyOutlined } from '@ant-design/icons';
 import { useForm, Controller } from 'react-hook-form';
-import { useApiApps, useCreateApiApp, useUpdateApiApp, useDeleteApiApp } from '../hooks/useApiApps';
+import {
+  useApiApps,
+  useApiScopes,
+  useCreateApiApp,
+  useUpdateApiApp,
+  useDeleteApiApp,
+} from '../hooks/useApiApps';
 import { PageWrap, TableActions, StatusBadge, PermissionGuard } from '@/shared/components';
 import { formatDate } from '@/shared/utils';
+import { ApiIntegrationGuide } from './ApiIntegrationGuide';
+import { ApiScopeSelector } from './ApiScopeSelector';
+import { getApiScopeDescription, getApiScopeLabel } from '../utils/apiScopes';
 import type { ApiApp, CreateApiAppDto, UpdateApiAppDto } from '../types/api-auth.types';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -17,7 +26,7 @@ import type { ColumnsType } from 'antd/es/table';
 interface FormData {
   name: string;
   description?: string;
-  scopes: string;
+  scopes: string[];
 }
 
 interface ApiAppListProps {
@@ -31,6 +40,7 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
 
   // Hooks
   const { data, isLoading } = useApiApps(pagination);
+  const { data: apiScopeGroups = [] } = useApiScopes();
   const createMutation = useCreateApiApp();
   const updateMutation = useUpdateApiApp();
   const deleteMutation = useDeleteApiApp();
@@ -45,7 +55,7 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
     defaultValues: {
       name: '',
       description: '',
-      scopes: '',
+      scopes: [],
     },
   });
 
@@ -57,7 +67,7 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
     reset({
       name: '',
       description: '',
-      scopes: '',
+      scopes: [],
     });
     setIsModalOpen(true);
   };
@@ -70,7 +80,7 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
     reset({
       name: app.name,
       description: app.description,
-      scopes: (app.scopes || []).join(', '),
+      scopes: app.scopes || [],
     });
     setIsModalOpen(true);
   };
@@ -79,10 +89,7 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
    * 提交表单
    */
   const onSubmit = async (formData: FormData) => {
-    const scopes = formData.scopes
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const scopes = formData.scopes || [];
 
     if (editingApp) {
       // 更新
@@ -147,9 +154,9 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
       render: (scopes: string[]) => (
         <Space wrap>
           {(scopes || []).slice(0, 2).map((scope) => (
-            <Tag key={scope} color="blue">
-              {scope}
-            </Tag>
+            <Tooltip key={scope} title={getApiScopeDescription(scope, apiScopeGroups)}>
+              <Tag color="blue">{getApiScopeLabel(scope, apiScopeGroups)}</Tag>
+            </Tooltip>
           ))}
           {(scopes || []).length > 2 && <Tag>+{(scopes || []).length - 2}</Tag>}
         </Space>
@@ -172,7 +179,7 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
     {
       title: '操作',
       key: 'actions',
-      width: 180,
+      width: 240,
       fixed: 'right',
       render: (_, record) => (
         <TableActions
@@ -234,6 +241,8 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
         />
       </Card>
 
+      <ApiIntegrationGuide />
+
       {/* 创建/编辑应用Modal */}
       <Modal
         title={editingApp ? '编辑应用' : '创建应用'}
@@ -286,12 +295,14 @@ export function ApiAppList({ onViewKeys }: ApiAppListProps = {}) {
           <Form.Item
             label="权限范围"
             validateStatus={errors.scopes ? 'error' : ''}
-            help={errors.scopes?.message || '可选，多个权限用逗号分隔，如：read:users'}
+            help={errors.scopes?.message || '可选；未选择时应用没有开放 API 访问权限'}
           >
             <Controller
               name="scopes"
               control={control}
-              render={({ field }) => <Input {...field} placeholder="read:users" />}
+              render={({ field }) => (
+                <ApiScopeSelector value={field.value} onChange={field.onChange} />
+              )}
             />
           </Form.Item>
         </Form>

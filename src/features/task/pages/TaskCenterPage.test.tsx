@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { TaskCenterPage } from './TaskCenterPage';
@@ -89,6 +89,17 @@ function createTaskFixture(overrides: Record<string, unknown> = {}) {
     createdAt: '2026-04-01T00:00:00.000Z',
     updatedAt: '2026-04-01T00:00:00.000Z',
     ...overrides,
+  };
+}
+
+function createDataTransfer() {
+  const store = new Map<string, string>();
+
+  return {
+    effectAllowed: '',
+    dropEffect: '',
+    setData: vi.fn((type: string, value: string) => store.set(type, value)),
+    getData: vi.fn((type: string) => store.get(type) ?? ''),
   };
 }
 
@@ -402,6 +413,54 @@ describe('TaskCenterPage', () => {
         page: 2,
         limit: 100,
       })
+    );
+  });
+
+  it('updates task urgency and importance when dragging across matrix quadrants', async () => {
+    const updateMutation = mockMutationWithSuccess();
+    taskHookMocks.useUpdateTask.mockReturnValue(updateMutation);
+    taskHookMocks.useTasks.mockImplementation((params) => ({
+      data:
+        params.view === 'matrix'
+          ? {
+              items: [
+                createTaskFixture({
+                  id: 31,
+                  title: '矩阵任务',
+                  important: false,
+                  urgent: false,
+                }),
+              ],
+              total: 1,
+              page: 1,
+              pageSize: 100,
+            }
+          : emptyTasks,
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    }));
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read', 'task:update'],
+      })
+    );
+    const dataTransfer = createDataTransfer();
+
+    renderTaskCenter();
+    await userEvent.click(screen.getByRole('tab', { name: '四象限' }));
+
+    fireEvent.dragStart(await screen.findByTestId('task-matrix-card-31'), { dataTransfer });
+    fireEvent.dragOver(screen.getByTestId('task-matrix-quadrant-important-urgent'), {
+      dataTransfer,
+    });
+    fireEvent.drop(screen.getByTestId('task-matrix-quadrant-important-urgent'), {
+      dataTransfer,
+    });
+
+    expect(updateMutation.mutate).toHaveBeenCalledWith(
+      { id: 31, data: { important: true, urgent: true } },
+      expect.any(Object)
     );
   });
 

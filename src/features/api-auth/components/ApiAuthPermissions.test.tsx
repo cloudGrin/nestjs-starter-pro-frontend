@@ -17,7 +17,9 @@ const hookMocks = vi.hoisted(() => ({
   useCreateApiApp: vi.fn(),
   useUpdateApiApp: vi.fn(),
   useDeleteApiApp: vi.fn(),
+  useApiScopes: vi.fn(),
   useApiKeys: vi.fn(),
+  useApiAccessLogs: vi.fn(),
   useCreateApiKey: vi.fn(),
   useRevokeApiKey: vi.fn(),
 }));
@@ -62,8 +64,29 @@ describe('API Auth permission actions', () => {
     hookMocks.useCreateApiApp.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     hookMocks.useUpdateApiApp.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     hookMocks.useDeleteApiApp.mockReturnValue({ mutate: vi.fn() });
+    hookMocks.useApiScopes.mockReturnValue({
+      data: [
+        {
+          key: 'open-user',
+          title: '用户公开资料',
+          scopes: [
+            {
+              code: 'read:users',
+              label: '读取用户公开资料',
+              description: '获取用户公开资料列表',
+            },
+          ],
+          endpoints: [],
+        },
+      ],
+      isLoading: false,
+    });
 
     hookMocks.useApiKeys.mockReturnValue({ data: [], isLoading: false });
+    hookMocks.useApiAccessLogs.mockReturnValue({
+      data: { items: [], total: 0, page: 1, pageSize: 10, totalPages: 0 },
+      isLoading: false,
+    });
     hookMocks.useCreateApiKey.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     hookMocks.useRevokeApiKey.mockReturnValue({ mutate: vi.fn() });
   });

@@ -37,6 +37,50 @@ export interface ApiKey {
 }
 
 /**
+ * 开放 API 权限范围
+ */
+export interface ApiScopeDefinition {
+  code: string;
+  label: string;
+  description: string;
+}
+
+export interface ApiEndpointDefinition {
+  scope: string;
+  method: string;
+  path: string;
+  summary: string;
+  description?: string;
+}
+
+export interface ApiScopeGroup {
+  key: string;
+  title: string;
+  scopes: ApiScopeDefinition[];
+  endpoints: ApiEndpointDefinition[];
+}
+
+/**
+ * API 访问日志
+ */
+export interface ApiAccessLog {
+  id: number;
+  appId: number;
+  keyId?: number;
+  keyName?: string;
+  keyPrefix?: string;
+  keySuffix?: string;
+  method: string;
+  path: string;
+  statusCode: number;
+  durationMs: number;
+  ip?: string;
+  userAgent?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
  * 创建API应用DTO
  */
 export interface CreateApiAppDto {
@@ -75,10 +119,32 @@ export interface QueryApiAppDto {
 }
 
 /**
+ * 查询 API 访问日志 DTO
+ */
+export interface QueryApiAccessLogDto {
+  keyId?: number;
+  path?: string;
+  statusCode?: number;
+  page?: number;
+  limit?: number;
+}
+
+/**
  * API应用列表响应
  */
 export interface ApiAppListResponse {
   items: ApiApp[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * API 访问日志列表响应
+ */
+export interface ApiAccessLogListResponse {
+  items: ApiAccessLog[];
   total: number;
   page: number;
   pageSize: number;

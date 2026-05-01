@@ -39,4 +39,30 @@ describe('apiAuthService', () => {
       expect.any(Object)
     );
   });
+
+  it('loads API scopes from the backend contract', () => {
+    apiAuthService.getApiScopes();
+
+    expect(request.get).toHaveBeenCalledWith('/api-apps/scopes');
+  });
+
+  it('queries API access logs by key, path, and status code', () => {
+    apiAuthService.getApiAccessLogs(12, {
+      keyId: 7,
+      path: '/open/users',
+      statusCode: 403,
+      page: 2,
+      limit: 20,
+    });
+
+    expect(request.get).toHaveBeenCalledWith('/api-apps/12/access-logs', {
+      params: {
+        keyId: 7,
+        path: '/open/users',
+        statusCode: 403,
+        page: 2,
+        limit: 20,
+      },
+    });
+  });
 });

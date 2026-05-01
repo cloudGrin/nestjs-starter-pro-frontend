@@ -8,6 +8,7 @@ import type {
   UpdateApiAppDto,
   CreateApiKeyDto,
   QueryApiAppDto,
+  QueryApiAccessLogDto,
 } from '../types/api-auth.types';
 
 /**
@@ -18,6 +19,17 @@ export function useApiApps(params: QueryApiAppDto) {
     queryKey: ['api-apps', params],
     queryFn: () => apiAuthService.getApiApps(params),
     staleTime: 5 * 60 * 1000, // 5分钟内不会重新请求
+  });
+}
+
+/**
+ * 获取开放 API 权限范围
+ */
+export function useApiScopes() {
+  return useQuery({
+    queryKey: ['api-scopes'],
+    queryFn: () => apiAuthService.getApiScopes(),
+    staleTime: 10 * 60 * 1000,
   });
 }
 
@@ -74,6 +86,18 @@ export function useApiKeys(appId: number | null) {
     queryFn: () => apiAuthService.getApiKeys(appId as number),
     enabled: appId !== null,
     staleTime: 2 * 60 * 1000, // 2分钟
+  });
+}
+
+/**
+ * 获取应用访问日志
+ */
+export function useApiAccessLogs(appId: number | null, params: QueryApiAccessLogDto) {
+  return useQuery({
+    queryKey: ['api-access-logs', appId, params],
+    queryFn: () => apiAuthService.getApiAccessLogs(appId as number, params),
+    enabled: appId !== null,
+    staleTime: 30 * 1000,
   });
 }
 

@@ -10,7 +10,10 @@ import type {
   UpdateApiAppDto,
   CreateApiKeyDto,
   QueryApiAppDto,
+  QueryApiAccessLogDto,
   CreateApiKeyResponse,
+  ApiScopeGroup,
+  ApiAccessLogListResponse,
 } from '../types/api-auth.types';
 
 export const apiAuthService = {
@@ -18,6 +21,11 @@ export const apiAuthService = {
    * 获取API应用列表
    */
   getApiApps: (params: QueryApiAppDto) => request.get<ApiAppListResponse>('/api-apps', { params }),
+
+  /**
+   * 获取开放 API 权限范围
+   */
+  getApiScopes: () => request.get<ApiScopeGroup[]>('/api-apps/scopes'),
 
   /**
    * 创建API应用
@@ -63,6 +71,12 @@ export const apiAuthService = {
    * 获取应用的密钥列表
    */
   getApiKeys: (appId: number) => request.get<ApiKey[]>(`/api-apps/${appId}/keys`),
+
+  /**
+   * 获取应用访问日志
+   */
+  getApiAccessLogs: (appId: number, params: QueryApiAccessLogDto) =>
+    request.get<ApiAccessLogListResponse>(`/api-apps/${appId}/access-logs`, { params }),
 
   /**
    * 生成API密钥

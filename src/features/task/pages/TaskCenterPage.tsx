@@ -457,6 +457,8 @@ export function TaskCenterPage() {
         : deleteTask.isPending
           ? { type: 'delete' as const, taskId: deleteTask.variables as number | undefined }
           : null;
+  const updatingTaskVariables = updateTask.variables as { id?: number } | undefined;
+  const movingTaskId = updateTask.isPending ? updatingTaskVariables?.id : undefined;
 
   const mutateTaskAction = (
     mutation: typeof completeTask | typeof reopenTask | typeof deleteTask,
@@ -465,6 +467,24 @@ export function TaskCenterPage() {
     mutation.mutate(task.id, {
       onSuccess: resetHighVolumeViewAfterMutation,
     });
+  };
+
+  const handleMatrixMove = (
+    task: Task,
+    target: Pick<UpdateTaskDto, 'important' | 'urgent'>
+  ) => {
+    updateTask.mutate(
+      {
+        id: task.id,
+        data: {
+          important: target.important,
+          urgent: target.urgent,
+        },
+      },
+      {
+        onSuccess: resetHighVolumeViewAfterMutation,
+      }
+    );
   };
 
   const sharedViewProps = {
@@ -599,7 +619,13 @@ export function TaskCenterPage() {
           {
             key: 'matrix',
             label: '四象限',
-            children: <TaskMatrixView {...sharedViewProps} />,
+            children: (
+              <TaskMatrixView
+                {...sharedViewProps}
+                onMove={handleMatrixMove}
+                movingTaskId={movingTaskId}
+              />
+            ),
           },
           {
             key: 'anniversary',

@@ -14,6 +14,7 @@ import {
   Alert,
   Typography,
   Select,
+  Tooltip,
 } from 'antd';
 import {
   PlusOutlined,
@@ -23,9 +24,12 @@ import {
 } from '@ant-design/icons';
 import { useForm, Controller } from 'react-hook-form';
 import dayjs from 'dayjs';
-import { useApiKeys, useCreateApiKey, useRevokeApiKey } from '../hooks/useApiApps';
+import { useApiKeys, useApiScopes, useCreateApiKey, useRevokeApiKey } from '../hooks/useApiApps';
 import { TableActions, StatusBadge, PermissionGuard } from '@/shared/components';
 import { formatDate } from '@/shared/utils';
+import { ApiScopeSelector } from './ApiScopeSelector';
+import { ApiAccessLogList } from './ApiAccessLogList';
+import { getApiScopeDescription, getApiScopeLabel } from '../utils/apiScopes';
 import type { ApiKey, CreateApiKeyDto, CreateApiKeyResponse } from '../types/api-auth.types';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -37,7 +41,7 @@ const { Text, Paragraph } = Typography;
 interface FormData {
   name: string;
   environment: 'production' | 'test';
-  scopes?: string;
+  scopes?: string[];
   expiresAt?: string;
 }
 
@@ -51,6 +55,7 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
 
   // Hooks
   const { data: keys = [], isLoading } = useApiKeys(appId);
+  const { data: apiScopeGroups = [] } = useApiScopes();
   const createMutation = useCreateApiKey();
   const revokeMutation = useRevokeApiKey();
 
@@ -64,7 +69,7 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
     defaultValues: {
       name: '',
       environment: 'production',
-      scopes: '',
+      scopes: [],
       expiresAt: undefined,
     },
   });
@@ -87,11 +92,8 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
     };
 
     // 可选字段
-    if (formData.scopes) {
-      dto.scopes = formData.scopes
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+    if (formData.scopes?.length) {
+      dto.scopes = formData.scopes;
     }
 
     if (formData.expiresAt) {
@@ -145,9 +147,9 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
         return (
           <Space wrap>
             {effectiveScopes.slice(0, 2).map((scope) => (
-              <Tag key={scope} color="blue">
-                {scope}
-              </Tag>
+              <Tooltip key={scope} title={getApiScopeDescription(scope, apiScopeGroups)}>
+                <Tag color="blue">{getApiScopeLabel(scope, apiScopeGroups)}</Tag>
+              </Tooltip>
             ))}
             {effectiveScopes.length > 2 && <Tag>+{effectiveScopes.length - 2}</Tag>}
           </Space>
@@ -192,7 +194,7 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
     {
       title: '操作',
       key: 'actions',
-      width: 200,
+      width: 100,
       fixed: 'right',
       render: (_, record) => (
         <TableActions
@@ -229,6 +231,8 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
         pagination={false}
         scroll={{ x: 1200 }}
       />
+
+      <ApiAccessLogList appId={appId} keys={keys} />
 
       {/* 创建密钥Modal */}
       <Modal
@@ -286,12 +290,16 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
             />
           </Form.Item>
 
-          <Form.Item label="权限范围" help="留空则继承应用权限，多个权限用逗号分隔">
+          <Form.Item label="权限范围" help="留空则继承应用权限；选择后会覆盖应用权限">
             <Controller
               name="scopes"
               control={control}
               render={({ field }) => (
-                <Input {...field} placeholder="read:users（可选）" />
+                <ApiScopeSelector
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                  placeholder="选择密钥专属权限"
+                />
               )}
             />
           </Form.Item>
