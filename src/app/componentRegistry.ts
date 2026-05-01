@@ -71,12 +71,14 @@ const componentAliases: Record<string, string> = {
   'system/files': 'FileList',
   'system/notifications': 'NotificationListPage',
   'system/api-apps': 'ApiAuthPage',
+  'system/automation': 'AutomationTaskPage',
   UserListPage: 'UserListPage',
   RoleListPage: 'RoleListPage',
   MenuListPage: 'MenuListPage',
   PermissionListPage: 'PermissionListPage',
   NotificationListPage: 'NotificationListPage',
   ApiAuthPage: 'ApiAuthPage',
+  AutomationTaskPage: 'AutomationTaskPage',
 };
 
 function normalizeComponentName(componentName: string): string {
