@@ -13,6 +13,8 @@ export interface FileEntity {
   url: string;
   mimeType: string;
   size: number;
+  category: string;
+  storage: 'local' | 'oss';
   module?: string;
   tags?: string; // 数据库存储为逗号分隔的字符串（如："测试,截图"）
   isPublic: boolean;

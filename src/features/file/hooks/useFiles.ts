@@ -52,6 +52,15 @@ export const useDownloadFile = () => {
 };
 
 /**
+ * 获取文件预览 Blob
+ */
+export const usePreviewFile = () => {
+  return useMutation({
+    mutationFn: fileService.getFileBlob,
+  });
+};
+
+/**
  * 删除文件
  */
 export const useDeleteFile = () => {

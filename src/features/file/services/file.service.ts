@@ -31,6 +31,11 @@ export const uploadFile = async (
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    requestOptions: {
+      messageConfig: {
+        successMessage: '文件上传成功',
+      },
+    },
     onUploadProgress: (progressEvent: { loaded: number; total?: number }) => {
       if (progressEvent.total && options?.onProgress) {
         const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -48,12 +53,19 @@ export const getFiles = async (params: QueryFileDto): Promise<FileListResponse> 
 };
 
 /**
+ * 获取文件二进制内容（用于鉴权预览，不触发浏览器下载）
+ */
+export const getFileBlob = async (id: number): Promise<Blob> => {
+  return await request.get<Blob>(`${BASE_URL}/${id}/download`, {
+    responseType: 'blob',
+  });
+};
+
+/**
  * 下载文件
  */
 export const downloadFile = async (id: number, filename?: string): Promise<void> => {
-  const response = await request.get<Blob>(`${BASE_URL}/${id}/download`, {
-    responseType: 'blob',
-  });
+  const response = await getFileBlob(id);
 
   // 创建下载链接
   const blob = response instanceof Blob ? response : new Blob([response]);
