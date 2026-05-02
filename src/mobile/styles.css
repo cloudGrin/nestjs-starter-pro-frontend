@@ -161,6 +161,83 @@ body {
   justify-content: flex-end;
 }
 
+.mobile-fade-scroll {
+  position: relative;
+  min-width: 0;
+}
+
+.mobile-fade-scroll::before,
+.mobile-fade-scroll::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 42px;
+  pointer-events: none;
+  content: '';
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.mobile-fade-scroll::before {
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    var(--mobile-bg) 0%,
+    color-mix(in srgb, var(--mobile-bg) 86%, transparent) 48%,
+    transparent 100%
+  );
+}
+
+.mobile-fade-scroll::after {
+  right: 0;
+  background: linear-gradient(
+    270deg,
+    var(--mobile-bg) 0%,
+    color-mix(in srgb, var(--mobile-bg) 86%, transparent) 48%,
+    transparent 100%
+  );
+}
+
+.mobile-fade-scroll.is-left::before,
+.mobile-fade-scroll.is-right::after {
+  opacity: 1;
+}
+
+.mobile-fade-scroll-content {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mobile-fade-scroll-content::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-scroll-selector {
+  width: max-content;
+  min-width: 100%;
+}
+
+.mobile-scroll-selector .adm-space {
+  display: flex;
+  min-width: max-content;
+  flex-wrap: nowrap;
+}
+
+.mobile-scroll-selector .adm-space-item,
+.mobile-scroll-selector .adm-selector-item {
+  flex: 0 0 auto;
+}
+
+.mobile-insurance-type-selector .adm-selector-item {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .mobile-chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -236,6 +313,45 @@ body {
   padding: 12px 14px;
   border-bottom: 1px solid var(--mobile-border);
   background: var(--mobile-bg);
+}
+
+.mobile-popup-header strong {
+  color: var(--mobile-text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.mobile-popup-header .adm-button {
+  min-width: 56px;
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.mobile-form-panel {
+  padding: 12px;
+  border: 1px solid var(--mobile-border);
+  border-radius: var(--mobile-radius);
+  background: var(--mobile-card);
+}
+
+.mobile-form-panel .mobile-field {
+  margin-bottom: 12px;
+}
+
+.mobile-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+.mobile-form-actions .adm-button {
+  min-width: 72px;
+  min-height: 32px;
+  padding: 5px 14px;
+  font-size: 13px;
 }
 
 .mobile-field-card {
@@ -604,6 +720,7 @@ body {
 .dark .adm-input,
 .dark .adm-text-area,
 .dark .adm-selector-item,
+.dark .mobile-form-panel,
 .dark .mobile-field-card {
   background: var(--mobile-card);
   color: var(--mobile-text);

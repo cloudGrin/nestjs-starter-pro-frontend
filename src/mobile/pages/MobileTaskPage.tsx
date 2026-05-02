@@ -1209,11 +1209,11 @@ function TaskListManagePopup({
       <div className="mobile-popup-body mobile-list-popup">
         <div className="mobile-popup-header">
           <strong>清单管理</strong>
-          <Button size="small" onClick={reset}>
+          <Button size="mini" fill="outline" onClick={reset}>
             新建
           </Button>
         </div>
-        <div className="mobile-card mb-3 p-3">
+        <div className="mobile-form-panel mb-3">
           <div className="mobile-field">
             <label>清单名称</label>
             <Input value={name} placeholder="例如：家庭待办" onChange={setName} />
@@ -1238,16 +1238,18 @@ function TaskListManagePopup({
               </List.Item>
             </List>
           ) : null}
-          <Button
-            block
-            color="primary"
-            loading={createList.isPending || updateList.isPending}
-            onClick={saveList}
-          >
-            {editing ? '保存清单' : '创建清单'}
-          </Button>
+          <div className="mobile-form-actions">
+            <Button
+              size="small"
+              color="primary"
+              loading={createList.isPending || updateList.isPending}
+              onClick={saveList}
+            >
+              {editing ? '保存' : '创建'}
+            </Button>
+          </div>
         </div>
-        <List>
+        <List className="mobile-form-list">
           {lists.map((list) => (
             <List.Item
               key={list.id}

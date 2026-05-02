@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Empty, PullToRefresh, SearchBar, Selector, Tag } from 'antd-mobile';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -45,6 +45,8 @@ export function MobileInsurancePage() {
   const [memberId, setMemberId] = useState<number>();
   const [type, setType] = useState<InsurancePolicyType>();
   const [quickFilter, setQuickFilter] = useState<InsuranceQuickFilter>('all');
+  const [typeScrollEdge, setTypeScrollEdge] = useState({ left: false, right: false });
+  const typeScrollRef = useRef<HTMLDivElement | null>(null);
   const membersQuery = useInsuranceMembers();
   const familyViewQuery = useInsuranceFamilyView();
   const policiesQuery = useInsurancePolicies({
@@ -62,6 +64,28 @@ export function MobileInsurancePage() {
       (policiesQuery.data?.items ?? []).filter((policy) => matchesQuickFilter(policy, quickFilter)),
     [policiesQuery.data?.items, quickFilter]
   );
+  const updateTypeScrollEdge = useCallback(() => {
+    const element = typeScrollRef.current;
+    if (!element) return;
+
+    const next = {
+      left: element.scrollLeft > 2,
+      right: element.scrollLeft + element.clientWidth < element.scrollWidth - 2,
+    };
+
+    setTypeScrollEdge((previous) =>
+      previous.left === next.left && previous.right === next.right ? previous : next
+    );
+  }, []);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(updateTypeScrollEdge);
+    window.addEventListener('resize', updateTypeScrollEdge);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', updateTypeScrollEdge);
+    };
+  }, [updateTypeScrollEdge]);
 
   return (
     <div className="mobile-page">
@@ -84,14 +108,23 @@ export function MobileInsurancePage() {
             onChange={(items: Array<string | number>) => setMemberId(Number(items[0]) || undefined)}
           />
         </div>
-        <div className="mobile-toolbar">
-          <Selector
-            options={[{ label: '全部险种', value: 'all' }, ...mobilePolicyTypeOptions]}
-            value={[type ?? 'all']}
-            onChange={(items: Array<string | number>) =>
-              setType(items[0] === 'all' ? undefined : (items[0] as InsurancePolicyType))
-            }
-          />
+        <div
+          className={`mobile-fade-scroll${typeScrollEdge.left ? ' is-left' : ''}${typeScrollEdge.right ? ' is-right' : ''}`}
+        >
+          <div
+            ref={typeScrollRef}
+            className="mobile-fade-scroll-content"
+            onScroll={updateTypeScrollEdge}
+          >
+            <Selector
+              className="mobile-scroll-selector mobile-insurance-type-selector"
+              options={[{ label: '全部险种', value: 'all' }, ...mobilePolicyTypeOptions]}
+              value={[type ?? 'all']}
+              onChange={(items: Array<string | number>) =>
+                setType(items[0] === 'all' ? undefined : (items[0] as InsurancePolicyType))
+              }
+            />
+          </div>
         </div>
         <Selector
           options={[
