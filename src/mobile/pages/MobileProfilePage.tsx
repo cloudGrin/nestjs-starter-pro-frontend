@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { useThemeStore } from '@/shared/stores';
 import type { User } from '@/shared/types/user.types';
+import { MobileModuleHeader } from '../components/MobileModuleHeader';
 
 function displayName(user: User) {
   return user.realName || user.nickname || user.username;
@@ -22,12 +23,7 @@ export function MobileProfilePage() {
 
   return (
     <div className="mobile-page">
-      <div className="mobile-page-header">
-        <div>
-          <h1 className="mobile-title">我的</h1>
-          <div className="mobile-subtitle">账号和移动端偏好</div>
-        </div>
-      </div>
+      <MobileModuleHeader title="我的" subtitle="账号和移动端偏好" />
 
       <Card className="mobile-card">
         <div className="text-lg font-semibold">{user ? displayName(user) : '-'}</div>

@@ -19,6 +19,7 @@ import {
   mobilePolicyTypeLabels,
   mobilePolicyTypeOptions,
 } from '../utils/insurance';
+import { MobileModuleHeader } from '../components/MobileModuleHeader';
 
 type InsuranceQuickFilter = 'all' | 'expiring' | 'payment';
 
@@ -89,12 +90,7 @@ export function MobileInsurancePage() {
 
   return (
     <div className="mobile-page">
-      <div className="mobile-page-header">
-        <div>
-          <h1 className="mobile-title">家庭保险</h1>
-          <div className="mobile-subtitle">全家可读，移动端只做查询和附件预览</div>
-        </div>
-      </div>
+      <MobileModuleHeader title="家庭保险" subtitle="全家可读，移动端只做查询和附件预览" />
 
       <div className="mobile-section">
         <SearchBar placeholder="搜索保单、公司或保单号" value={keyword} onChange={setKeyword} />

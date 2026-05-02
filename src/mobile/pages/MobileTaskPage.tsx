@@ -1,16 +1,15 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   Button,
   Card,
   Checkbox,
   DatePicker,
-  Empty,
+  Dialog,
   Input,
   List,
   Popup,
   PullToRefresh,
   SearchBar,
-  Segmented,
   Selector,
   SwipeAction,
   Switch,
@@ -18,9 +17,25 @@ import {
   TextArea,
   Toast,
 } from 'antd-mobile';
-import { FilterOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
+import {
+  AppstoreOutlined,
+  CalendarOutlined,
+  CheckSquareOutlined,
+  ClockCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EllipsisOutlined,
+  ExclamationCircleOutlined,
+  FilterOutlined,
+  FlagOutlined,
+  FolderOpenOutlined,
+  PlusOutlined,
+  SettingOutlined,
+  TagsOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   useCompleteTask,
   useCreateTask,
@@ -28,6 +43,7 @@ import {
   useDeleteTask,
   useDeleteTaskList,
   useReopenTask,
+  useTask,
   useTaskAssignees,
   useTaskLists,
   useTasks,
@@ -51,9 +67,11 @@ import type {
 } from '@/features/task/types/task.types';
 import {
   formatTaskRecurrence,
+  formatTaskReminderChannels,
   mobileTaskRecurrenceLabels,
   mobileTaskReminderChannelLabels,
 } from '../utils/task';
+import { MobileModuleHeader } from '../components/MobileModuleHeader';
 
 type MobileTaskView = TaskView;
 
@@ -73,12 +91,20 @@ interface TaskDraft {
   reminderChannels: TaskReminderChannel[];
 }
 
-const viewOptions: Array<{ label: string; value: MobileTaskView }> = [
-  { label: '列表', value: 'list' },
-  { label: '今日', value: 'today' },
-  { label: '日历', value: 'calendar' },
-  { label: '矩阵', value: 'matrix' },
-  { label: '纪念日', value: 'anniversary' },
+type MatrixQuadrant = 'important-urgent' | 'important' | 'urgent' | 'normal';
+
+const taskViews: MobileTaskView[] = ['list', 'today', 'calendar', 'matrix', 'anniversary'];
+
+const dockViewOptions: Array<{
+  label: string;
+  value: MobileTaskView;
+  icon: ReactNode;
+}> = [
+  { label: '今天', value: 'today', icon: <CheckSquareOutlined /> },
+  { label: '列表', value: 'list', icon: <FolderOpenOutlined /> },
+  { label: '日历', value: 'calendar', icon: <CalendarOutlined /> },
+  { label: '四象限', value: 'matrix', icon: <AppstoreOutlined /> },
+  { label: '纪念日', value: 'anniversary', icon: <ClockCircleOutlined /> },
 ];
 
 const taskTypeOptions: Array<{ label: string; value: TaskType }> = [
@@ -102,26 +128,45 @@ const reminderChannelOptions: Array<{ label: string; value: TaskReminderChannel 
   { label: mobileTaskReminderChannelLabels.feishu, value: 'feishu' },
 ];
 
+const reminderOffsetOptions = [
+  { label: '提前 15 分钟', amount: 15, unit: 'minute' as const },
+  { label: '提前 30 分钟', amount: 30, unit: 'minute' as const },
+  { label: '提前 1 小时', amount: 1, unit: 'hour' as const },
+  { label: '提前 2 小时', amount: 2, unit: 'hour' as const },
+  { label: '提前 1 天', amount: 1, unit: 'day' as const },
+  { label: '提前 2 天', amount: 2, unit: 'day' as const },
+  { label: '提前 3 天', amount: 3, unit: 'day' as const },
+  { label: '提前 1 周', amount: 1, unit: 'week' as const },
+];
+
 const statusOptions: Array<{ label: string; value: 'all' | TaskStatus }> = [
   { label: '全部', value: 'all' },
   { label: '待办', value: 'pending' },
   { label: '完成', value: 'completed' },
 ];
 
-type MatrixQuadrant = 'important-urgent' | 'important' | 'urgent' | 'normal';
-
 const quadrantOptions: Array<{
   label: string;
+  roman: string;
   value: MatrixQuadrant;
-  hint: string;
+  colorClass: string;
 }> = [
-  { label: '重要且紧急', value: 'important-urgent', hint: '立即处理' },
-  { label: '重要不紧急', value: 'important', hint: '计划推进' },
-  { label: '紧急不重要', value: 'urgent', hint: '尽快安排' },
-  { label: '不重要不紧急', value: 'normal', hint: '有空再看' },
+  { label: '重要且紧急', roman: 'I', value: 'important-urgent', colorClass: 'danger' },
+  { label: '重要不紧急', roman: 'II', value: 'important', colorClass: 'warning' },
+  { label: '紧急不重要', roman: 'III', value: 'urgent', colorClass: 'primary' },
+  { label: '不重要不紧急', roman: 'IV', value: 'normal', colorClass: 'success' },
 ];
 
 const highVolumeViews = new Set<MobileTaskView>(['calendar', 'matrix', 'anniversary']);
+
+function parseTaskView(value: string | null): MobileTaskView {
+  return value && taskViews.includes(value as MobileTaskView) ? (value as MobileTaskView) : 'today';
+}
+
+function parseTaskId(value: string | null) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : undefined;
+}
 
 function getUserName(user?: TaskAssignee | null) {
   return user?.realName || user?.nickname || user?.username || '';
@@ -139,8 +184,20 @@ function formatDateTime(value?: string | Date | null) {
   return value ? dayjs(value).format('MM-DD HH:mm') : '';
 }
 
+function formatFullDateTime(value?: string | Date | null) {
+  return value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-';
+}
+
 function getTaskDay(task: Task) {
   return dayjs(task.dueAt || task.remindAt || task.createdAt).format('YYYY-MM-DD');
+}
+
+function getViewTitle(view: MobileTaskView, month: dayjs.Dayjs) {
+  if (view === 'today') return '今天';
+  if (view === 'calendar') return month.format('M月');
+  if (view === 'matrix') return '四象限';
+  if (view === 'anniversary') return '纪念日';
+  return '任务';
 }
 
 function buildQueryParams(
@@ -152,7 +209,7 @@ function buildQueryParams(
     status?: TaskStatus;
     tags?: string[];
   },
-  calendarMonth: dayjs.Dayjs
+  month: dayjs.Dayjs
 ): QueryTasksParams {
   const params: QueryTasksParams = {
     view,
@@ -166,8 +223,8 @@ function buildQueryParams(
   };
 
   if (view === 'calendar') {
-    params.startDate = calendarMonth.startOf('month').toISOString();
-    params.endDate = calendarMonth.endOf('month').toISOString();
+    params.startDate = month.startOf('month').toISOString();
+    params.endDate = month.endOf('month').toISOString();
   }
 
   return params;
@@ -215,13 +272,14 @@ function ensureInternalChannel(channels?: TaskReminderChannel[] | null) {
 
 function tagsFromText(value: string) {
   return value
-    .split(',')
+    .split(/[,，]/)
     .map((item) => item.trim())
     .filter(Boolean);
 }
 
 function taskDraftToPayload(draft: TaskDraft, isEditing: boolean): CreateTaskDto | UpdateTaskDto {
-  if (!draft.title.trim()) {
+  const title = draft.title.trim();
+  if (!title) {
     throw new Error('请输入任务标题');
   }
   if (!draft.listId) {
@@ -238,7 +296,8 @@ function taskDraftToPayload(draft: TaskDraft, isEditing: boolean): CreateTaskDto
   }
 
   const payload: CreateTaskDto = {
-    title: draft.title.trim(),
+    title,
+    description: draft.description.trim() || null,
     listId: draft.listId,
     assigneeId: draft.assigneeId ?? null,
     taskType: draft.taskType,
@@ -252,26 +311,27 @@ function taskDraftToPayload(draft: TaskDraft, isEditing: boolean): CreateTaskDto
     reminderChannels: ensureInternalChannel(draft.reminderChannels),
   };
 
-  const description = draft.description.trim();
-  if (description) {
-    payload.description = description;
-  } else if (isEditing) {
-    payload.description = null;
-  }
+  return isEditing ? payload : payload;
+}
 
-  return payload;
+function getTaskQuadrant(task: Task): MatrixQuadrant {
+  if (task.important && task.urgent) return 'important-urgent';
+  if (task.important) return 'important';
+  if (task.urgent) return 'urgent';
+  return 'normal';
 }
 
 export function MobileTaskPage() {
-  const navigate = useNavigate();
-  const [view, setView] = useState<MobileTaskView>('list');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = parseTaskView(searchParams.get('view'));
+  const selectedTaskId = parseTaskId(searchParams.get('taskId'));
+  const selectedDay = searchParams.get('date') || dayjs().format('YYYY-MM-DD');
   const [keyword, setKeyword] = useState('');
   const [listId, setListId] = useState<number>();
   const [assigneeId, setAssigneeId] = useState<number>();
   const [status, setStatus] = useState<TaskStatus>();
   const [tagText, setTagText] = useState('');
-  const [calendarMonth, setCalendarMonth] = useState(() => dayjs().startOf('month'));
-  const [selectedDay, setSelectedDay] = useState(() => dayjs().format('YYYY-MM-DD'));
+  const [calendarMonth, setCalendarMonth] = useState(() => dayjs(selectedDay).startOf('month'));
   const [editorOpen, setEditorOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [listManageOpen, setListManageOpen] = useState(false);
@@ -298,6 +358,7 @@ export function MobileTaskPage() {
     );
   }, [assigneeId, calendarMonth, keyword, listId, status, tagText, view]);
   const tasksQuery = useTasks(queryParams);
+  const selectedTaskQuery = useTask(selectedTaskId ?? null);
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const completeTask = useCompleteTask();
@@ -320,6 +381,8 @@ export function MobileTaskPage() {
     [optimisticStatuses, rawTasks]
   );
   const defaultListId = activeLists[0]?.id;
+  const selectedTask =
+    tasks.find((task) => task.id === selectedTaskId) ?? selectedTaskQuery.data ?? null;
 
   useEffect(() => {
     setOptimisticStatuses((previous) => {
@@ -336,6 +399,61 @@ export function MobileTaskPage() {
       return changed ? next : previous;
     });
   }, [rawTasks]);
+
+  useEffect(() => {
+    if (view === 'calendar') {
+      const nextMonth = dayjs(selectedDay).startOf('month');
+      if (!nextMonth.isSame(calendarMonth, 'month')) {
+        setCalendarMonth(nextMonth);
+      }
+    }
+  }, [calendarMonth, selectedDay, view]);
+
+  const updateQuery = (updater: (next: URLSearchParams) => void) => {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      updater(next);
+      return next;
+    });
+  };
+
+  const setTaskView = (nextView: MobileTaskView) => {
+    updateQuery((next) => {
+      next.set('view', nextView);
+      next.delete('taskId');
+      if (nextView === 'calendar' && !next.get('date')) {
+        next.set('date', selectedDay);
+      }
+    });
+  };
+
+  const setCalendarDay = (day: string) => {
+    updateQuery((next) => {
+      next.set('view', 'calendar');
+      next.set('date', day);
+      next.delete('taskId');
+    });
+  };
+
+  const changeCalendarMonth = (nextMonth: dayjs.Dayjs) => {
+    const normalized = nextMonth.startOf('month');
+    const currentDate = dayjs(selectedDay).date();
+    const nextDay = normalized.date(Math.min(currentDate, normalized.daysInMonth()));
+    setCalendarMonth(normalized);
+    setCalendarDay(nextDay.format('YYYY-MM-DD'));
+  };
+
+  const openTaskDetail = (task: Task) => {
+    updateQuery((next) => {
+      next.set('taskId', String(task.id));
+    });
+  };
+
+  const closeTaskDetail = () => {
+    updateQuery((next) => {
+      next.delete('taskId');
+    });
+  };
 
   const openCreate = () => {
     setEditingTask(null);
@@ -404,42 +522,28 @@ export function MobileTaskPage() {
   };
 
   return (
-    <div className="mobile-page">
-      <div className="mobile-page-header">
-        <div>
-          <h1 className="mobile-title">任务</h1>
-          <div className="mobile-subtitle">和 PC 任务中心共享同一套任务能力</div>
-        </div>
-        <Button fill="none" onClick={() => setListManageOpen(true)}>
-          <SettingOutlined />
-        </Button>
-      </div>
+    <div className="mobile-page mobile-task-page">
+      <MobileModuleHeader
+        taskMode
+        title={getViewTitle(view, calendarMonth)}
+        subtitle="家庭任务和 PC 任务中心保持同一套数据"
+        actions={
+          <>
+            <Button fill="none" onClick={() => setFilterOpen(true)}>
+              <FilterOutlined />
+            </Button>
+            <Button fill="none" onClick={() => setListManageOpen(true)}>
+              <SettingOutlined />
+            </Button>
+          </>
+        }
+      />
 
-      <div className="mobile-section">
+      <div className="mobile-task-search">
         <SearchBar placeholder="搜索任务" value={keyword} onChange={setKeyword} />
-        <Segmented
-          block
-          className="mobile-view-tabs"
-          options={viewOptions.map((option) => ({
-            label: option.label,
-            value: option.value,
-          }))}
-          value={view}
-          onChange={(value) => {
-            if (value) {
-              setView(value as MobileTaskView);
-              setStatus(undefined);
-            }
-          }}
-        />
-        <div className="mobile-filter-row">
-          <Button size="small" fill="outline" onClick={() => setFilterOpen(true)}>
-            <FilterOutlined /> 筛选
-          </Button>
-        </div>
       </div>
 
-      <div className="mt-3">
+      <div className="mobile-task-content">
         <PullToRefresh onRefresh={async () => void (await tasksQuery.refetch())}>
           {view === 'calendar' ? (
             <CalendarTaskView
@@ -449,9 +553,9 @@ export function MobileTaskPage() {
               lists={taskLists}
               users={users}
               loading={tasksQuery.isLoading}
-              onMonthChange={setCalendarMonth}
-              onDayChange={setSelectedDay}
-              onOpen={(task) => navigate(`/tasks/${task.id}`)}
+              onMonthChange={changeCalendarMonth}
+              onDayChange={setCalendarDay}
+              onOpen={openTaskDetail}
               onEdit={openEdit}
               onToggleComplete={toggleComplete}
               togglePendingTaskId={togglePendingTaskId}
@@ -463,7 +567,7 @@ export function MobileTaskPage() {
               lists={taskLists}
               users={users}
               loading={tasksQuery.isLoading}
-              onOpen={(task) => navigate(`/tasks/${task.id}`)}
+              onOpen={openTaskDetail}
               onEdit={openEdit}
               onToggleComplete={toggleComplete}
               togglePendingTaskId={togglePendingTaskId}
@@ -475,8 +579,9 @@ export function MobileTaskPage() {
               lists={taskLists}
               users={users}
               loading={tasksQuery.isLoading}
-              emptyText={view === 'anniversary' ? '暂无纪念日' : '暂无任务'}
-              onOpen={(task) => navigate(`/tasks/${task.id}`)}
+              emptyText={view === 'anniversary' ? '暂无纪念日' : '今天没有任务'}
+              showDayHeader={view === 'list'}
+              onOpen={openTaskDetail}
               onEdit={openEdit}
               onToggleComplete={toggleComplete}
               togglePendingTaskId={togglePendingTaskId}
@@ -486,9 +591,31 @@ export function MobileTaskPage() {
         </PullToRefresh>
       </div>
 
-      <Button className="mobile-fab" color="primary" onClick={openCreate}>
+      <Button className="mobile-fab mobile-task-fab" color="primary" onClick={openCreate}>
         <PlusOutlined />
       </Button>
+
+      <TaskDock view={view} onChange={setTaskView} />
+
+      <TaskDetailSheet
+        open={Boolean(selectedTaskId)}
+        loading={selectedTaskQuery.isLoading && !selectedTask}
+        task={selectedTask}
+        lists={taskLists}
+        users={users}
+        togglePendingTaskId={togglePendingTaskId}
+        onClose={closeTaskDetail}
+        onEdit={(task) => {
+          openEdit(task);
+          closeTaskDetail();
+        }}
+        onToggleComplete={toggleComplete}
+        onDelete={(task) =>
+          deleteTask.mutate(task.id, {
+            onSuccess: closeTaskDetail,
+          })
+        }
+      />
 
       <TaskEditorPopup
         open={editorOpen}
@@ -527,7 +654,32 @@ export function MobileTaskPage() {
         lists={taskLists}
         onClose={() => setListManageOpen(false)}
       />
+
     </div>
+  );
+}
+
+function TaskDock({
+  view,
+  onChange,
+}: {
+  view: MobileTaskView;
+  onChange: (view: MobileTaskView) => void;
+}) {
+  return (
+    <nav className="mobile-task-dock">
+      {dockViewOptions.map((item) => (
+        <button
+          key={item.value}
+          type="button"
+          className={`mobile-task-dock-item${view === item.value ? ' active' : ''}`}
+          onClick={() => onChange(item.value)}
+        >
+          {item.icon}
+          <span>{item.label}</span>
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -537,6 +689,7 @@ function TaskListView({
   users,
   loading,
   emptyText,
+  showDayHeader,
   onOpen,
   onEdit,
   onToggleComplete,
@@ -548,6 +701,7 @@ function TaskListView({
   users: TaskAssignee[];
   loading?: boolean;
   emptyText: string;
+  showDayHeader?: boolean;
   onOpen: (task: Task) => void;
   onEdit: (task: Task) => void;
   onToggleComplete: (task: Task) => void;
@@ -564,23 +718,23 @@ function TaskListView({
   }, [tasks]);
 
   if (loading) {
-    return <Card className="mobile-card">加载中...</Card>;
+    return <Card className="mobile-task-list-card">加载中...</Card>;
   }
 
   if (tasks.length === 0) {
-    return <Empty description={emptyText} />;
+    return <MobileEmptyState title={emptyText} />;
   }
 
   return (
-    <div className="mobile-section">
+    <div className="mobile-task-groups">
       {grouped.map(([day, dayTasks]) => (
-        <div key={day}>
-          <div className="mb-2 text-sm font-semibold mobile-muted">
-            {dayjs(day).format('MM月DD日')}
-          </div>
-          <div className="mobile-section">
+        <section key={day}>
+          {showDayHeader ? (
+            <div className="mobile-task-day-title">{dayjs(day).format('MM月DD日')}</div>
+          ) : null}
+          <div className="mobile-task-list-card">
             {dayTasks.map((task) => (
-              <TaskCard
+              <TaskRow
                 key={task.id}
                 task={task}
                 lists={lists}
@@ -593,13 +747,13 @@ function TaskListView({
               />
             ))}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   );
 }
 
-function TaskCard({
+function TaskRow({
   task,
   lists,
   users,
@@ -608,19 +762,45 @@ function TaskCard({
   onToggleComplete,
   togglePending,
   onDelete,
+  compact,
 }: {
   task: Task;
   lists: TaskList[];
   users: TaskAssignee[];
   onOpen: (task: Task) => void;
-  onEdit: (task: Task) => void;
+  onEdit?: (task: Task) => void;
   onToggleComplete: (task: Task) => void;
   togglePending?: boolean;
-  onDelete: (task: Task) => void;
+  onDelete?: (task: Task) => void;
+  compact?: boolean;
 }) {
   const list = getTaskList(task, lists);
   const assignee = getTaskAssignee(task, users);
   const isCompleted = task.status === 'completed';
+  const content = (
+    <div className={`mobile-task-row${compact ? ' compact' : ''}`} onClick={() => onOpen(task)}>
+      <Checkbox
+        checked={isCompleted}
+        disabled={togglePending}
+        onClick={(event: MouseEvent) => event.stopPropagation()}
+        onChange={() => onToggleComplete(task)}
+      />
+      <div className="mobile-task-row-main">
+        <div className={`mobile-task-title${isCompleted ? ' completed' : ''}`}>{task.title}</div>
+        <div className="mobile-task-meta-line">
+          {task.dueAt ? <span className="primary">{formatDateTime(task.dueAt)}</span> : null}
+          {task.remindAt ? <span>提醒</span> : null}
+          {task.recurrenceType !== 'none' ? <span>重复</span> : null}
+          {assignee ? <span>{getUserName(assignee)}</span> : null}
+        </div>
+      </div>
+      {list ? <span className="mobile-task-list-name">{list.name}</span> : null}
+    </div>
+  );
+
+  if (!onEdit || !onDelete || compact) {
+    return content;
+  }
 
   return (
     <SwipeAction
@@ -629,37 +809,20 @@ function TaskCard({
         { key: 'delete', text: '删除', color: 'danger', onClick: () => onDelete(task) },
       ]}
     >
-      <Card className="mobile-card" onClick={() => onOpen(task)}>
-        <div className="mobile-task-item">
-          <Checkbox
-            checked={isCompleted}
-            disabled={togglePending}
-            onClick={(event: MouseEvent) => event.stopPropagation()}
-            onChange={() => onToggleComplete(task)}
-          />
-          <div className="mobile-task-main">
-            <p className={`mobile-task-title${isCompleted ? ' completed' : ''}`}>{task.title}</p>
-            <div className="mobile-meta">
-              {list ? <span>{list.name}</span> : null}
-              {assignee ? <span>负责人：{getUserName(assignee)}</span> : null}
-              {task.dueAt ? <span>截止：{formatDateTime(task.dueAt)}</span> : null}
-              {task.remindAt ? <span>提醒：{formatDateTime(task.remindAt)}</span> : null}
-              {task.recurrenceType !== 'none' ? (
-                <span>{formatTaskRecurrence(task.recurrenceType, task.recurrenceInterval)}</span>
-              ) : null}
-            </div>
-            <div className="mobile-chip-row mt-2">
-              {task.important ? <Tag color="danger">重要</Tag> : null}
-              {task.urgent ? <Tag color="warning">紧急</Tag> : null}
-              {task.taskType === 'anniversary' ? <Tag color="primary">纪念日</Tag> : null}
-              {task.tags?.map((tag) => (
-                <Tag key={tag}>{tag}</Tag>
-              ))}
-            </div>
-          </div>
-        </div>
-      </Card>
+      {content}
     </SwipeAction>
+  );
+}
+
+function MobileEmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="mobile-task-empty">
+      <div className="mobile-task-empty-illustration">
+        <CalendarOutlined />
+      </div>
+      <strong>{title}</strong>
+      <span>{subtitle ?? '放松一下吧'}</span>
+    </div>
   );
 }
 
@@ -693,13 +856,8 @@ function CalendarTaskView({
   onDelete: (task: Task) => void;
 }) {
   const days = useMemo(() => {
-    const start = month.startOf('month');
-    const end = month.endOf('month');
-    const list: string[] = [];
-    for (let day = start; !day.isAfter(end, 'day'); day = day.add(1, 'day')) {
-      list.push(day.format('YYYY-MM-DD'));
-    }
-    return list;
+    const start = month.startOf('month').startOf('week');
+    return Array.from({ length: 42 }, (_, index) => start.add(index, 'day'));
   }, [month]);
   const tasksByDay = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -712,51 +870,80 @@ function CalendarTaskView({
   const selectedTasks = tasksByDay.get(selectedDay) ?? [];
 
   return (
-    <div className="mobile-section">
-      <Card className="mobile-card">
-        <div className="mb-3 flex items-center justify-between">
-          <Button size="small" onClick={() => onMonthChange(month.subtract(1, 'month'))}>
-            上月
-          </Button>
-          <strong>{month.format('YYYY年MM月')}</strong>
-          <Button size="small" onClick={() => onMonthChange(month.add(1, 'month'))}>
-            下月
-          </Button>
-        </div>
-        <div className="mobile-calendar-grid">
-          {days.map((day) => {
-            const count = tasksByDay.get(day)?.length ?? 0;
-            return (
-              <button
-                key={day}
-                className={`mobile-calendar-day${selectedDay === day ? ' active' : ''}`}
-                type="button"
-                onClick={() => onDayChange(day)}
-              >
-                {dayjs(day).date()}
-                {count > 0 ? <span className="mobile-calendar-count">{count} 项</span> : null}
-              </button>
-            );
-          })}
-        </div>
-      </Card>
-      <TaskListView
-        tasks={selectedTasks}
-        lists={lists}
-        users={users}
-        loading={loading}
-        emptyText="当天暂无任务"
-        onOpen={onOpen}
-        onEdit={onEdit}
-        onToggleComplete={onToggleComplete}
-        togglePendingTaskId={togglePendingTaskId}
-        onDelete={onDelete}
-      />
+    <div className="mobile-calendar-view">
+      <div className="mobile-calendar-controls">
+        <Button size="mini" fill="none" onClick={() => onMonthChange(month.subtract(1, 'month'))}>
+          上月
+        </Button>
+        <strong>{month.format('YYYY年M月')}</strong>
+        <Button size="mini" fill="none" onClick={() => onMonthChange(month.add(1, 'month'))}>
+          下月
+        </Button>
+      </div>
+      <div className="mobile-calendar-weekdays">
+        {['日', '一', '二', '三', '四', '五', '六'].map((day) => (
+          <span key={day}>{day}</span>
+        ))}
+      </div>
+      <div className="mobile-calendar-board">
+        {days.map((day) => {
+          const dateKey = day.format('YYYY-MM-DD');
+          const count = tasksByDay.get(dateKey)?.length ?? 0;
+          const active = selectedDay === dateKey;
+          return (
+            <button
+              key={dateKey}
+              className={`mobile-calendar-date${active ? ' active' : ''}${
+                day.isSame(month, 'month') ? '' : ' muted'
+              }`}
+              type="button"
+              onClick={() => onDayChange(dateKey)}
+            >
+              <span>{day.date()}</span>
+              {count > 0 ? <i>{count}</i> : null}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mobile-calendar-selected-card">
+        <div className="mobile-calendar-selected-title">{dayjs(selectedDay).format('M月D日')}</div>
+        {loading ? (
+          <div className="mobile-muted">加载中...</div>
+        ) : selectedTasks.length === 0 ? (
+          <MobileEmptyState title="你这一天没有任务" />
+        ) : (
+          <div className="mobile-task-list-card flush">
+            {selectedTasks.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                lists={lists}
+                users={users}
+                onOpen={onOpen}
+                onEdit={onEdit}
+                onToggleComplete={onToggleComplete}
+                togglePending={togglePendingTaskId === task.id}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function MatrixTaskView(props: {
+function MatrixTaskView({
+  tasks,
+  lists,
+  users,
+  loading,
+  onOpen,
+  onEdit,
+  onToggleComplete,
+  togglePendingTaskId,
+  onDelete,
+}: {
   tasks: Task[];
   lists: TaskList[];
   users: TaskAssignee[];
@@ -767,54 +954,166 @@ function MatrixTaskView(props: {
   togglePendingTaskId?: number;
   onDelete: (task: Task) => void;
 }) {
-  const [quadrant, setQuadrant] = useState<MatrixQuadrant>('important-urgent');
   const tasksByQuadrant = useMemo(() => {
     const map = new Map<MatrixQuadrant, Task[]>();
     quadrantOptions.forEach((option) => map.set(option.value, []));
-    props.tasks.forEach((task) => {
+    tasks.forEach((task) => {
       const key = getTaskQuadrant(task);
       map.set(key, [...(map.get(key) ?? []), task]);
     });
     return map;
-  }, [props.tasks]);
-  const filtered = tasksByQuadrant.get(quadrant) ?? [];
+  }, [tasks]);
+
+  if (loading) {
+    return <Card className="mobile-task-list-card">加载中...</Card>;
+  }
 
   return (
-    <div className="mobile-section">
-      <Card className="mobile-card">
-        <div className="mobile-matrix-grid">
-          {quadrantOptions.map((option) => {
-            const quadrantTasks = tasksByQuadrant.get(option.value) ?? [];
-            const active = quadrant === option.value;
-
-            return (
-              <button
-                key={option.value}
-                type="button"
-                className={`mobile-matrix-cell${active ? ' active' : ''}`}
-                onClick={() => setQuadrant(option.value)}
-              >
-                <span className="mobile-matrix-title">{option.label}</span>
-                <span className="mobile-matrix-hint">{option.hint}</span>
-                <strong>{quadrantTasks.length}</strong>
-                <span className="mobile-matrix-preview">
-                  {quadrantTasks[0]?.title ?? '暂无任务'}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </Card>
-      <TaskListView {...props} tasks={filtered} emptyText="该象限暂无任务" />
+    <div className="mobile-matrix-board">
+      {quadrantOptions.map((option) => {
+        const quadrantTasks = tasksByQuadrant.get(option.value) ?? [];
+        return (
+          <section key={option.value} className={`mobile-matrix-panel ${option.colorClass}`}>
+            <div className="mobile-matrix-panel-header">
+              <span>{option.roman}</span>
+              <strong>{option.label}</strong>
+            </div>
+            {quadrantTasks.length === 0 ? (
+              <div className="mobile-matrix-empty">没有任务</div>
+            ) : (
+              <div className="mobile-matrix-task-list">
+                {quadrantTasks.slice(0, 8).map((task) => (
+                  <TaskRow
+                    key={task.id}
+                    compact
+                    task={task}
+                    lists={lists}
+                    users={users}
+                    onOpen={onOpen}
+                    onEdit={onEdit}
+                    onToggleComplete={onToggleComplete}
+                    togglePending={togglePendingTaskId === task.id}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }
 
-function getTaskQuadrant(task: Task): MatrixQuadrant {
-  if (task.important && task.urgent) return 'important-urgent';
-  if (task.important) return 'important';
-  if (task.urgent) return 'urgent';
-  return 'normal';
+function TaskDetailSheet({
+  open,
+  loading,
+  task,
+  lists,
+  users,
+  togglePendingTaskId,
+  onClose,
+  onEdit,
+  onToggleComplete,
+  onDelete,
+}: {
+  open: boolean;
+  loading?: boolean;
+  task: Task | null;
+  lists: TaskList[];
+  users: TaskAssignee[];
+  togglePendingTaskId?: number;
+  onClose: () => void;
+  onEdit: (task: Task) => void;
+  onToggleComplete: (task: Task) => void;
+  onDelete: (task: Task) => void;
+}) {
+  const list = task ? getTaskList(task, lists) : null;
+  const assignee = task ? getTaskAssignee(task, users) : null;
+
+  const handleDelete = async () => {
+    if (!task) return;
+    const confirmed = await Dialog.confirm({
+      title: '删除任务',
+      content: '删除后不可恢复，确定要删除这个任务吗？',
+      confirmText: '删除',
+      cancelText: '取消',
+    });
+    if (confirmed) {
+      onDelete(task);
+    }
+  };
+
+  return (
+    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '18px 18px 0 0' }}>
+      <div className="mobile-popup-body mobile-task-detail-sheet">
+        <div className="mobile-popup-header">
+          <strong>任务详情</strong>
+          <Button size="mini" fill="none" onClick={onClose}>
+            关闭
+          </Button>
+        </div>
+        {loading || !task ? (
+          <div className="mobile-empty">{loading ? '加载中...' : '任务不存在'}</div>
+        ) : (
+          <>
+            <div className="mobile-task-detail-title-row">
+              <Checkbox
+                checked={task.status === 'completed'}
+                disabled={togglePendingTaskId === task.id}
+                onChange={() => onToggleComplete(task)}
+              />
+              <h2 className={task.status === 'completed' ? 'completed' : ''}>{task.title}</h2>
+            </div>
+            <div className="mobile-task-detail-meta-card">
+              <DetailLine label="清单" value={list?.name || '-'} />
+              <DetailLine label="负责人" value={getUserName(assignee) || '-'} />
+              <DetailLine label="截止" value={formatFullDateTime(task.dueAt)} />
+              <DetailLine label="提醒" value={formatFullDateTime(task.remindAt)} />
+              <DetailLine
+                label="重复"
+                value={formatTaskRecurrence(task.recurrenceType, task.recurrenceInterval)}
+              />
+              <DetailLine label="渠道" value={formatTaskReminderChannels(task.reminderChannels)} />
+            </div>
+            {task.description ? (
+              <div className="mobile-task-detail-note">{task.description}</div>
+            ) : null}
+            <div className="mobile-chip-row">
+              {task.important ? <Tag color="danger">重要</Tag> : null}
+              {task.urgent ? <Tag color="warning">紧急</Tag> : null}
+              {task.taskType === 'anniversary' ? <Tag color="primary">纪念日</Tag> : null}
+              {task.tags?.map((tag) => (
+                <Tag key={tag}>{tag}</Tag>
+              ))}
+            </div>
+            <div className="mobile-sheet-actions">
+              <Button size="small" color="danger" fill="outline" onClick={() => void handleDelete()}>
+                <DeleteOutlined /> 删除
+              </Button>
+              <div>
+                <Button size="small" color="primary" fill="outline" onClick={() => onEdit(task)}>
+                  <EditOutlined /> 编辑
+                </Button>
+                <Button size="small" color="success" onClick={() => onToggleComplete(task)}>
+                  {task.status === 'completed' ? '取消完成' : '完成'}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </Popup>
+  );
+}
+
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="mobile-task-detail-line">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
 }
 
 export function TaskEditorPopup({
@@ -837,11 +1136,25 @@ export function TaskEditorPopup({
   onSubmit: (payload: CreateTaskDto | UpdateTaskDto) => void;
 }) {
   const [draft, setDraft] = useState<TaskDraft>(() => buildEmptyDraft(defaultListId));
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
+  const [assigneeOpen, setAssigneeOpen] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setDraft(task ? draftFromTask(task) : buildEmptyDraft(defaultListId));
   }, [defaultListId, open, task]);
+
+  useEffect(() => {
+    if (open) return;
+    setScheduleOpen(false);
+    setListOpen(false);
+    setAssigneeOpen(false);
+    setTagsOpen(false);
+    setMoreOpen(false);
+  }, [open]);
 
   const updateDraft = (patch: Partial<TaskDraft>) => {
     setDraft((previous) => ({ ...previous, ...patch }));
@@ -859,52 +1172,118 @@ export function TaskEditorPopup({
     }
   };
 
+  const selectedList = lists.find((list) => list.id === draft.listId);
+  const selectedUser = users.find((user) => user.id === draft.assigneeId);
+
   return (
-    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '8px 8px 0 0' }}>
-      <div className="mobile-popup-body mobile-editor-popup">
+    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '18px 18px 0 0' }}>
+      <div className="mobile-popup-body mobile-quick-editor">
         <div className="mobile-popup-header">
           <strong>{task ? '编辑任务' : '新建任务'}</strong>
+          <Button size="mini" color="primary" loading={submitting} onClick={handleSave}>
+            保存
+          </Button>
         </div>
-        <div className="mobile-field mobile-field-card">
-          <label>标题</label>
-          <Input
-            value={draft.title}
-            placeholder="任务标题"
-            onChange={(title: string) => updateDraft({ title })}
-          />
+        <Input
+          className="mobile-editor-title-input"
+          value={draft.title}
+          placeholder="准备做什么？"
+          onChange={(title: string) => updateDraft({ title })}
+        />
+        <TextArea
+          className="mobile-editor-description"
+          value={draft.description}
+          rows={3}
+          placeholder="描述"
+          onChange={(description: string) => updateDraft({ description })}
+        />
+
+        <div className="mobile-editor-summary">
+          {draft.dueAt ? <Tag color="primary">截止 {formatDateTime(draft.dueAt)}</Tag> : null}
+          {draft.remindAt ? <Tag color="warning">提醒 {formatDateTime(draft.remindAt)}</Tag> : null}
+          {draft.recurrenceType !== 'none' ? (
+            <Tag color="primary">
+              {formatTaskRecurrence(
+                draft.recurrenceType,
+                draft.recurrenceInterval ? Number(draft.recurrenceInterval) : null
+              )}
+            </Tag>
+          ) : null}
+          {selectedList ? <Tag>{selectedList.name}</Tag> : null}
+          {selectedUser ? <Tag>{getUserName(selectedUser)}</Tag> : null}
         </div>
-        <div className="mobile-field mobile-field-card">
-          <label>描述</label>
-          <TextArea
-            value={draft.description}
-            rows={3}
-            placeholder="补充说明"
-            onChange={(description: string) => updateDraft({ description })}
-          />
+
+        <div className="mobile-editor-toolbar">
+          <button type="button" onClick={() => setScheduleOpen(true)}>
+            <CalendarOutlined />
+            <span>日期</span>
+          </button>
+          <button
+            type="button"
+            className={draft.important ? 'active danger' : ''}
+            onClick={() => updateDraft({ important: !draft.important })}
+          >
+            <FlagOutlined />
+            <span>重要</span>
+          </button>
+          <button
+            type="button"
+            className={draft.urgent ? 'active warning' : ''}
+            onClick={() => updateDraft({ urgent: !draft.urgent })}
+          >
+            <ExclamationCircleOutlined />
+            <span>紧急</span>
+          </button>
+          <button type="button" onClick={() => setTagsOpen(true)}>
+            <TagsOutlined />
+            <span>标签</span>
+          </button>
+          <button type="button" onClick={() => setListOpen(true)}>
+            <FolderOpenOutlined />
+            <span>清单</span>
+          </button>
+          <button type="button" onClick={() => setAssigneeOpen(true)}>
+            <UserOutlined />
+            <span>负责人</span>
+          </button>
+          <button type="button" onClick={() => setMoreOpen(true)}>
+            <EllipsisOutlined />
+            <span>更多</span>
+          </button>
         </div>
-        <div className="mobile-field mobile-field-card">
-          <label>清单</label>
-          <Selector
-            options={lists.map((list) => ({ label: list.name, value: list.id }))}
-            value={draft.listId ? [draft.listId] : []}
-            onChange={(items: Array<string | number>) =>
-              updateDraft({ listId: Number(items[0]) || undefined })
-            }
-          />
-        </div>
-        <div className="mobile-field mobile-field-card">
-          <label>负责人</label>
-          <Selector
-            options={[
-              { label: '不指定', value: 0 },
-              ...users.map((user) => ({ label: getUserName(user), value: user.id })),
-            ]}
-            value={[draft.assigneeId ?? 0]}
-            onChange={(items: Array<string | number>) =>
-              updateDraft({ assigneeId: Number(items[0]) || undefined })
-            }
-          />
-        </div>
+      </div>
+
+      <ScheduleSheet
+        open={scheduleOpen}
+        draft={draft}
+        onClose={() => setScheduleOpen(false)}
+        onChange={updateDraft}
+      />
+      <FieldSheet title="选择清单" open={listOpen} onClose={() => setListOpen(false)}>
+        <Selector
+          options={lists.map((list) => ({ label: list.name, value: list.id }))}
+          value={draft.listId ? [draft.listId] : []}
+          onChange={(items: Array<string | number>) =>
+            updateDraft({ listId: Number(items[0]) || undefined })
+          }
+        />
+      </FieldSheet>
+      <FieldSheet title="负责人" open={assigneeOpen} onClose={() => setAssigneeOpen(false)}>
+        <Selector
+          options={[
+            { label: '不指定', value: 0 },
+            ...users.map((user) => ({ label: getUserName(user), value: user.id })),
+          ]}
+          value={[draft.assigneeId ?? 0]}
+          onChange={(items: Array<string | number>) =>
+            updateDraft({ assigneeId: Number(items[0]) || undefined })
+          }
+        />
+      </FieldSheet>
+      <FieldSheet title="标签" open={tagsOpen} onClose={() => setTagsOpen(false)}>
+        <Input value={draft.tags} placeholder="用逗号分隔" onChange={(tags) => updateDraft({ tags })} />
+      </FieldSheet>
+      <FieldSheet title="更多" open={moreOpen} onClose={() => setMoreOpen(false)}>
         <div className="mobile-field mobile-field-card">
           <label>类型</label>
           <Selector
@@ -913,45 +1292,6 @@ export function TaskEditorPopup({
             onChange={(items: Array<string | number>) =>
               updateDraft({ taskType: (items[0] as TaskType) || 'task' })
             }
-          />
-        </div>
-        <MobileDateField
-          label="截止时间"
-          value={draft.dueAt}
-          onChange={(dueAt) => updateDraft({ dueAt })}
-        />
-        <MobileDateField
-          label="提醒时间"
-          value={draft.remindAt}
-          onChange={(remindAt) => updateDraft({ remindAt })}
-        />
-        <div className="mobile-field mobile-field-card">
-          <label>重复规则</label>
-          <Selector
-            options={recurrenceOptions}
-            value={[draft.recurrenceType]}
-            onChange={(items: Array<string | number>) =>
-              updateDraft({ recurrenceType: (items[0] as TaskRecurrenceType) || 'none' })
-            }
-          />
-        </div>
-        {draft.recurrenceType !== 'none' && draft.recurrenceType !== 'weekdays' ? (
-          <div className="mobile-field mobile-field-card">
-            <label>重复间隔</label>
-            <Input
-              type="number"
-              value={draft.recurrenceInterval}
-              placeholder="留空为 1"
-              onChange={(recurrenceInterval: string) => updateDraft({ recurrenceInterval })}
-            />
-          </div>
-        ) : null}
-        <div className="mobile-field mobile-field-card">
-          <label>标签</label>
-          <Input
-            value={draft.tags}
-            placeholder="用逗号分隔"
-            onChange={(tags: string) => updateDraft({ tags })}
           />
         </div>
         <div className="mobile-field mobile-field-card">
@@ -967,73 +1307,165 @@ export function TaskEditorPopup({
             }
           />
         </div>
-        <List className="mobile-form-list">
-          <List.Item
-            extra={
-              <Switch
-                checked={draft.important}
-                onChange={(important: boolean) => updateDraft({ important })}
-              />
-            }
-          >
-            重要
-          </List.Item>
-          <List.Item
-            extra={
-              <Switch
-                checked={draft.urgent}
-                onChange={(urgent: boolean) => updateDraft({ urgent })}
-              />
-            }
-          >
-            紧急
-          </List.Item>
-        </List>
-        <div className="mobile-popup-actions">
-          <Button size="small" fill="outline" onClick={onClose}>
-            取消
-          </Button>
-          <Button size="small" color="primary" loading={submitting} onClick={handleSave}>
-            保存
-          </Button>
-        </div>
-      </div>
+      </FieldSheet>
     </Popup>
   );
 }
 
-function MobileDateField({
-  label,
-  value,
+function ScheduleSheet({
+  open,
+  draft,
+  onClose,
   onChange,
 }: {
-  label: string;
-  value?: Date;
-  onChange: (value?: Date) => void;
+  open: boolean;
+  draft: TaskDraft;
+  onClose: () => void;
+  onChange: (patch: Partial<TaskDraft>) => void;
 }) {
-  const [visible, setVisible] = useState(false);
+  const [duePickerOpen, setDuePickerOpen] = useState(false);
+  const [remindPickerOpen, setRemindPickerOpen] = useState(false);
+
+  const setDuePreset = (preset: 'today' | 'tomorrow' | 'next-week') => {
+    const base =
+      preset === 'today'
+        ? dayjs()
+        : preset === 'tomorrow'
+          ? dayjs().add(1, 'day')
+          : dayjs().add(1, 'week');
+    onChange({ dueAt: base.hour(18).minute(0).second(0).millisecond(0).toDate() });
+  };
+
+  const setReminderOffset = (option: (typeof reminderOffsetOptions)[number]) => {
+    if (!draft.dueAt) {
+      Toast.show({ icon: 'fail', content: '请先设置截止时间', position: 'center' });
+      return;
+    }
+    onChange({ remindAt: dayjs(draft.dueAt).subtract(option.amount, option.unit).toDate() });
+  };
 
   return (
-    <div className="mobile-field mobile-field-card">
-      <label>{label}</label>
-      <div className="mobile-date-row">
-        <Button block fill="outline" onClick={() => setVisible(true)}>
-          {value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '选择时间'}
-        </Button>
-        {value ? (
-          <Button fill="none" onClick={() => onChange(undefined)}>
-            清除
+    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '18px 18px 0 0' }}>
+      <div className="mobile-popup-body mobile-schedule-sheet">
+        <div className="mobile-popup-header">
+          <strong>日期与规则</strong>
+          <Button size="mini" fill="none" onClick={onClose}>
+            完成
           </Button>
-        ) : null}
+        </div>
+        <div className="mobile-schedule-card">
+          <label>截止</label>
+          <div className="mobile-editor-chip-grid">
+            <Button size="small" fill="outline" onClick={() => setDuePreset('today')}>
+              今天
+            </Button>
+            <Button size="small" fill="outline" onClick={() => setDuePreset('tomorrow')}>
+              明天
+            </Button>
+            <Button size="small" fill="outline" onClick={() => setDuePreset('next-week')}>
+              下周
+            </Button>
+            <Button size="small" fill="outline" onClick={() => setDuePickerOpen(true)}>
+              自定义
+            </Button>
+          </div>
+          <div className="mobile-schedule-value">
+            {draft.dueAt ? formatFullDateTime(draft.dueAt) : '未设置'}
+            {draft.dueAt ? (
+              <Button size="mini" fill="none" onClick={() => onChange({ dueAt: undefined })}>
+                清除
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mobile-schedule-card">
+          <label>提醒</label>
+          <div className="mobile-editor-chip-grid">
+            {reminderOffsetOptions.map((option) => (
+              <Button
+                key={option.label}
+                size="small"
+                fill="outline"
+                onClick={() => setReminderOffset(option)}
+              >
+                {option.label}
+              </Button>
+            ))}
+            <Button size="small" fill="outline" onClick={() => setRemindPickerOpen(true)}>
+              自定义
+            </Button>
+          </div>
+          <div className="mobile-schedule-value">
+            {draft.remindAt ? formatFullDateTime(draft.remindAt) : '未提醒'}
+            {draft.remindAt ? (
+              <Button size="mini" fill="none" onClick={() => onChange({ remindAt: undefined })}>
+                清除
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mobile-schedule-card">
+          <label>重复</label>
+          <Selector
+            options={recurrenceOptions}
+            value={[draft.recurrenceType]}
+            onChange={(items: Array<string | number>) =>
+              onChange({ recurrenceType: (items[0] as TaskRecurrenceType) || 'none' })
+            }
+          />
+          {draft.recurrenceType !== 'none' && draft.recurrenceType !== 'weekdays' ? (
+            <Input
+              type="number"
+              value={draft.recurrenceInterval}
+              placeholder="重复间隔，留空为 1"
+              onChange={(recurrenceInterval: string) => onChange({ recurrenceInterval })}
+            />
+          ) : null}
+        </div>
       </div>
       <DatePicker
-        visible={visible}
-        value={value ?? new Date()}
+        visible={duePickerOpen}
+        value={draft.dueAt ?? new Date()}
         precision="minute"
-        onClose={() => setVisible(false)}
-        onConfirm={(nextValue: Date) => onChange(nextValue)}
+        onClose={() => setDuePickerOpen(false)}
+        onConfirm={(dueAt: Date) => onChange({ dueAt })}
       />
-    </div>
+      <DatePicker
+        visible={remindPickerOpen}
+        value={draft.remindAt ?? new Date()}
+        precision="minute"
+        onClose={() => setRemindPickerOpen(false)}
+        onConfirm={(remindAt: Date) => onChange({ remindAt })}
+      />
+    </Popup>
+  );
+}
+
+function FieldSheet({
+  title,
+  open,
+  onClose,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '18px 18px 0 0' }}>
+      <div className="mobile-popup-body mobile-field-sheet">
+        <div className="mobile-popup-header">
+          <strong>{title}</strong>
+          <Button size="mini" fill="none" onClick={onClose}>
+            完成
+          </Button>
+        </div>
+        {children}
+      </div>
+    </Popup>
   );
 }
 
@@ -1084,7 +1516,7 @@ function TaskFilterPopup({
   };
 
   return (
-    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '8px 8px 0 0' }}>
+    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '18px 18px 0 0' }}>
       <div className="mobile-popup-body mobile-filter-popup">
         <div className="mobile-popup-header">
           <strong>筛选任务</strong>
@@ -1205,7 +1637,7 @@ function TaskListManagePopup({
   };
 
   return (
-    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '8px 8px 0 0' }}>
+    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '18px 18px 0 0' }}>
       <div className="mobile-popup-body mobile-list-popup">
         <div className="mobile-popup-header">
           <strong>清单管理</strong>

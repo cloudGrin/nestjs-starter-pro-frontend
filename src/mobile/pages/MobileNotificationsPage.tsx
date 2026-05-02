@@ -14,6 +14,7 @@ import {
 } from '@/features/notification/types/notification.types';
 import type { Notification } from '@/features/notification/types/notification.types';
 import { getMobileNotificationLink } from '@/features/notification/utils/notificationLink';
+import { MobileModuleHeader } from '../components/MobileModuleHeader';
 
 type NotificationFilter = 'all' | 'unread';
 
@@ -76,19 +77,19 @@ export function MobileNotificationsPage() {
 
   return (
     <div className="mobile-page">
-      <div className="mobile-page-header">
-        <div>
-          <h1 className="mobile-title">通知</h1>
-          <div className="mobile-subtitle">任务和保险提醒会优先打开 H5 详情</div>
-        </div>
-        <Button
-          size="small"
-          loading={markAllAsRead.isPending}
-          onClick={() => markAllAsRead.mutate()}
-        >
-          全部已读
-        </Button>
-      </div>
+      <MobileModuleHeader
+        title="通知"
+        subtitle="任务和保险提醒会优先打开 H5 详情"
+        actions={
+          <Button
+            size="small"
+            loading={markAllAsRead.isPending}
+            onClick={() => markAllAsRead.mutate()}
+          >
+            全部已读
+          </Button>
+        }
+      />
 
       <Selector
         options={[
