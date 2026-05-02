@@ -6,8 +6,8 @@ import { Select } from 'antd';
 import { menuIconMap } from '@/shared/components/icons/menuIcons';
 
 interface IconSelectorProps {
-  value?: string;
-  onChange?: (value: string) => void;
+  value?: string | null;
+  onChange?: (value?: string) => void;
   placeholder?: string;
 }
 

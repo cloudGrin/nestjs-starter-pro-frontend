@@ -59,7 +59,7 @@ export interface CreateMenuDto {
   name: string;
   path?: string;
   type: MenuType;
-  icon?: string;
+  icon?: string | null;
   component?: string;
   parentId?: number | null;
   sort?: number;
@@ -78,7 +78,7 @@ export interface UpdateMenuDto {
   name?: string;
   path?: string;
   type?: MenuType;
-  icon?: string;
+  icon?: string | null;
   component?: string;
   parentId?: number | null;
   sort?: number;

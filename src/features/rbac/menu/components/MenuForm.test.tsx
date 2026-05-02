@@ -1,4 +1,5 @@
 import { App } from 'antd';
+import { screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MenuForm } from './MenuForm';
 import { renderWithProviders } from '@/test/test-utils';
@@ -8,12 +9,33 @@ const treeSelectState = vi.hoisted(() => ({
   props: [] as Array<{ treeData?: Array<{ value: number; title: string; children?: unknown[] }> }>,
 }));
 
+vi.mock('./IconSelector', () => ({
+  IconSelector: ({
+    value,
+    onChange,
+  }: {
+    value?: string;
+    onChange?: (value: string | undefined) => void;
+  }) => (
+    <button
+      data-icon-value={value ?? ''}
+      data-testid="icon-selector"
+      type="button"
+      onClick={() => onChange?.(undefined)}
+    >
+      清空图标
+    </button>
+  ),
+}));
+
 vi.mock('antd', async () => {
   const actual = await vi.importActual<typeof import('antd')>('antd');
 
   return {
     ...actual,
-    TreeSelect: (props: { treeData?: Array<{ value: number; title: string; children?: unknown[] }> }) => {
+    TreeSelect: (props: {
+      treeData?: Array<{ value: number; title: string; children?: unknown[] }>;
+    }) => {
       treeSelectState.props.push(props);
       return <div data-testid="parent-menu-select" />;
     },
@@ -95,5 +117,35 @@ describe('MenuForm', () => {
 
     expect(JSON.stringify(parentOptions)).toContain('设置目录');
     expect(JSON.stringify(parentOptions)).not.toContain('用户管理');
+  });
+
+  it('submits null when clearing an existing menu icon', async () => {
+    const onSubmit = vi.fn();
+    const menu = {
+      ...menuTree[0].children![1],
+      icon: 'UserOutlined',
+      component: 'UserListPage',
+      remark: '',
+    };
+
+    renderWithProviders(
+      <App>
+        <MenuForm
+          open
+          mode="edit"
+          menu={menu}
+          menuTree={menuTree}
+          onSubmit={onSubmit}
+          onCancel={vi.fn()}
+        />
+      </App>
+    );
+
+    screen.getByTestId('icon-selector').click();
+    screen.getByText('OK').click();
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ icon: null }));
+    });
   });
 });

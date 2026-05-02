@@ -78,7 +78,10 @@ export function MenuForm({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      onSubmit(values);
+      onSubmit({
+        ...values,
+        icon: values.icon || null,
+      });
     } catch (error) {
       console.error('表单验证失败:', error);
     }
