@@ -4,9 +4,8 @@ import axios, {
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import { notification } from 'antd';
 import { appConfig } from '../config/app.config';
-import { getGlobalMessage, getGlobalModal } from '@/app/RequestContextProvider';
+import { getRequestFeedback } from './requestFeedback';
 
 /**
  * 后端统一响应格式
@@ -148,6 +147,7 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
   // 获取消息配置
   const messageConfig = requestOptions?.messageConfig;
   const errorMode = messageConfig?.errorMessageMode || 'message';
+  const feedback = getRequestFeedback();
 
   // 如果配置了 none，则不显示错误提示
   if (errorMode === 'none') {
@@ -167,12 +167,12 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
   // 自定义错误提示优先
   if (messageConfig?.overrideErrorMessage) {
     if (errorMode === 'notification') {
-      notification.error({
+      feedback.notifyError({
         message: '操作失败',
         description: messageConfig.overrideErrorMessage,
       });
     } else {
-      getGlobalMessage().error(messageConfig.overrideErrorMessage);
+      feedback.error(messageConfig.overrideErrorMessage);
     }
     return;
   }
@@ -180,7 +180,7 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
   // 网络错误（无响应）
   if (!error.response) {
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      notification.error({
+      feedback.notifyError({
         message: '网络连接失败',
         description: '无法连接到服务器，请检查网络连接或后端服务是否启动',
         duration: 8,
@@ -189,14 +189,14 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
         console.error('提示：请确认后端服务已启动（默认端口3000）');
       }
     } else if (error.code === 'ECONNABORTED') {
-      notification.error({
+      feedback.notifyError({
         message: '请求超时',
         description: '服务器响应超时，请稍后重试',
         duration: 6,
       });
     } else {
       // 其他网络错误
-      notification.error({
+      feedback.notifyError({
         message: '请求失败',
         description: error.message || '未知错误',
         duration: 6,
@@ -215,7 +215,7 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
       if (Array.isArray(messages)) {
         // 多个验证错误 - 拼接成字符串显示
         const errorList = messages.map((msg, index) => `${index + 1}. ${msg}`).join('\n');
-        notification.error({
+        feedback.notifyError({
           message: '参数验证失败',
           description: errorList,
           duration: 8,
@@ -223,7 +223,7 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
         });
       } else {
         // 单个错误
-        getGlobalMessage().error(messages || '请求参数错误');
+        feedback.error(messages || '请求参数错误');
       }
 
       // 开发环境：额外提示检查字段名
@@ -238,7 +238,7 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
     case 403: {
       // 权限不足
       const requiredPermissions = data?.message;
-      notification.error({
+      feedback.notifyError({
         message: '权限不足',
         description: requiredPermissions || '您没有访问此资源的权限',
         duration: 6,
@@ -254,19 +254,19 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
 
     case 404: {
       // 资源不存在
-      getGlobalMessage().error(data?.message || '请求的资源不存在');
+      feedback.error(data?.message || '请求的资源不存在');
       break;
     }
 
     case 409: {
       // 资源冲突（如：用户名已存在）
-      getGlobalMessage().error(data?.message || '资源已存在或冲突');
+      feedback.error(data?.message || '资源已存在或冲突');
       break;
     }
 
     case 500: {
       // 服务器内部错误
-      notification.error({
+      feedback.notifyError({
         message: '服务器错误',
         description: data?.message || '服务器内部错误，请稍后重试',
         duration: 6,
@@ -283,12 +283,12 @@ function handleApiError(error: AxiosError<ApiResponse>, requestOptions?: Request
       // 其他错误
       const errorMessage = data?.message || error.message || '请求失败';
       if (errorMode === 'notification') {
-        notification.error({
+        feedback.notifyError({
           message: '请求失败',
           description: errorMessage,
         });
       } else {
-        getGlobalMessage().error(errorMessage);
+        feedback.error(errorMessage);
       }
     }
   }
@@ -334,20 +334,17 @@ axiosInstance.interceptors.request.use(
     const confirmConfig = config.requestOptions?.confirmConfig;
     if (confirmConfig) {
       return new Promise((resolve, reject) => {
-        getGlobalModal().confirm({
-          title: confirmConfig.title || '确认操作',
-          content: confirmConfig.message,
-          okText: confirmConfig.okText || '确认',
-          cancelText: confirmConfig.cancelText || '取消',
-          onOk: () => {
+        getRequestFeedback()
+          .confirm(confirmConfig)
+          .then((confirmed) => {
+            if (!confirmed) {
+              reject(new UserCancelError());
+              return;
+            }
             // 用户确认，继续请求（此时config已包含Token）
             resolve(config);
-          },
-          onCancel: () => {
-            // 用户取消，抛出特殊错误
-            reject(new UserCancelError());
-          },
-        });
+          })
+          .catch(reject);
       });
     }
 
@@ -395,7 +392,7 @@ function expireSession() {
   localStorage.removeItem(appConfig.tokenKey);
   localStorage.removeItem(appConfig.refreshTokenKey);
   dispatchAuthEvent('auth:session-expired');
-  window.location.href = '/login';
+  window.location.href = window.location.pathname.startsWith('/m') ? '/m/login' : '/login';
 }
 
 /**
@@ -411,7 +408,7 @@ axiosInstance.interceptors.response.use(
     if (messageConfig?.successMessage) {
       const successMsg =
         messageConfig.successMessage === true ? '操作成功' : messageConfig.successMessage;
-      getGlobalMessage().success(successMsg);
+      getRequestFeedback().success(successMsg);
     }
 
     return unwrapApiData(response.data) as AxiosResponse;

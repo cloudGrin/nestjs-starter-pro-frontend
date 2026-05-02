@@ -30,30 +30,20 @@ const {
   mockNotificationError: vi.fn(),
 }));
 
-// Mock RequestContextProvider (必须在顶部，before import request)
-vi.mock('@/app/RequestContextProvider', () => ({
-  getGlobalMessage: () => ({
+// Mock request feedback registry (必须在顶部，before import request)
+vi.mock('@/shared/utils/requestFeedback', () => ({
+  getRequestFeedback: () => ({
     success: mockMessageSuccess,
     error: mockMessageError,
     warning: mockMessageWarning,
     info: mockMessageInfo,
-  }),
-  getGlobalModal: () => ({
+    notifyError: mockNotificationError,
     confirm: mockModalConfirm,
   }),
 }));
 
-// Mock antd notification
-vi.mock('antd', () => ({
-  notification: {
-    error: mockNotificationError,
-  },
-}));
-
 // 现在可以安全导入 request
 import { request, UserCancelError, axiosInstance, refreshAxios } from '../request';
-import { getGlobalMessage, getGlobalModal } from '@/app/RequestContextProvider';
-import { notification } from 'antd';
 
 describe('request - Axios封装', () => {
   let mock: MockAdapter;
@@ -119,10 +109,7 @@ describe('request - Axios封装', () => {
   describe('请求拦截器 - 二次确认', () => {
     it('用户确认后应该发送请求', async () => {
       // Mock Modal.confirm - 用户点击确认
-      mockModalConfirm.mockImplementation((config: any) => {
-        config.onOk();
-        return null;
-      });
+      mockModalConfirm.mockResolvedValue(true);
 
       mock.onDelete('/users/1').reply(200, { success: true, data: null });
 
@@ -138,19 +125,14 @@ describe('request - Axios封装', () => {
       expect(mockModalConfirm).toHaveBeenCalledWith(
         expect.objectContaining({
           title: '删除用户',
-          content: '确定要删除该用户吗？',
-          okText: '确认',
-          cancelText: '取消',
+          message: '确定要删除该用户吗？',
         })
       );
     });
 
     it('用户取消后应该抛出 UserCancelError', async () => {
       // Mock Modal.confirm - 用户点击取消
-      mockModalConfirm.mockImplementation((config: any) => {
-        config.onCancel();
-        return null;
-      });
+      mockModalConfirm.mockResolvedValue(false);
 
       await expect(
         request.delete('/users/1', {
@@ -168,10 +150,7 @@ describe('request - Axios封装', () => {
     });
 
     it('应该支持自定义确认框文案', async () => {
-      mockModalConfirm.mockImplementation((config: any) => {
-        config.onOk();
-        return null;
-      });
+      mockModalConfirm.mockResolvedValue(true);
 
       mock.onDelete('/roles/1').reply(200, { success: true });
 
@@ -189,7 +168,7 @@ describe('request - Axios封装', () => {
       expect(mockModalConfirm).toHaveBeenCalledWith(
         expect.objectContaining({
           title: '删除角色',
-          content: '删除角色会影响关联用户，确定继续吗？',
+          message: '删除角色会影响关联用户，确定继续吗？',
           okText: '继续删除',
           cancelText: '我再想想',
         })
@@ -199,10 +178,7 @@ describe('request - Axios封装', () => {
     it('二次确认应该在添加 Token 之后执行', async () => {
       localStorage.setItem(appConfig.tokenKey, 'mock-token');
 
-      mockModalConfirm.mockImplementation((config: any) => {
-        config.onOk();
-        return null;
-      });
+      mockModalConfirm.mockResolvedValue(true);
 
       mock.onDelete('/test').reply((config) => {
         // 应该包含 Token
@@ -626,10 +602,7 @@ describe('request - Axios封装', () => {
     it('带 Token + 二次确认 + 成功提示的完整流程', async () => {
       localStorage.setItem(appConfig.tokenKey, 'valid-token');
 
-      mockModalConfirm.mockImplementation((config: any) => {
-        config.onOk();
-        return null;
-      });
+      mockModalConfirm.mockResolvedValue(true);
 
       mock.onDelete('/users/1').reply((config) => {
         expect(config.headers?.Authorization).toBe('Bearer valid-token');

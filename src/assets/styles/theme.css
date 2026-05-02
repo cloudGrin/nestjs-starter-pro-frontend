@@ -55,6 +55,7 @@
 }
 
 .sidebar-bg {
+  border-right-width: 1px !important;
   background: #ffffff !important;
   border-right-color: #e2e8f0 !important;
   box-shadow: 2px 0 16px rgba(15, 23, 42, 0.04) !important;

@@ -18,7 +18,7 @@ export function ApiIntegrationGuide() {
   );
 
   return (
-    <Card className="mt-4" title="接入文档">
+    <Card className="mt-2!" title="接入文档">
       <Space direction="vertical" size={16} className="w-full">
         <Alert
           type="info"

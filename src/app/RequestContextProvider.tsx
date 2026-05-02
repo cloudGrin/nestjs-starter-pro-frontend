@@ -11,37 +11,11 @@
  */
 import { useLayoutEffect } from 'react';
 import { App } from 'antd';
-import type { MessageInstance } from 'antd/es/message/interface';
-import type { ModalStaticFunctions } from 'antd/es/modal/confirm';
+import { notification } from 'antd';
+import { registerRequestFeedback } from '@/shared/utils/requestFeedback';
 
 interface RequestContextProviderProps {
   children: React.ReactNode;
-}
-
-// 全局变量：暴露给 request.ts 使用
-let globalMessage: MessageInstance;
-let globalModal: Omit<ModalStaticFunctions, 'warn'>;
-
-/**
- * 获取全局 message 实例
- */
-// eslint-disable-next-line react-refresh/only-export-components
-export function getGlobalMessage(): MessageInstance {
-  if (!globalMessage) {
-    throw new Error('RequestContextProvider not initialized. Make sure it wraps your app.');
-  }
-  return globalMessage;
-}
-
-/**
- * 获取全局 modal 实例
- */
-// eslint-disable-next-line react-refresh/only-export-components
-export function getGlobalModal(): Omit<ModalStaticFunctions, 'warn'> {
-  if (!globalModal) {
-    throw new Error('RequestContextProvider not initialized. Make sure it wraps your app.');
-  }
-  return globalModal;
 }
 
 /**
@@ -51,9 +25,22 @@ export function RequestContextProvider({ children }: RequestContextProviderProps
   const { message, modal } = App.useApp();
 
   useLayoutEffect(() => {
-    // 初始化全局实例
-    globalMessage = message;
-    globalModal = modal;
+    return registerRequestFeedback({
+      success: (content) => message.success(content),
+      error: (content) => message.error(content),
+      notifyError: (options) => notification.error(options),
+      confirm: (options) =>
+        new Promise((resolve) => {
+          modal.confirm({
+            title: options.title || '确认操作',
+            content: options.message,
+            okText: options.okText || '确认',
+            cancelText: options.cancelText || '取消',
+            onOk: () => resolve(true),
+            onCancel: () => resolve(false),
+          });
+        }),
+    });
   }, [message, modal]);
 
   return <>{children}</>;

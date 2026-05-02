@@ -90,7 +90,7 @@ export function PageWrap({
         </div>
       )}
 
-      <div className="page-wrap-content flex-1 w-full overflow-auto p-2 lg:p-3">
+      <div className="page-wrap-content flex-1 w-full overflow-auto p-2">
         <ErrorBoundary>{children}</ErrorBoundary>
       </div>
 
