@@ -39,7 +39,6 @@ interface TaskFormValues {
   recurrenceType: TaskRecurrenceType;
   recurrenceInterval?: number;
   reminderChannels: TaskReminderChannel[];
-  sendExternalReminder: boolean;
 }
 
 const recurrenceOptions: Array<{ label: string; value: TaskRecurrenceType }> = [
@@ -52,7 +51,11 @@ const recurrenceOptions: Array<{ label: string; value: TaskRecurrenceType }> = [
   { label: '自定义间隔', value: 'custom' },
 ];
 
-const reminderChannelOptions: Array<{ label: string; value: TaskReminderChannel; disabled?: boolean }> = [
+const reminderChannelOptions: Array<{
+  label: string;
+  value: TaskReminderChannel;
+  disabled?: boolean;
+}> = [
   { label: '站内', value: 'internal', disabled: true },
   { label: 'Bark', value: 'bark' },
   { label: '飞书', value: 'feishu' },
@@ -74,19 +77,23 @@ const remindOffsetOptions: Array<{ label: string; value: number }> = [
   { label: '提前 1 周', value: 7 * 24 * 60 },
 ];
 
-function toRemindOffset(dueAt?: string | null, remindAt?: string | null): RemindOffsetValue | undefined {
+function toRemindOffset(
+  dueAt?: string | null,
+  remindAt?: string | null
+): RemindOffsetValue | undefined {
   if (!dueAt || !remindAt) return undefined;
   const diff = dayjs(dueAt).diff(dayjs(remindAt), 'minute');
   return remindOffsetOptions.some((o) => o.value === diff) ? diff : CUSTOM_REMIND_OFFSET;
 }
 
-const recurrenceIntervalConfig: Partial<Record<TaskRecurrenceType, { unit: string; max: number }>> = {
-  daily: { unit: '天', max: 365 },
-  weekly: { unit: '周', max: 52 },
-  monthly: { unit: '月', max: 12 },
-  yearly: { unit: '年', max: 10 },
-  custom: { unit: '天', max: 365 },
-};
+const recurrenceIntervalConfig: Partial<Record<TaskRecurrenceType, { unit: string; max: number }>> =
+  {
+    daily: { unit: '天', max: 365 },
+    weekly: { unit: '周', max: 52 },
+    monthly: { unit: '月', max: 12 },
+    yearly: { unit: '年', max: 10 },
+    custom: { unit: '天', max: 365 },
+  };
 
 function supportsRecurrenceInterval(type: TaskRecurrenceType) {
   return type in recurrenceIntervalConfig;
@@ -100,12 +107,9 @@ function ensureInternalChannel(channels?: TaskReminderChannel[] | null) {
   return Array.from(new Set<TaskReminderChannel>(['internal', ...(channels ?? [])]));
 }
 
-function hasExternalChannel(channels?: TaskReminderChannel[] | null) {
-  return channels?.some((channel) => externalReminderChannels.has(channel)) ?? false;
-}
-
 function toPayload(values: TaskFormValues, isEditing: boolean): CreateTaskDto | UpdateTaskDto {
   const isRecurring = values.recurrenceType !== 'none';
+  const reminderChannels = ensureInternalChannel(values.reminderChannels);
 
   const payload: CreateTaskDto = {
     title: values.title.trim(),
@@ -115,8 +119,8 @@ function toPayload(values: TaskFormValues, isEditing: boolean): CreateTaskDto | 
     urgent: values.urgent,
     tags: values.tags ?? [],
     recurrenceType: values.recurrenceType,
-    reminderChannels: ensureInternalChannel(values.reminderChannels),
-    sendExternalReminder: values.sendExternalReminder,
+    reminderChannels,
+    sendExternalReminder: reminderChannels.some((channel) => externalReminderChannels.has(channel)),
   };
 
   const description = values.description?.trim();
@@ -188,7 +192,7 @@ export function TaskFormModal({
     }
   };
   const currentList = task
-    ? lists.find((list) => list.id === task.listId) ?? task.list
+    ? (lists.find((list) => list.id === task.listId) ?? task.list)
     : undefined;
   const mustMigrateArchivedList = Boolean(task && currentList?.isArchived);
   const customRecurringReminder =
@@ -242,7 +246,6 @@ export function TaskFormModal({
         recurrenceType: task.recurrenceType,
         recurrenceInterval: task.recurrenceInterval ?? undefined,
         reminderChannels: ensureInternalChannel(task.reminderChannels),
-        sendExternalReminder: task.sendExternalReminder,
       });
       return;
     }
@@ -262,7 +265,6 @@ export function TaskFormModal({
       recurrenceType: 'none',
       recurrenceInterval: undefined,
       reminderChannels: ['internal'],
-      sendExternalReminder: false,
     });
   }, [defaultDueAt, firstActiveListId, form, mustMigrateArchivedList, open, task]);
 
@@ -319,9 +321,7 @@ export function TaskFormModal({
             { required: true, message: '请输入任务标题' },
             {
               validator: (_, value?: string) =>
-                value?.trim()
-                  ? Promise.resolve()
-                  : Promise.reject(new Error('任务标题不能为空')),
+                value?.trim() ? Promise.resolve() : Promise.reject(new Error('任务标题不能为空')),
             },
             { max: 200, message: '标题不能超过 200 个字符' },
           ]}
@@ -421,18 +421,17 @@ export function TaskFormModal({
             <DatePicker showTime className="w-full" placeholder="请选择截止时间" />
           </Form.Item>
 
-          <Form.Item noStyle shouldUpdate={(prev, next) => prev.recurrenceType !== next.recurrenceType}>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, next) => prev.recurrenceType !== next.recurrenceType}
+          >
             {({ getFieldValue }) => {
               const isRecurring = getFieldValue('recurrenceType') !== 'none';
 
               return isRecurring ? (
                 <>
                   <Form.Item name="remindOffset" label="提醒时间">
-                    <Select
-                      allowClear
-                      placeholder="不提醒"
-                      options={currentRemindOffsetOptions}
-                    />
+                    <Select allowClear placeholder="不提醒" options={currentRemindOffsetOptions} />
                   </Form.Item>
                   <Form.Item name="remindAt" hidden>
                     <DatePicker />
@@ -467,7 +466,10 @@ export function TaskFormModal({
             <Select options={recurrenceOptions} onChange={handleRecurrenceTypeChange} />
           </Form.Item>
 
-          <Form.Item noStyle shouldUpdate={(prev, next) => prev.recurrenceType !== next.recurrenceType}>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, next) => prev.recurrenceType !== next.recurrenceType}
+          >
             {({ getFieldValue }) => {
               const recurrenceType = getFieldValue('recurrenceType') as TaskRecurrenceType;
               const config = recurrenceIntervalConfig[recurrenceType];
@@ -491,41 +493,19 @@ export function TaskFormModal({
           </Form.Item>
         </div>
 
-        <Form.Item noStyle shouldUpdate={(prev, next) => prev.sendExternalReminder !== next.sendExternalReminder}>
-          {({ getFieldValue }) => (
-            <Form.Item
-              name="reminderChannels"
-              label="提醒渠道"
-              rules={[
-                {
-                  validator: (_, value?: TaskReminderChannel[]) => {
-                    const channels = ensureInternalChannel(value);
-                    if (getFieldValue('sendExternalReminder') && !hasExternalChannel(channels)) {
-                      return Promise.reject(new Error('外部提醒需要选择 Bark 或飞书'));
-                    }
-
-                    return Promise.resolve();
-                  },
-                },
-              ]}
-            >
-              <Select
-                mode="multiple"
-                options={reminderChannelOptions}
-                onChange={handleReminderChannelsChange}
-              />
-            </Form.Item>
-          )}
+        <Form.Item name="reminderChannels" label="提醒渠道">
+          <Select
+            mode="multiple"
+            options={reminderChannelOptions}
+            onChange={handleReminderChannelsChange}
+          />
         </Form.Item>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Form.Item name="important" label="重要" valuePropName="checked">
             <Switch />
           </Form.Item>
           <Form.Item name="urgent" label="紧急" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-          <Form.Item name="sendExternalReminder" label="外部提醒" valuePropName="checked">
             <Switch />
           </Form.Item>
         </div>

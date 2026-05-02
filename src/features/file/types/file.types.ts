@@ -59,7 +59,14 @@ export interface FileListResponse {
 /**
  * 文件模块类型
  */
-export type FileModule = 'user-avatar' | 'document' | 'image' | 'video' | 'audio' | 'other';
+export type FileModule =
+  | 'user-avatar'
+  | 'document'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'insurance-policy'
+  | 'other';
 
 export interface FileStorageOption {
   value: FileStorage;

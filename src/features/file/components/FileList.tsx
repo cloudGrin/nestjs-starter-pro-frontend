@@ -89,8 +89,10 @@ const FILE_MODULE_OPTIONS = [
   { value: 'image', label: '图片' },
   { value: 'video', label: '视频' },
   { value: 'audio', label: '音频' },
+  { value: 'insurance-policy', label: '家庭保险保单' },
   { value: 'other', label: '其他' },
 ] as const;
+const FILE_MODULE_LABELS = new Map(FILE_MODULE_OPTIONS.map((item) => [item.value, item.label]));
 
 const FILE_CATEGORY_OPTIONS = [
   { value: 'image', label: '图片' },
@@ -344,7 +346,7 @@ export const FileList: React.FC = () => {
       dataIndex: 'module',
       key: 'module',
       width: 120,
-      render: (module) => (module ? <Tag>{module}</Tag> : '-'),
+      render: (module) => (module ? <Tag>{FILE_MODULE_LABELS.get(module) ?? module}</Tag> : '-'),
     },
     {
       title: '公开',

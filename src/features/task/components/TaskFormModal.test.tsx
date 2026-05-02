@@ -263,7 +263,9 @@ describe('TaskFormModal', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'OK' }));
 
-    expect((await screen.findAllByText('当前任务所属清单已归档，请迁移到可用清单')).length).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByText('当前任务所属清单已归档，请迁移到可用清单')).length
+    ).toBeGreaterThan(0);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -292,7 +294,7 @@ describe('TaskFormModal', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('requires an external channel when external reminders are enabled', async () => {
+  it('derives external reminders from Bark or Feishu channels without a separate switch', async () => {
     const onSubmit = vi.fn();
 
     renderWithProviders(
@@ -311,11 +313,18 @@ describe('TaskFormModal', () => {
       screen.getByPlaceholderText('例如：给家里买菜、准备周会、结婚纪念日'),
       '外部提醒任务'
     );
-    await userEvent.click(screen.getByRole('switch', { name: '外部提醒' }));
+    expect(screen.queryByRole('switch', { name: '外部提醒' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText('提醒渠道'));
+    await userEvent.click(await screen.findByText('Bark'));
     await userEvent.click(screen.getByRole('button', { name: 'OK' }));
 
-    expect(await screen.findByText('外部提醒需要选择 Bark 或飞书')).toBeInTheDocument();
-    expect(onSubmit).not.toHaveBeenCalled();
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reminderChannels: ['internal', 'bark'],
+        sendExternalReminder: true,
+      })
+    );
   });
 
   it('requires a due date for recurring tasks', async () => {
@@ -425,9 +434,7 @@ describe('TaskFormModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'OK' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ remindAt: customRemindAt })
-    );
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ remindAt: customRemindAt }));
   });
 
   it('sends remindAt null when no offset selected for recurring task', async () => {
@@ -454,9 +461,7 @@ describe('TaskFormModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'OK' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ remindAt: null }),
-    );
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ remindAt: null }));
   });
 
   it('rejects reminders scheduled after the due date', async () => {

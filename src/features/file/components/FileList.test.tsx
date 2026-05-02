@@ -7,6 +7,25 @@ import { FileList } from './FileList';
 const hookMocks = vi.hoisted(() => ({
   previewFile: vi.fn(),
   createAccessLink: vi.fn(),
+  fileItems: [
+    {
+      id: 1,
+      originalName: 'private.png',
+      filename: 'private.png',
+      path: '2026/05/01/private.png',
+      url: '',
+      mimeType: 'image/png',
+      size: 128,
+      category: 'image',
+      storage: 'local',
+      module: 'image',
+      tags: '',
+      isPublic: false,
+      uploaderId: 1,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    },
+  ],
   storageOptionsResult: {
     data: {
       defaultStorage: 'local',
@@ -63,6 +82,16 @@ vi.mock('antd', () => {
       <div className="ant-table-wrapper">
         {dataSource.map((record) => (
           <div key={record.id}>
+            {columns
+              .filter((column) => column.key !== 'actions')
+              .map((column) => {
+                const value = column.dataIndex ? record[column.dataIndex] : undefined;
+                return (
+                  <span key={column.key}>
+                    {column.render ? column.render(value, record) : value}
+                  </span>
+                );
+              })}
             {columns.find((column) => column.key === 'actions')?.render(undefined, record)}
           </div>
         ))}
@@ -111,25 +140,7 @@ vi.mock('antd', () => {
 vi.mock('../hooks/useFiles', () => ({
   useFiles: () => ({
     data: {
-      items: [
-        {
-          id: 1,
-          originalName: 'private.png',
-          filename: 'private.png',
-          path: '2026/05/01/private.png',
-          url: '',
-          mimeType: 'image/png',
-          size: 128,
-          category: 'image',
-          storage: 'local',
-          module: 'image',
-          tags: '',
-          isPublic: false,
-          uploaderId: 1,
-          createdAt: '2026-05-01T00:00:00.000Z',
-          updatedAt: '2026-05-01T00:00:00.000Z',
-        },
-      ],
+      items: hookMocks.fileItems,
       total: 1,
       page: 1,
       pageSize: 10,
@@ -196,6 +207,25 @@ describe('FileList', () => {
         { value: 'oss', label: '阿里云 OSS' },
       ],
     };
+    hookMocks.fileItems = [
+      {
+        id: 1,
+        originalName: 'private.png',
+        filename: 'private.png',
+        path: '2026/05/01/private.png',
+        url: '',
+        mimeType: 'image/png',
+        size: 128,
+        category: 'image',
+        storage: 'local',
+        module: 'image',
+        tags: '',
+        isPublic: false,
+        uploaderId: 1,
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    ];
   });
 
   it('wraps the file table in a card like the other list pages', () => {
@@ -221,6 +251,36 @@ describe('FileList', () => {
     expect(screen.getByText('公开文件')).toBeInTheDocument();
     expect(screen.getByText('本地存储')).toBeInTheDocument();
     expect(screen.getByText('压缩包')).toBeInTheDocument();
+  });
+
+  it('renders insurance policy module with a Chinese label', () => {
+    hookMocks.fileItems = [
+      {
+        id: 2,
+        originalName: 'policy.pdf',
+        filename: 'policy.pdf',
+        path: '2026/05/01/policy.pdf',
+        url: '',
+        mimeType: 'application/pdf',
+        size: 128,
+        category: 'document',
+        storage: 'local',
+        module: 'insurance-policy',
+        tags: '',
+        isPublic: false,
+        uploaderId: 1,
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    ];
+
+    render(
+      <MemoryRouter>
+        <FileList />
+      </MemoryRouter>
+    );
+
+    expect(screen.getAllByText('家庭保险保单')).toHaveLength(2);
   });
 
   it('uses a temporary access link for private image preview', () => {
