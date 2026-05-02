@@ -28,7 +28,11 @@ describe('taskService', () => {
     expect(request.get).toHaveBeenCalledWith('/tasks', {
       params: { view: 'today', page: 1, limit: 10, keyword: 'family' },
     });
-    expect(request.post).toHaveBeenCalledWith('/tasks', { title: 'Pay bills', listId: 1 }, expect.any(Object));
+    expect(request.post).toHaveBeenCalledWith(
+      '/tasks',
+      { title: 'Pay bills', listId: 1 },
+      expect.any(Object)
+    );
     expect(request.put).toHaveBeenCalledWith('/tasks/9', { title: 'Pay rent' }, expect.any(Object));
     expect(request.patch).toHaveBeenCalledWith('/tasks/9/complete', undefined, expect.any(Object));
     expect(request.patch).toHaveBeenCalledWith('/tasks/9/reopen', undefined, expect.any(Object));

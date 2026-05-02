@@ -154,17 +154,13 @@ function getDefaultCreateDueAt(view: TaskView, queryParams: QueryTasksParams) {
   const now = dayjs();
   const start = queryParams.startDate ? dayjs(queryParams.startDate) : undefined;
   const end = queryParams.endDate ? dayjs(queryParams.endDate) : undefined;
-  const nowInRange =
-    (!start || !now.isBefore(start)) &&
-    (!end || !now.isAfter(end));
+  const nowInRange = (!start || !now.isBefore(start)) && (!end || !now.isAfter(end));
 
   if (nowInRange) {
     return now;
   }
 
-  return start?.isValid()
-    ? start.hour(9).minute(0).second(0).millisecond(0)
-    : now;
+  return start?.isValid() ? start.hour(9).minute(0).second(0).millisecond(0) : now;
 }
 
 export function TaskCenterPage() {
@@ -401,9 +397,7 @@ export function TaskCenterPage() {
       tags: previous.tags,
       sort: previous.sort,
       order: previous.order,
-      ...(supportsDateRange(view) && manualDateRange
-        ? toDateRangeParams(manualDateRange)
-        : {}),
+      ...(supportsDateRange(view) && manualDateRange ? toDateRangeParams(manualDateRange) : {}),
       ...(view === 'calendar' ? getCalendarRange(calendarMonth) : {}),
     }));
   };
@@ -420,11 +414,9 @@ export function TaskCenterPage() {
     }));
   };
 
-  const handleTableChange = (
-    pagination: TablePaginationConfig,
-    sorter: SorterResult<Task>
-  ) => {
-    const sortKey = typeof sorter.field === 'string' ? taskSortFieldByColumn[sorter.field] : undefined;
+  const handleTableChange = (pagination: TablePaginationConfig, sorter: SorterResult<Task>) => {
+    const sortKey =
+      typeof sorter.field === 'string' ? taskSortFieldByColumn[sorter.field] : undefined;
     const sortOrder =
       sortKey && sorter.order ? (sorter.order === 'ascend' ? 'ASC' : 'DESC') : undefined;
 
@@ -450,14 +442,13 @@ export function TaskCenterPage() {
     isHighVolumeView &&
     (displayTasksData?.items.length ?? 0) < (displayTasksData?.total ?? 0);
 
-  const actionPending =
-    completeTask.isPending
-      ? { type: 'complete' as const, taskId: completeTask.variables as number | undefined }
-      : reopenTask.isPending
-        ? { type: 'reopen' as const, taskId: reopenTask.variables as number | undefined }
-        : deleteTask.isPending
-          ? { type: 'delete' as const, taskId: deleteTask.variables as number | undefined }
-          : null;
+  const actionPending = completeTask.isPending
+    ? { type: 'complete' as const, taskId: completeTask.variables as number | undefined }
+    : reopenTask.isPending
+      ? { type: 'reopen' as const, taskId: reopenTask.variables as number | undefined }
+      : deleteTask.isPending
+        ? { type: 'delete' as const, taskId: deleteTask.variables as number | undefined }
+        : null;
   const updatingTaskVariables = updateTask.variables as { id?: number } | undefined;
   const movingTaskId = updateTask.isPending ? updatingTaskVariables?.id : undefined;
 
@@ -470,10 +461,7 @@ export function TaskCenterPage() {
     });
   };
 
-  const handleMatrixMove = (
-    task: Task,
-    target: Pick<UpdateTaskDto, 'important' | 'urgent'>
-  ) => {
+  const handleMatrixMove = (task: Task, target: Pick<UpdateTaskDto, 'important' | 'urgent'>) => {
     updateTask.mutate(
       {
         id: task.id,
@@ -503,7 +491,11 @@ export function TaskCenterPage() {
       title="任务中心"
       titleRight={
         <Space>
-          <Button icon={<ReloadOutlined />} loading={tasksQuery.isFetching} onClick={() => tasksQuery.refetch()}>
+          <Button
+            icon={<ReloadOutlined />}
+            loading={tasksQuery.isFetching}
+            onClick={() => tasksQuery.refetch()}
+          >
             刷新
           </Button>
           <PermissionGuard permissions={['task-list:manage']}>

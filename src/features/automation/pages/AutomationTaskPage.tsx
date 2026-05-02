@@ -81,13 +81,18 @@ export function AutomationTaskPage() {
       title: 'Cron',
       dataIndex: ['config', 'cronExpression'],
       width: 150,
-      render: (_, record) => <Text code>{record.config?.cronExpression ?? record.defaultCron}</Text>,
+      render: (_, record) => (
+        <Text code>{record.config?.cronExpression ?? record.defaultCron}</Text>
+      ),
     },
     {
       title: '最近状态',
       dataIndex: ['config', 'lastStatus'],
       width: 110,
-      render: (_, record) => renderLastStatus(record.config?.lastStatus ?? 'never'),
+      render: (_, record) =>
+        renderLastStatus(
+          record.config?.isRunning ? 'running' : (record.config?.lastStatus ?? 'never')
+        ),
     },
     {
       title: '最近执行',
@@ -182,13 +187,20 @@ export function AutomationTaskPage() {
         onSubmit={handleSaveConfig}
       />
 
-      <AutomationLogDrawer open={Boolean(logTask)} task={logTask} onClose={() => setLogTask(null)} />
+      <AutomationLogDrawer
+        open={Boolean(logTask)}
+        task={logTask}
+        onClose={() => setLogTask(null)}
+      />
     </PageWrap>
   );
 }
 
 function renderLastStatus(status: AutomationTaskLastStatus) {
-  const map: Record<AutomationTaskLastStatus, { badge: Parameters<typeof StatusBadge>[0]['status']; text: string }> = {
+  const map: Record<
+    AutomationTaskLastStatus,
+    { badge: Parameters<typeof StatusBadge>[0]['status']; text: string }
+  > = {
     never: { badge: 'default', text: '未执行' },
     running: { badge: 'processing', text: '运行中' },
     success: { badge: 'success', text: '成功' },

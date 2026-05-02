@@ -40,16 +40,12 @@ export function PageWrap({
 
   return (
     <div
-      className={cn(
-        'flex flex-col w-full h-full',
-        'bg-gray-50 dark:bg-gray-900',
-        {
-          // sticky模式：header固定在顶部
-          '[&>.page-wrap-header]:sticky [&>.page-wrap-header]:top-0 [&>.page-wrap-header]:z-10':
-            sticky,
-          '[&>.page-wrap-content]:overflow-y-auto': sticky,
-        }
-      )}
+      className={cn('flex flex-col w-full h-full', 'bg-gray-50 dark:bg-gray-900', {
+        // sticky模式：header固定在顶部
+        '[&>.page-wrap-header]:sticky [&>.page-wrap-header]:top-0 [&>.page-wrap-header]:z-10':
+          sticky,
+        '[&>.page-wrap-content]:overflow-y-auto': sticky,
+      })}
     >
       {(header || title || includeBreadcrumbs) && (
         <div
@@ -66,9 +62,7 @@ export function PageWrap({
             >
               <Breadcrumb
                 className="app-breadcrumbs"
-                separator={
-                  <RightOutlined className="text-xs text-gray-400 dark:text-slate-400" />
-                }
+                separator={<RightOutlined className="text-xs text-gray-400 dark:text-slate-400" />}
                 items={breadcrumbItems.map((item) => ({
                   ...item,
                   className: cn('text-sm text-gray-500 dark:text-slate-300'),

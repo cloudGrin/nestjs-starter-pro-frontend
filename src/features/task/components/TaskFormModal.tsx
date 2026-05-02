@@ -61,8 +61,6 @@ const reminderChannelOptions: Array<{
   { label: '飞书', value: 'feishu' },
 ];
 
-const externalReminderChannels = new Set<TaskReminderChannel>(['bark', 'feishu']);
-
 const CUSTOM_REMIND_OFFSET = 'custom';
 type RemindOffsetValue = number | typeof CUSTOM_REMIND_OFFSET;
 
@@ -120,7 +118,6 @@ function toPayload(values: TaskFormValues, isEditing: boolean): CreateTaskDto | 
     tags: values.tags ?? [],
     recurrenceType: values.recurrenceType,
     reminderChannels,
-    sendExternalReminder: reminderChannels.some((channel) => externalReminderChannels.has(channel)),
   };
 
   const description = values.description?.trim();

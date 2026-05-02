@@ -138,15 +138,16 @@ export function ProfilePage() {
                     <Input maxLength={255} placeholder="请输入地址" />
                   </Form.Item>
                   <Form.Item label="个人简介" name="bio">
-                    <Input.TextArea rows={4} maxLength={500} showCount placeholder="请输入个人简介" />
+                    <Input.TextArea
+                      rows={4}
+                      maxLength={500}
+                      showCount
+                      placeholder="请输入个人简介"
+                    />
                   </Form.Item>
 
                   <Space>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      loading={updateProfile.isPending}
-                    >
+                    <Button type="primary" htmlType="submit" loading={updateProfile.isPending}>
                       保存资料
                     </Button>
                     <Button onClick={handleResetProfile}>重置</Button>

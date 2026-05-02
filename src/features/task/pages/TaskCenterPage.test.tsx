@@ -3,12 +3,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { TaskCenterPage } from './TaskCenterPage';
-import {
-  createMockUser,
-  renderWithProviders,
-  setMockUser,
-  userEvent,
-} from '@/test/test-utils';
+import { createMockUser, renderWithProviders, setMockUser, userEvent } from '@/test/test-utils';
 
 const taskHookMocks = vi.hoisted(() => ({
   useTaskLists: vi.fn(),
@@ -204,7 +199,9 @@ describe('TaskCenterPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /新建任务/ }));
 
-    expect(screen.getByPlaceholderText('例如：给家里买菜、准备周会、结婚纪念日')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('例如：给家里买菜、准备周会、结婚纪念日')
+    ).toBeInTheDocument();
   });
 
   it('defaults new calendar tasks into the current calendar date range', async () => {
@@ -336,7 +333,12 @@ describe('TaskCenterPage', () => {
     taskHookMocks.useTasks.mockImplementation((params) => ({
       data:
         params.view === 'calendar'
-          ? { items: [createTaskFixture({ title: '筛选后的日历任务' })], total: 1, page: 1, pageSize: 100 }
+          ? {
+              items: [createTaskFixture({ title: '筛选后的日历任务' })],
+              total: 1,
+              page: 1,
+              pageSize: 100,
+            }
           : emptyTasks,
       isLoading: false,
       isFetching: false,
@@ -439,24 +441,23 @@ describe('TaskCenterPage', () => {
 
   it('updates task urgency and importance when dragging across matrix quadrants', async () => {
     const updateMutation = mockMutationWithSuccess();
+    const matrixTasksData = {
+      items: [
+        createTaskFixture({
+          id: 31,
+          title: '矩阵任务',
+          important: false,
+          urgent: false,
+        }),
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 100,
+    };
+
     taskHookMocks.useUpdateTask.mockReturnValue(updateMutation);
     taskHookMocks.useTasks.mockImplementation((params) => ({
-      data:
-        params.view === 'matrix'
-          ? {
-              items: [
-                createTaskFixture({
-                  id: 31,
-                  title: '矩阵任务',
-                  important: false,
-                  urgent: false,
-                }),
-              ],
-              total: 1,
-              page: 1,
-              pageSize: 100,
-            }
-          : emptyTasks,
+      data: params.view === 'matrix' ? matrixTasksData : emptyTasks,
       isLoading: false,
       isFetching: false,
       refetch: vi.fn(),

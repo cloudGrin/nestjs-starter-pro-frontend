@@ -100,7 +100,6 @@ const policyTypeOptions: Array<{ value: InsurancePolicyType; label: string; colo
 const policyTypeLabel = new Map(policyTypeOptions.map((item) => [item.value, item.label]));
 const policyTypeColor = new Map(policyTypeOptions.map((item) => [item.value, item.color]));
 const relationshipOptions = ['本人', '配偶', '父亲', '母亲', '子女', '孩子', '其他'];
-const externalReminderChannels = new Set(['bark', 'feishu']);
 const policySortFieldByColumn: Record<string, InsurancePolicySortField> = {
   name: 'name',
   endDate: 'endDate',
@@ -184,7 +183,6 @@ function toPolicyPayload(
     ownerUserId: values.ownerUserId,
     remark: values.remark || null,
     reminderChannels,
-    sendExternalReminder: reminderChannels.some((channel) => externalReminderChannels.has(channel)),
     attachmentFileIds: values.attachmentFileIds ?? [],
   };
 }

@@ -120,7 +120,6 @@ export interface CreateInsurancePolicyDto {
   ownerUserId?: number;
   remark?: string | null;
   reminderChannels?: InsuranceReminderChannel[];
-  sendExternalReminder?: boolean;
   attachmentFileIds?: number[];
 }
 

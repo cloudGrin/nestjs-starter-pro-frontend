@@ -320,9 +320,13 @@ describe('TaskFormModal', () => {
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        sendExternalReminder: expect.any(Boolean),
+      })
+    );
+    expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         reminderChannels: ['internal', 'bark'],
-        sendExternalReminder: true,
       })
     );
   });

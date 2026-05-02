@@ -13,7 +13,6 @@ import type {
   QueryRoleDto,
   CreateRoleDto,
   UpdateRoleDto,
-  AssignMenusDto,
   AssignRoleAccessDto,
 } from '../types/role.types';
 
@@ -95,52 +94,6 @@ export function useDeleteRole() {
 }
 
 /**
- * 分配权限
- */
-export function useAssignPermissions() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, permissionIds }: { id: number; permissionIds: number[] }) =>
-      roleService.assignPermissions(id, permissionIds),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] });
-      queryClient.invalidateQueries({ queryKey: ['roles', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'permissions'] });
-    },
-  });
-}
-
-/**
- * 分配菜单
- */
-export function useAssignMenus() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: AssignMenusDto }) =>
-      roleService.assignMenus(id, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] });
-      queryClient.invalidateQueries({ queryKey: ['roles', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'menus'] });
-    },
-  });
-}
-
-/**
- * 获取角色的菜单
- */
-export function useRoleMenus(id: number) {
-  return useQuery({
-    queryKey: ['roles', id, 'menus'],
-    queryFn: () => roleService.getRoleMenus(id),
-    enabled: !!id,
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-/**
  * 获取角色统一授权
  */
 export function useRoleAccess(id: number) {
@@ -149,40 +102,6 @@ export function useRoleAccess(id: number) {
     queryFn: () => roleService.getRoleAccess(id),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
-  });
-}
-
-/**
- * 统一分配角色菜单和权限
- */
-export function useAssignAccess() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: AssignRoleAccessDto }) =>
-      roleService.assignAccess(id, data),
-    onSuccess: async (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] });
-      queryClient.invalidateQueries({ queryKey: ['roles', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'access'] });
-      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'permissions'] });
-      queryClient.invalidateQueries({ queryKey: ['roles', variables.id, 'menus'] });
-      queryClient.invalidateQueries({ queryKey: ['menus', 'user'] });
-
-      const currentUser = useAuthStore.getState().user;
-      const affectsCurrentUser = currentUser?.roles?.some((role) => role.id === variables.id);
-      if (!affectsCurrentUser) {
-        return;
-      }
-
-      try {
-        const profile = await authService.getProfile();
-        useAuthStore.getState().setUser(profile);
-        queryClient.setQueryData(['profile'], profile);
-      } catch {
-        queryClient.invalidateQueries({ queryKey: ['profile'] });
-      }
-    },
   });
 }
 

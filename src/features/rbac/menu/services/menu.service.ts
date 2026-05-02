@@ -72,15 +72,11 @@ export const menuService = {
    * 移动菜单节点
    */
   moveMenu: (id: number, data: MoveMenuDto) =>
-    request.patch<Menu>(
-      `/menus/${id}/move`,
-      data,
-      {
-        requestOptions: {
-          messageConfig: {
-            successMessage: '移动菜单成功',
-          },
+    request.patch<Menu>(`/menus/${id}/move`, data, {
+      requestOptions: {
+        messageConfig: {
+          successMessage: '移动菜单成功',
         },
-      }
-    ),
+      },
+    }),
 };

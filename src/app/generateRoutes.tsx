@@ -78,9 +78,7 @@ export function generateRoutes(menus: MenuTreeNode[]): RouteObject[] {
             <Component />
           </Suspense>
         ),
-        // 传递 meta 数据（用于面包屑、标签页等）
         handle: {
-          meta: menu.meta,
           menuId: menu.id,
           menuName: menu.name,
         },

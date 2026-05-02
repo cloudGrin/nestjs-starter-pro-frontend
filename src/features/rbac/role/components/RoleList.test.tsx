@@ -59,12 +59,7 @@ describe('RoleList', () => {
     const onAssignAccess = vi.fn();
 
     renderWithProviders(
-      <RoleList
-        data={[superAdminRole]}
-        total={1}
-        onEdit={onEdit}
-        onAssignAccess={onAssignAccess}
-      />
+      <RoleList data={[superAdminRole]} total={1} onEdit={onEdit} onAssignAccess={onAssignAccess} />
     );
 
     const editButton = screen.getByRole('button', { name: /编辑/ });

@@ -99,6 +99,45 @@ describe('AutomationTaskPage', () => {
     expect(screen.getByText('清理 0 条过期刷新令牌')).toBeInTheDocument();
   });
 
+  it('shows running when a task is still running even if the last trigger was skipped', () => {
+    hookMocks.useAutomationTasks.mockReturnValue({
+      data: [
+        {
+          key: 'sendTaskReminders',
+          name: '发送任务提醒',
+          defaultCron: '*/1 * * * *',
+          config: {
+            id: 2,
+            taskKey: 'sendTaskReminders',
+            enabled: true,
+            cronExpression: '*/1 * * * *',
+            params: {},
+            isRunning: true,
+            lastStatus: 'skipped',
+            lastStartedAt: '2026-05-01T00:00:00.000Z',
+            lastFinishedAt: null,
+            lastDurationMs: null,
+            lastMessage: '任务正在运行，本次触发已跳过',
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-01T00:00:01.000Z',
+          },
+        },
+      ],
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+
+    renderWithProviders(
+      <MemoryRouter>
+        <AutomationTaskPage />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('运行中')).toBeInTheDocument();
+    expect(screen.queryByText('跳过')).not.toBeInTheDocument();
+  });
+
   it('rejects invalid JSON params before saving config', async () => {
     const user = userEvent.setup();
     renderWithProviders(

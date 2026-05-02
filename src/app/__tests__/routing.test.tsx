@@ -27,7 +27,6 @@ describe('dynamic routing', () => {
         isActive: true,
         isVisible: true,
         isExternal: false,
-        isCache: false,
         createdAt: '',
         updatedAt: '',
         children: [
@@ -42,7 +41,6 @@ describe('dynamic routing', () => {
             isActive: true,
             isVisible: true,
             isExternal: false,
-            isCache: false,
             createdAt: '',
             updatedAt: '',
           },

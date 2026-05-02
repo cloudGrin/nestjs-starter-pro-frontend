@@ -134,7 +134,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
       width={SIDEBAR_WIDTH}
       collapsedWidth={SIDEBAR_COLLAPSED_WIDTH}
       theme={themeMode === 'dark' ? 'dark' : 'light'}
-      className="sidebar-bg flex-none border-r transition-theme"
+      className="sidebar-bg flex-none transition-theme"
     >
       <div
         className={cn(

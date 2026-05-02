@@ -46,9 +46,7 @@ export function AutomationLogDrawer({ open, task, onClose }: AutomationLogDrawer
       title: '触发',
       dataIndex: 'triggerType',
       width: 90,
-      render: (triggerType: AutomationTaskTriggerType) => (
-        <Tag>{getTriggerText(triggerType)}</Tag>
-      ),
+      render: (triggerType: AutomationTaskTriggerType) => <Tag>{getTriggerText(triggerType)}</Tag>,
     },
     {
       title: '状态',

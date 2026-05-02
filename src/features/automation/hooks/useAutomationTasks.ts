@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { automationService } from '../services/automation.service';
-import type { QueryAutomationTaskLogsDto, UpdateAutomationTaskConfigDto } from '../types/automation.types';
+import type {
+  QueryAutomationTaskLogsDto,
+  UpdateAutomationTaskConfigDto,
+} from '../types/automation.types';
 
 export function useAutomationTasks() {
   return useQuery({

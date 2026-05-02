@@ -57,9 +57,7 @@ describe('ApiIntegrationGuide', () => {
     expect(screen.getByText('read:users')).toBeInTheDocument();
     expect(screen.getByText('/api/v1/open/users')).toBeInTheDocument();
     const curlBlock = screen.getByText(/curl --request GET/);
-    expect(curlBlock).toHaveTextContent(
-      buildOpenApiCurlExample('/api/v1', window.location.origin)
-    );
+    expect(curlBlock).toHaveTextContent(buildOpenApiCurlExample('/api/v1', window.location.origin));
     expect(curlBlock).toHaveClass('!bg-gray-200');
     expect(curlBlock).toHaveClass('!text-gray-900');
   });

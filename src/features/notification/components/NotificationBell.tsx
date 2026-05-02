@@ -151,10 +151,7 @@ export const NotificationBell: React.FC = () => {
                   {/* 通知内容 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Text
-                        strong
-                        className="text-sm text-gray-800 dark:text-gray-200"
-                      >
+                      <Text strong className="text-sm text-gray-800 dark:text-gray-200">
                         {notification.title}
                       </Text>
                       <div
@@ -162,9 +159,7 @@ export const NotificationBell: React.FC = () => {
                         style={{ backgroundColor: getPriorityColor(notification.priority) }}
                       />
                     </div>
-                    <Text
-                      className="mb-1 block line-clamp-2 text-xs text-gray-600 dark:text-gray-400"
-                    >
+                    <Text className="mb-1 block line-clamp-2 text-xs text-gray-600 dark:text-gray-400">
                       {notification.content}
                     </Text>
                     <Text className="text-xs text-gray-400 dark:text-gray-500">

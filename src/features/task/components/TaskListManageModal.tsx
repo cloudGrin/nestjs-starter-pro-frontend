@@ -2,11 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Table, Tag } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import {
-  useCreateTaskList,
-  useDeleteTaskList,
-  useUpdateTaskList,
-} from '../hooks/useTasks';
+import { useCreateTaskList, useDeleteTaskList, useUpdateTaskList } from '../hooks/useTasks';
 import type { TaskList, TaskListScope } from '../types/task.types';
 
 interface TaskListManageModalProps {
@@ -29,12 +25,7 @@ const scopeOptions: Array<{ label: string; value: TaskListScope }> = [
   { label: '家庭', value: 'family' },
 ];
 
-export function TaskListManageModal({
-  open,
-  lists,
-  loading,
-  onCancel,
-}: TaskListManageModalProps) {
+export function TaskListManageModal({ open, lists, loading, onCancel }: TaskListManageModalProps) {
   const [form] = Form.useForm<TaskListFormValues>();
   const [editingList, setEditingList] = useState<TaskList | null>(null);
   const createTaskList = useCreateTaskList();
@@ -126,7 +117,8 @@ export function TaskListManageModal({
       title: '范围',
       dataIndex: 'scope',
       width: 90,
-      render: (scope: TaskListScope) => (scope === 'family' ? <Tag color="blue">家庭</Tag> : <Tag>个人</Tag>),
+      render: (scope: TaskListScope) =>
+        scope === 'family' ? <Tag color="blue">家庭</Tag> : <Tag>个人</Tag>,
     },
     {
       title: '排序',
@@ -146,7 +138,12 @@ export function TaskListManageModal({
       width: 140,
       render: (_, record) => (
         <Space>
-          <Button size="small" type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
+          <Button
+            size="small"
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+          >
             编辑
           </Button>
           <Button
@@ -187,9 +184,7 @@ export function TaskListManageModal({
               { required: true, message: '请输入清单名称' },
               {
                 validator: (_, value?: string) =>
-                  value?.trim()
-                    ? Promise.resolve()
-                    : Promise.reject(new Error('清单名称不能为空')),
+                  value?.trim() ? Promise.resolve() : Promise.reject(new Error('清单名称不能为空')),
               },
               { max: 100, message: '名称不能超过 100 个字符' },
             ]}

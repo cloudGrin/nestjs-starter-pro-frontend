@@ -75,7 +75,9 @@ export function TaskAnniversaryView({
                     <span>日期：{formatDate.date(task.dueAt)}</span>
                     <span>提醒：{formatDate.full(task.remindAt)}</span>
                     <span>重复：{task.recurrenceType}</span>
-                    {task.reminderChannels?.map((channel) => <Tag key={channel}>{channel}</Tag>)}
+                    {task.reminderChannels?.map((channel) => (
+                      <Tag key={channel}>{channel}</Tag>
+                    ))}
                   </Space>
                 }
               />

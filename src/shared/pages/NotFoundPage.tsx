@@ -20,9 +20,7 @@ export function NotFoundPage() {
         </div>
       </div>
 
-      <p className="mb-2 text-center text-xl text-gray-600 dark:text-gray-300">
-        页面未找到
-      </p>
+      <p className="mb-2 text-center text-xl text-gray-600 dark:text-gray-300">页面未找到</p>
 
       <p className="mb-8 max-w-md text-center text-sm text-gray-500 dark:text-gray-400">
         抱歉，您访问的页面不存在或已被移除

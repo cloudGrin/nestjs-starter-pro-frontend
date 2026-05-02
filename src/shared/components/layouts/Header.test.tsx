@@ -60,8 +60,8 @@ describe('Header', () => {
       </MemoryRouter>
     );
 
-    const iconButtons = Array.from(container.querySelectorAll('.ant-btn')).filter(
-      (button) => button.className.includes('app-header-icon-button')
+    const iconButtons = Array.from(container.querySelectorAll('.ant-btn')).filter((button) =>
+      button.className.includes('app-header-icon-button')
     );
 
     expect(iconButtons).toHaveLength(2);

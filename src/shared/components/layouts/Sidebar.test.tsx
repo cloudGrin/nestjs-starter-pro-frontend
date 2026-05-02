@@ -43,7 +43,6 @@ const userMenus: MenuTreeNode[] = [
     isActive: true,
     isVisible: true,
     isExternal: false,
-    isCache: false,
     createdAt: '',
     updatedAt: '',
     children: [
@@ -59,7 +58,6 @@ const userMenus: MenuTreeNode[] = [
         isActive: true,
         isVisible: true,
         isExternal: false,
-        isCache: false,
         createdAt: '',
         updatedAt: '',
       },

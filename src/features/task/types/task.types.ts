@@ -17,7 +17,13 @@ export type TaskView = 'list' | 'today' | 'calendar' | 'matrix' | 'anniversary';
 
 export type TaskReminderChannel = 'internal' | 'bark' | 'feishu';
 
-export type TaskSortField = 'createdAt' | 'updatedAt' | 'dueAt' | 'remindAt' | 'completedAt' | 'title';
+export type TaskSortField =
+  | 'createdAt'
+  | 'updatedAt'
+  | 'dueAt'
+  | 'remindAt'
+  | 'completedAt'
+  | 'title';
 
 export type TaskSortOrder = 'ASC' | 'DESC';
 
@@ -111,7 +117,6 @@ export interface CreateTaskDto {
   recurrenceType?: TaskRecurrenceType;
   recurrenceInterval?: number | null;
   reminderChannels?: TaskReminderChannel[];
-  sendExternalReminder?: boolean;
 }
 
 export type UpdateTaskDto = Partial<CreateTaskDto>;

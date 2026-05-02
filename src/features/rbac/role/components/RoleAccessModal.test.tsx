@@ -1,7 +1,13 @@
 import { App } from 'antd';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RoleAccessModal } from './RoleAccessModal';
-import { createMockUser, renderWithProviders, screen, setMockUser, userEvent } from '@/test/test-utils';
+import {
+  createMockUser,
+  renderWithProviders,
+  screen,
+  setMockUser,
+  userEvent,
+} from '@/test/test-utils';
 import { MenuType } from '../../menu/types/menu.types';
 import type { Role } from '../types/role.types';
 
@@ -60,7 +66,6 @@ describe('RoleAccessModal', () => {
           isActive: true,
           isVisible: true,
           isExternal: false,
-          isCache: false,
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
           children: [
@@ -74,7 +79,6 @@ describe('RoleAccessModal', () => {
               isActive: true,
               isVisible: true,
               isExternal: false,
-              isCache: false,
               createdAt: '2026-01-01T00:00:00.000Z',
               updatedAt: '2026-01-01T00:00:00.000Z',
               children: [],

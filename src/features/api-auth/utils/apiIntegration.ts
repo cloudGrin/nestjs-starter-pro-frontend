@@ -2,7 +2,7 @@ import { appConfig } from '@/shared/config/app.config';
 
 export function buildOpenApiCurlExample(
   apiBaseUrl = appConfig.apiBaseUrl,
-  origin = getCurrentOrigin(),
+  origin = getCurrentOrigin()
 ): string {
   const normalizedBaseUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl : `${apiBaseUrl}/`;
   const usersUrl = new URL('open/users?page=1&pageSize=10', new URL(normalizedBaseUrl, origin));

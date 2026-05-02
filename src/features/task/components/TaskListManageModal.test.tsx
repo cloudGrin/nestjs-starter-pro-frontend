@@ -70,9 +70,7 @@ describe('TaskListManageModal', () => {
     const createMutation = mockMutation();
     taskListHookMocks.useCreateTaskList.mockReturnValue(createMutation);
 
-    renderWithProviders(
-      <TaskListManageModal open lists={[]} loading={false} onCancel={vi.fn()} />
-    );
+    renderWithProviders(<TaskListManageModal open lists={[]} loading={false} onCancel={vi.fn()} />);
 
     await userEvent.type(screen.getByPlaceholderText('例如：家庭计划'), '   ');
     await userEvent.click(screen.getByRole('button', { name: /新增清单/ }));

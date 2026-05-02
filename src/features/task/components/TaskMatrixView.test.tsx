@@ -1,11 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TaskMatrixView } from './TaskMatrixView';
-import {
-  createMockUser,
-  renderWithProviders,
-  setMockUser,
-} from '@/test/test-utils';
+import { createMockUser, renderWithProviders, setMockUser } from '@/test/test-utils';
 import type { PaginatedResult, Task } from '../types/task.types';
 
 function createTask(overrides: Partial<Task> = {}): Task {

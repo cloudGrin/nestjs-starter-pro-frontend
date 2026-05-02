@@ -22,10 +22,7 @@ function isActionPending(
   task: Task,
   type?: TaskActionType
 ) {
-  return (
-    actionPending?.taskId === task.id &&
-    (!type || actionPending.type === type)
-  );
+  return actionPending?.taskId === task.id && (!type || actionPending.type === type);
 }
 
 export function TaskQuickActions({

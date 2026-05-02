@@ -42,9 +42,7 @@ export function EmptyState({
           <div className="relative z-10">{icon}</div>
         </div>
 
-        <h3 className="mb-2 text-base font-semibold text-gray-900 dark:text-gray-100">
-          {title}
-        </h3>
+        <h3 className="mb-2 text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
 
         {description && (
           <p className="mb-6 max-w-md text-center text-sm text-gray-500 dark:text-gray-400">
@@ -63,9 +61,7 @@ export function EmptyState({
         {illustration || <EmptyIllustration size={illustrationSize} />}
       </div>
 
-      <h3 className="mb-2 text-base font-semibold text-gray-900 dark:text-gray-100">
-        {title}
-      </h3>
+      <h3 className="mb-2 text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
 
       {description && (
         <p className="mb-6 max-w-md text-center text-sm text-gray-500 dark:text-gray-400">

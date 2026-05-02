@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import dayjs from 'dayjs';
 import { TaskCalendarView } from './TaskCalendarView';
 import { createMockUser, renderWithProviders, setMockUser, userEvent } from '@/test/test-utils';
@@ -91,7 +91,9 @@ describe('TaskCalendarView', () => {
     expect(screen.getByRole('button', { name: /选择 2026-04-15/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /选择 2026-04-22/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /选择 2026-04-29/ })).toBeInTheDocument();
-    expect(screen.getAllByText('每周缴费')).toHaveLength(5);
+    expect(
+      within(screen.getByTestId('task-calendar-compact-days')).getAllByText('每周缴费')
+    ).toHaveLength(5);
   });
 
   it('shows selected day task details in a side panel', async () => {

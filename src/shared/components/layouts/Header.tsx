@@ -91,9 +91,7 @@ export function Header({ collapsed, onToggleCollapsed }: HeaderProps) {
         {breadcrumbItems.length > 0 && (
           <Breadcrumb
             className="app-breadcrumbs hidden min-w-0 sm:block"
-            separator={
-              <RightOutlined className="text-[10px] text-slate-400 dark:text-slate-500" />
-            }
+            separator={<RightOutlined className="text-[10px] text-slate-400 dark:text-slate-500" />}
             items={breadcrumbItems.map((item) => ({
               ...item,
               className: 'text-sm text-slate-500 dark:text-slate-400',

@@ -15,7 +15,6 @@ import type {
   AssignRoleAccessDto,
   RoleAccess,
 } from '../types/role.types';
-import type { Menu } from '../../menu/types/menu.types';
 
 export const roleService = {
   /**
@@ -113,9 +112,4 @@ export const roleService = {
         },
       },
     }),
-
-  /**
-   * 获取角色的菜单
-   */
-  getRoleMenus: (id: number) => request.get<Menu[]>(`/roles/${id}/menus`),
 };

@@ -120,7 +120,10 @@ describe('API Auth permission actions', () => {
     renderWithProviders(<ApiAppList />);
 
     await user.click(screen.getByRole('button', { name: /创建应用/ }));
-    await user.type(screen.getByPlaceholderText('请输入应用名称，如：家庭财务小程序'), 'Personal App');
+    await user.type(
+      screen.getByPlaceholderText('请输入应用名称，如：家庭财务小程序'),
+      'Personal App'
+    );
     await user.click(screen.getByRole('button', { name: 'OK' }));
 
     await waitFor(() => {

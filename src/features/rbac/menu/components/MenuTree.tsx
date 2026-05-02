@@ -265,11 +265,7 @@ export function MenuTree({
     const dropPosParts = String(info.node.pos ?? '').split('-');
     const dropNodeIndex = Number(dropPosParts[dropPosParts.length - 1] ?? 0);
     const relativeDropPosition = (info.dropPosition ?? 0) - dropNodeIndex;
-    const position = info.dropToGap
-      ? relativeDropPosition < 0
-        ? 'before'
-        : 'after'
-      : 'inside';
+    const position = info.dropToGap ? (relativeDropPosition < 0 ? 'before' : 'after') : 'inside';
 
     // 如果findParentId返回undefined（未找到节点），不应该继续
     if (info.dropToGap && targetParentId === undefined) {

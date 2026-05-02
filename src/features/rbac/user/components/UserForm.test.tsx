@@ -52,9 +52,7 @@ describe('UserForm notification settings', () => {
   it('loads and saves admin managed user notification bindings in edit mode', async () => {
     const user = createMockUser({ id: 9, username: 'task-user', email: 'task@example.com' });
 
-    renderWithProviders(
-      <UserForm visible user={user} onCancel={vi.fn()} onSuccess={vi.fn()} />
-    );
+    renderWithProviders(<UserForm visible user={user} onCancel={vi.fn()} onSuccess={vi.fn()} />);
 
     const barkKeyInput = await screen.findByLabelText('Bark Key');
     const feishuUserIdInput = screen.getByLabelText('飞书 user_id');

@@ -3,11 +3,7 @@
  */
 
 import { Table, Tag } from 'antd';
-import {
-  EditOutlined,
-  DeleteOutlined,
-  SafetyCertificateOutlined,
-} from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { TableActions, StatusBadge } from '@/shared/components';
 import type { Role } from '../types/role.types';

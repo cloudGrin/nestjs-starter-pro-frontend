@@ -78,9 +78,7 @@ vi.mock('antd', async () => {
         aria-label={placeholder}
         placeholder={placeholder}
         value={value ?? ''}
-        onChange={(event) =>
-          onChange?.(event.target.value ? Number(event.target.value) : null)
-        }
+        onChange={(event) => onChange?.(event.target.value ? Number(event.target.value) : null)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             onPressEnter?.();

@@ -209,8 +209,9 @@ function getCalendarItemTime(item: CalendarTaskItem) {
 }
 
 function sortCalendarItems(items: CalendarTaskItem[]) {
-  return [...items].sort((left, right) =>
-    dayjs(getCalendarItemTime(left)).valueOf() - dayjs(getCalendarItemTime(right)).valueOf()
+  return [...items].sort(
+    (left, right) =>
+      dayjs(getCalendarItemTime(left)).valueOf() - dayjs(getCalendarItemTime(right)).valueOf()
   );
 }
 
@@ -346,7 +347,10 @@ export function TaskCalendarView({
 
   if (loading && !data?.items.length) {
     return (
-      <div data-testid="task-calendar-grid" className="rounded-lg border border-slate-200 bg-white p-6">
+      <div
+        data-testid="task-calendar-grid"
+        className="rounded-lg border border-slate-200 bg-white p-6"
+      >
         加载中
       </div>
     );
@@ -357,7 +361,10 @@ export function TaskCalendarView({
       data-testid="task-calendar-layout"
       className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]"
     >
-      <div data-testid="task-calendar-grid" className="rounded-lg border border-slate-200 bg-white p-4">
+      <div
+        data-testid="task-calendar-grid"
+        className="rounded-lg border border-slate-200 bg-white p-4"
+      >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-base font-semibold text-slate-900">
@@ -388,7 +395,10 @@ export function TaskCalendarView({
         </div>
       </div>
 
-      <aside data-testid="task-calendar-day-detail" className="rounded-lg border border-slate-200 bg-white p-4">
+      <aside
+        data-testid="task-calendar-day-detail"
+        className="rounded-lg border border-slate-200 bg-white p-4"
+      >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <div className="text-base font-semibold text-slate-900">{selectedDetailTitle}</div>

@@ -3,11 +3,7 @@ import { Button, Input, InputNumber, Select, Space, Table, Tag, Tooltip, Typogra
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useApiAccessLogs } from '../hooks/useApiApps';
 import { formatDate } from '@/shared/utils';
-import type {
-  ApiAccessLog,
-  ApiKey,
-  QueryApiAccessLogDto,
-} from '../types/api-auth.types';
+import type { ApiAccessLog, ApiKey, QueryApiAccessLogDto } from '../types/api-auth.types';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Text } = Typography;
@@ -144,9 +140,7 @@ export function ApiAccessLogList({ appId, keys }: ApiAccessLogListProps) {
             allowClear
             placeholder="按路径筛选"
             className="w-64"
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, path: event.target.value }))
-            }
+            onChange={(event) => setDraft((current) => ({ ...current, path: event.target.value }))}
             onPressEnter={applyFilters}
           />
           <InputNumber
