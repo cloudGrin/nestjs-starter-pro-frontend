@@ -57,7 +57,7 @@ export function MobileModuleHeader({
         bodyStyle={{ width: '78vw', maxWidth: 320 }}
       >
         <div className="mobile-module-menu">
-          <strong>家庭 H5</strong>
+          <strong>家庭应用</strong>
           <List className="mobile-form-list">
             {moduleItems.map((item) => (
               <List.Item key={item.path} prefix={item.icon} onClick={() => handleNavigate(item.path)}>

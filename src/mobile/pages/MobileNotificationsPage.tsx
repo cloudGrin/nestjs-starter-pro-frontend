@@ -79,7 +79,6 @@ export function MobileNotificationsPage() {
     <div className="mobile-page">
       <MobileModuleHeader
         title="通知"
-        subtitle="任务和保险提醒会优先打开 H5 详情"
         actions={
           <Button
             size="small"

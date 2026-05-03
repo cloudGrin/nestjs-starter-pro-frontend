@@ -23,7 +23,7 @@ export function MobileProfilePage() {
 
   return (
     <div className="mobile-page">
-      <MobileModuleHeader title="我的" subtitle="账号和移动端偏好" />
+      <MobileModuleHeader title="我的" />
 
       <Card className="mobile-card">
         <div className="text-lg font-semibold">{user ? displayName(user) : '-'}</div>
@@ -41,8 +41,6 @@ export function MobileProfilePage() {
         >
           深色模式
         </List.Item>
-        <List.Item description="任务能力和 PC 任务中心保持一致">任务中心</List.Item>
-        <List.Item description="保单信息移动端只读">家庭保险</List.Item>
       </List>
 
       <Button

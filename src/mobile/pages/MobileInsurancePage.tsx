@@ -277,7 +277,6 @@ export function MobileInsurancePage() {
     <div className="mobile-page mobile-insurance-page">
       <MobileModuleHeader
         title={getViewTitle(view)}
-        subtitle="保单、家庭成员和提醒查询"
         actions={
           <Button fill="none" onClick={() => setFilterOpen(true)}>
             <FilterOutlined />

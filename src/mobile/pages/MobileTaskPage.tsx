@@ -526,7 +526,6 @@ export function MobileTaskPage() {
       <MobileModuleHeader
         taskMode
         title={getViewTitle(view, calendarMonth)}
-        subtitle="家庭任务和 PC 任务中心保持同一套数据"
         actions={
           <>
             <Button fill="none" onClick={() => setFilterOpen(true)}>
