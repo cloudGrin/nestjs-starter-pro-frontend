@@ -67,6 +67,10 @@ body {
   padding: 18px 14px 124px;
 }
 
+.mobile-insurance-page {
+  padding: 18px 14px 112px;
+}
+
 .mobile-module-header,
 .mobile-task-hero {
   display: grid;
@@ -126,6 +130,19 @@ body {
 
 .mobile-task-content {
   min-height: 48vh;
+}
+
+.mobile-insurance-search {
+  margin-bottom: 10px;
+}
+
+.mobile-insurance-filter-chips {
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.mobile-insurance-content {
+  min-height: 50vh;
 }
 
 .mobile-task-groups {
@@ -271,6 +288,10 @@ body {
   background: rgba(47, 111, 237, 0.12);
   color: var(--mobile-primary);
   font-weight: 700;
+}
+
+.mobile-insurance-dock {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .mobile-task-fab {
@@ -672,6 +693,99 @@ body {
   color: var(--mobile-muted);
 }
 
+.mobile-insurance-row,
+.mobile-insurance-reminder-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 13px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--mobile-border);
+  background: var(--mobile-card);
+  color: var(--mobile-text);
+  text-align: left;
+}
+
+.mobile-insurance-reminder-row {
+  grid-template-columns: minmax(82px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.mobile-insurance-row:last-child,
+.mobile-insurance-reminder-row:last-child {
+  border-bottom: 0;
+}
+
+.mobile-insurance-row-main {
+  min-width: 0;
+}
+
+.mobile-insurance-row-title {
+  overflow-wrap: anywhere;
+  color: var(--mobile-text);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.mobile-insurance-reminder-date {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--mobile-primary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mobile-insurance-reminder-date svg {
+  width: 18px;
+  height: 18px;
+}
+
+.mobile-insurance-family-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mobile-insurance-family-card {
+  display: flex;
+  min-height: 136px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 8px;
+  background: var(--mobile-card);
+  color: var(--mobile-text);
+  text-align: left;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.mobile-insurance-family-card strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 17px;
+}
+
+.mobile-insurance-family-card span {
+  display: block;
+  margin-top: 3px;
+  color: var(--mobile-muted);
+  font-size: 12px;
+}
+
+.mobile-insurance-family-count {
+  color: var(--mobile-primary);
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .mobile-task-item {
   display: flex;
   align-items: flex-start;
@@ -704,10 +818,61 @@ body {
 }
 
 .mobile-task-detail-sheet,
+.mobile-insurance-detail-sheet,
 .mobile-quick-editor,
 .mobile-schedule-sheet,
 .mobile-field-sheet {
   max-height: 88vh;
+}
+
+.mobile-task-detail-sheet,
+.mobile-insurance-detail-sheet {
+  display: flex;
+  height: min(640px, calc(100vh - 48px));
+  max-height: calc(100vh - 48px);
+  flex-direction: column;
+}
+
+.mobile-filter-popup {
+  display: flex;
+  height: min(560px, calc(100vh - 48px));
+  max-height: calc(100vh - 48px);
+  flex-direction: column;
+}
+
+.mobile-task-detail-sheet,
+.mobile-insurance-detail-sheet,
+.mobile-filter-popup {
+  padding-bottom: 0;
+}
+
+.mobile-insurance-detail-title-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 8px 0 14px;
+}
+
+.mobile-insurance-detail-title-row h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--mobile-text);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.mobile-insurance-detail-icon {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mobile-primary) 12%, transparent);
+  color: var(--mobile-primary);
+  font-size: 20px;
 }
 
 .mobile-task-detail-title-row {
@@ -766,15 +931,70 @@ body {
   white-space: pre-wrap;
 }
 
+.mobile-insurance-attachment-card {
+  padding: 12px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 8px;
+  background: var(--mobile-card);
+}
+
+.mobile-insurance-section-title {
+  margin-bottom: 10px;
+  color: var(--mobile-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.mobile-insurance-attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-insurance-attachment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--mobile-border);
+}
+
+.mobile-insurance-attachment-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.mobile-insurance-attachment-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mobile-text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-insurance-attachment-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.mobile-empty.compact {
+  min-height: 64px;
+  justify-content: center;
+}
+
 .mobile-sheet-actions {
   position: sticky;
   right: 0;
-  bottom: -14px;
+  bottom: 0;
   left: 0;
+  z-index: 2;
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin: 16px -14px -84px;
+  margin: auto -14px 0;
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--mobile-border);
   background: var(--mobile-card);
@@ -1097,13 +1317,14 @@ body {
 .mobile-popup-actions {
   position: sticky;
   right: 0;
-  bottom: -14px;
+  bottom: 0;
   left: 0;
   z-index: 2;
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin: 16px -14px -84px;
+  margin: auto -14px 0;
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--mobile-border);
   background: var(--mobile-card);
@@ -1353,6 +1574,10 @@ body {
 .dark .mobile-matrix-panel,
 .dark .mobile-task-detail-meta-card,
 .dark .mobile-task-detail-note,
+.dark .mobile-insurance-row,
+.dark .mobile-insurance-reminder-row,
+.dark .mobile-insurance-family-card,
+.dark .mobile-insurance-attachment-card,
 .dark .mobile-schedule-card,
 .dark .mobile-editor-toolbar button {
   background: var(--mobile-card);

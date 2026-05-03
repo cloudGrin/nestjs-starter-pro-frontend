@@ -95,6 +95,7 @@ export interface QueryInsurancePoliciesParams {
   keyword?: string;
   sort?: InsurancePolicySortField;
   order?: InsuranceSortOrder;
+  includeReminders?: boolean;
 }
 
 export interface CreateInsuranceMemberDto {
