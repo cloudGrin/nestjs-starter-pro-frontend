@@ -71,6 +71,10 @@ body {
   padding: 18px 14px 112px;
 }
 
+.mobile-family-page {
+  padding: 18px 14px 92px;
+}
+
 .mobile-module-header,
 .mobile-task-hero {
   display: grid;
@@ -363,6 +367,179 @@ body {
   border-radius: var(--mobile-radius);
   background: var(--mobile-card);
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+}
+
+.mobile-family-tabs {
+  margin-bottom: 12px;
+}
+
+.mobile-family-section,
+.mobile-family-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-family-composer {
+  padding: 10px;
+}
+
+.mobile-family-composer-actions,
+.mobile-family-post-actions,
+.mobile-family-comment-input,
+.mobile-family-chat-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-family-composer-actions {
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.mobile-family-draft-media {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mobile-family-draft-media span {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mobile-primary) 10%, transparent);
+  color: var(--mobile-primary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-family-post-card {
+  padding: 12px;
+}
+
+.mobile-family-author,
+.mobile-family-chat-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--mobile-text);
+}
+
+.mobile-family-author span,
+.mobile-family-chat-meta span {
+  flex: 0 0 auto;
+  color: var(--mobile-muted);
+  font-size: 12px;
+}
+
+.mobile-family-content,
+.mobile-family-chat-bubble p {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.mobile-family-media-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mobile-family-media-grid img,
+.mobile-family-media-grid video {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  background: #0f172a;
+  object-fit: cover;
+}
+
+.mobile-family-post-actions {
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--mobile-muted);
+  font-size: 13px;
+}
+
+.mobile-family-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mobile-bg) 70%, var(--mobile-card) 30%);
+  font-size: 13px;
+}
+
+.mobile-family-comments div {
+  display: flex;
+  min-width: 0;
+  gap: 6px;
+}
+
+.mobile-family-comments span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mobile-family-comment-input {
+  margin-top: 8px;
+}
+
+.mobile-family-comment-input .adm-text-area,
+.mobile-family-chat-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.mobile-family-chat-panel {
+  display: flex;
+  min-height: calc(100vh - 128px);
+  flex-direction: column;
+}
+
+.mobile-family-chat-list {
+  padding-bottom: 96px;
+}
+
+.mobile-family-chat-message {
+  max-width: 88%;
+}
+
+.mobile-family-chat-bubble {
+  margin-top: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--mobile-card);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+.mobile-family-chat-input {
+  position: fixed;
+  right: 14px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  left: 14px;
+  z-index: 20;
+  padding: 8px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mobile-card) 92%, transparent);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(18px);
+}
+
+.mobile-family-icon-button {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
 }
 
 .mobile-toolbar {

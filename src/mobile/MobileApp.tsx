@@ -11,6 +11,7 @@ import { MobileProviders } from './MobileProviders';
 import { MobileShell } from './MobileShell';
 import { MobileInsuranceDetailPage } from './pages/MobileInsuranceDetailPage';
 import { MobileInsurancePage } from './pages/MobileInsurancePage';
+import { MobileFamilyPage } from './pages/MobileFamilyPage';
 import { MobileLoginPage } from './pages/MobileLoginPage';
 import { MobileNotFoundPage } from './pages/MobileNotFoundPage';
 import { MobileNotificationsPage } from './pages/MobileNotificationsPage';
@@ -44,6 +45,7 @@ const router = createBrowserRouter(
           element: <MobileShell />,
           children: [
             { index: true, element: <Navigate to="/tasks" replace /> },
+            { path: 'family', element: <MobileFamilyPage /> },
             { path: 'tasks', element: <MobileTaskPage /> },
             { path: 'insurance', element: <MobileInsurancePage /> },
             { path: 'notifications', element: <MobileNotificationsPage /> },

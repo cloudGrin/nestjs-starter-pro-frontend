@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import {
   BellOutlined,
   CheckSquareOutlined,
+  HomeOutlined,
   MenuOutlined,
   SafetyCertificateOutlined,
   UserOutlined,
@@ -10,6 +11,7 @@ import { Button, List, Popup } from 'antd-mobile';
 import { useNavigate } from 'react-router-dom';
 
 const moduleItems = [
+  { path: '/family', title: '家庭', icon: <HomeOutlined /> },
   { path: '/tasks', title: '任务中心', icon: <CheckSquareOutlined /> },
   { path: '/insurance', title: '家庭保险', icon: <SafetyCertificateOutlined /> },
   { path: '/notifications', title: '通知', icon: <BellOutlined /> },
