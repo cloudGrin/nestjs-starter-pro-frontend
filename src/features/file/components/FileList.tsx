@@ -90,6 +90,7 @@ const FILE_MODULE_OPTIONS = [
   { value: 'video', label: '视频' },
   { value: 'audio', label: '音频' },
   { value: 'insurance-policy', label: '家庭保险保单' },
+  { value: 'task-attachment', label: '家庭任务' },
   { value: 'other', label: '其他' },
 ] as const;
 const FILE_MODULE_LABELS = new Map(FILE_MODULE_OPTIONS.map((item) => [item.value, item.label]));

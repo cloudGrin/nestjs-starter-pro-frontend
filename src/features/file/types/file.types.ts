@@ -66,6 +66,7 @@ export type FileModule =
   | 'video'
   | 'audio'
   | 'insurance-policy'
+  | 'task-attachment'
   | 'other';
 
 export interface FileStorageOption {

@@ -1,9 +1,16 @@
 import { MemoryRouter } from 'react-router-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MobileTaskPage } from './MobileTaskPage';
+import { MobileTaskPage, TaskEditorPopup } from './MobileTaskPage';
 import type { Task } from '@/features/task/types/task.types';
 
+const fileServiceMocks = vi.hoisted(() => ({
+  createFileAccessLink: vi.fn(),
+  uploadFile: vi.fn(),
+}));
+const taskServiceMocks = vi.hoisted(() => ({
+  getAttachmentDownloadUrl: vi.fn(),
+}));
 const taskHooks = vi.hoisted(() => ({
   useTaskLists: vi.fn(),
   useTaskAssignees: vi.fn(),
@@ -13,12 +20,20 @@ const taskHooks = vi.hoisted(() => ({
   useUpdateTask: vi.fn(),
   useCompleteTask: vi.fn(),
   useReopenTask: vi.fn(),
+  useSnoozeTaskReminder: vi.fn(),
   useDeleteTask: vi.fn(),
   useCreateTaskList: vi.fn(),
   useUpdateTaskList: vi.fn(),
   useDeleteTaskList: vi.fn(),
 }));
 
+vi.mock('@/features/file/services/file.service', () => fileServiceMocks);
+vi.mock('@/features/file/utils/file-url', () => ({
+  resolveFileAccessUrl: (url: string) => url,
+}));
+vi.mock('@/features/task/services/task.service', () => ({
+  taskService: taskServiceMocks,
+}));
 vi.mock('@/features/task/hooks/useTasks', () => taskHooks);
 
 const mutate = vi.fn();
@@ -42,8 +57,8 @@ const baseTask: Task = {
   tags: ['家庭'],
   recurrenceType: 'monthly',
   recurrenceInterval: 1,
-  reminderChannels: ['internal', 'bark'],
-  sendExternalReminder: true,
+  continuousReminderEnabled: true,
+  continuousReminderIntervalMinutes: 30,
   createdAt: '2026-05-01T10:00:00.000Z',
   updatedAt: '2026-05-01T10:00:00.000Z',
 };
@@ -59,6 +74,9 @@ function renderPage(initialPath = '/tasks') {
 describe('MobileTaskPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fileServiceMocks.createFileAccessLink.mockResolvedValue({ url: '/inline-preview' });
+    taskServiceMocks.getAttachmentDownloadUrl.mockReturnValue('/task-download');
+    window.localStorage.removeItem('home-task-last-list-id');
     taskHooks.useTaskLists.mockReturnValue({
       data: [{ id: 1, name: '收集箱', scope: 'family', sort: 1, isArchived: false }],
     });
@@ -75,6 +93,7 @@ describe('MobileTaskPage', () => {
     taskHooks.useUpdateTask.mockReturnValue({ mutate, isPending: false });
     taskHooks.useCompleteTask.mockReturnValue({ mutate, isPending: false });
     taskHooks.useReopenTask.mockReturnValue({ mutate, isPending: false });
+    taskHooks.useSnoozeTaskReminder.mockReturnValue({ mutate, isPending: false });
     taskHooks.useDeleteTask.mockReturnValue({ mutate, isPending: false });
     taskHooks.useCreateTaskList.mockReturnValue({ mutate, isPending: false });
     taskHooks.useUpdateTaskList.mockReturnValue({ mutate, isPending: false });
@@ -122,6 +141,40 @@ describe('MobileTaskPage', () => {
     expect(screen.getByText('不重要不紧急')).toBeInTheDocument();
   });
 
+  it('shows recurring task occurrences in the calendar list mode', async () => {
+    taskHooks.useTasks.mockReturnValue({
+      data: {
+        items: [
+          {
+            ...baseTask,
+            title: '每周缴费',
+            dueAt: '2026-05-01T10:00:00.000Z',
+            remindAt: null,
+            recurrenceType: 'weekly',
+            recurrenceInterval: 1,
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 100,
+      },
+      isLoading: false,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    });
+
+    renderPage('/tasks?view=calendar&date=2026-05-01');
+
+    const listModeButtons = await screen.findAllByRole('button', { name: '列表' });
+    fireEvent.click(listModeButtons[0]);
+
+    expect(await screen.findByText('05月01日')).toBeInTheDocument();
+    expect(screen.getByText('05月08日')).toBeInTheDocument();
+    expect(screen.getByText('05月15日')).toBeInTheDocument();
+    expect(screen.getByText('05月22日')).toBeInTheDocument();
+    expect(screen.getByText('05月29日')).toBeInTheDocument();
+    expect(screen.getAllByText('每周缴费')).toHaveLength(5);
+  });
+
   it('creates anniversary tasks from the anniversary dock view', async () => {
     const { container } = renderPage('/tasks?view=anniversary');
 
@@ -129,17 +182,119 @@ describe('MobileTaskPage', () => {
     expect(createButton).not.toBeNull();
     fireEvent.click(createButton as Element);
 
-    fireEvent.change(await screen.findByPlaceholderText('准备做什么？'), {
+    expect(await screen.findByText('纪念日日期')).toBeInTheDocument();
+    fireEvent.change(await screen.findByPlaceholderText('纪念日名称'), {
       target: { value: '结婚纪念日' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /日期/ }));
-    fireEvent.click(await screen.findByRole('button', { name: '今天' }));
-    fireEvent.click(screen.getByRole('button', { name: '完成' }));
-    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存纪念日' }));
 
     await waitFor(() =>
       expect(mutate).toHaveBeenCalledWith(
         expect.objectContaining({ taskType: 'anniversary' }),
+        expect.any(Object)
+      )
+    );
+  });
+
+  it('submits mobile checklist items in the reordered display order', async () => {
+    const { container } = renderPage('/tasks?view=today');
+
+    const createButton = container.querySelector('.mobile-task-fab');
+    expect(createButton).not.toBeNull();
+    fireEvent.click(createButton as Element);
+
+    fireEvent.change(await screen.findByPlaceholderText('准备做什么？'), {
+      target: { value: '整理材料' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /检查项/ }));
+    fireEvent.click(screen.getByRole('button', { name: /检查项/ }));
+
+    const inputs = screen.getAllByPlaceholderText('检查项');
+    fireEvent.change(inputs[0], { target: { value: '第一项' } });
+    fireEvent.change(inputs[1], { target: { value: '第二项' } });
+    fireEvent.click(screen.getAllByRole('button', { name: '上移' })[1]);
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await waitFor(() =>
+      expect(mutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          checkItems: [
+            expect.objectContaining({ title: '第二项', sort: 0 }),
+            expect.objectContaining({ title: '第一项', sort: 1 }),
+          ],
+        }),
+        expect.any(Object)
+      )
+    );
+  });
+
+  it('previews and downloads existing attachments from the mobile editor', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+    render(
+      <TaskEditorPopup
+        open
+        task={{
+          ...baseTask,
+          attachments: [
+            {
+              id: 7,
+              taskId: baseTask.id,
+              fileId: 71,
+              sort: 0,
+              file: {
+                id: 71,
+                originalName: '理赔材料.pdf',
+                mimeType: 'application/pdf',
+                size: 1024,
+                module: 'task-attachment',
+                createdAt: '2026-05-01T00:00:00.000Z',
+                updatedAt: '2026-05-01T00:00:00.000Z',
+              },
+            },
+          ],
+        }}
+        lists={[{ id: 1, name: '收集箱', scope: 'family', sort: 1, isArchived: false }]}
+        users={[]}
+        defaultListId={1}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '预览' }));
+    await waitFor(() =>
+      expect(fileServiceMocks.createFileAccessLink).toHaveBeenCalledWith(71, 'inline')
+    );
+    expect(openSpy).toHaveBeenCalledWith('/inline-preview', '_blank');
+
+    fireEvent.click(screen.getByRole('button', { name: '下载' }));
+    expect(taskServiceMocks.getAttachmentDownloadUrl).toHaveBeenCalledWith(baseTask.id, 71);
+    expect(openSpy).toHaveBeenCalledWith('/task-download', '_blank');
+  });
+
+  it('uses the shared recent task list when creating on mobile', async () => {
+    window.localStorage.setItem('home-task-last-list-id', '2');
+    taskHooks.useTaskLists.mockReturnValue({
+      data: [
+        { id: 1, name: '收集箱', scope: 'family', sort: 1, isArchived: false },
+        { id: 2, name: '个人事项', scope: 'personal', sort: 2, isArchived: false },
+      ],
+    });
+    const { container } = renderPage('/tasks?view=today');
+
+    const createButton = container.querySelector('.mobile-task-fab');
+    expect(createButton).not.toBeNull();
+    fireEvent.click(createButton as Element);
+
+    fireEvent.change(await screen.findByPlaceholderText('准备做什么？'), {
+      target: { value: '使用最近清单' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await waitFor(() =>
+      expect(mutate).toHaveBeenCalledWith(
+        expect.objectContaining({ listId: 2 }),
         expect.any(Object)
       )
     );

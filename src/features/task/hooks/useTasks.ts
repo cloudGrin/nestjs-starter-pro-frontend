@@ -4,6 +4,7 @@ import type {
   CreateTaskDto,
   CreateTaskListDto,
   QueryTasksParams,
+  SnoozeTaskReminderDto,
   UpdateTaskDto,
   UpdateTaskListDto,
 } from '../types/task.types';
@@ -129,6 +130,19 @@ export function useReopenTask() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.detail(id) });
+    },
+  });
+}
+
+export function useSnoozeTaskReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SnoozeTaskReminderDto }) =>
+      taskService.snoozeTaskReminder(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.detail(variables.id) });
     },
   });
 }

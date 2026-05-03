@@ -10,6 +10,7 @@ interface TaskAnniversaryViewProps {
   onEdit: (task: Task) => void;
   onComplete: (task: Task) => void;
   onReopen: (task: Task) => void;
+  onSnooze?: (task: Task) => void;
   onDelete: (task: Task) => void;
   actionPending?: TaskActionPending | null;
 }
@@ -37,6 +38,7 @@ export function TaskAnniversaryView({
   onEdit,
   onComplete,
   onReopen,
+  onSnooze,
   onDelete,
   actionPending,
 }: TaskAnniversaryViewProps) {
@@ -58,6 +60,7 @@ export function TaskAnniversaryView({
                   onEdit={onEdit}
                   onComplete={onComplete}
                   onReopen={onReopen}
+                  onSnooze={onSnooze}
                   onDelete={onDelete}
                   actionPending={actionPending}
                 />,
@@ -75,9 +78,7 @@ export function TaskAnniversaryView({
                     <span>日期：{formatDate.date(task.dueAt)}</span>
                     <span>提醒：{formatDate.full(task.remindAt)}</span>
                     <span>重复：{task.recurrenceType}</span>
-                    {task.reminderChannels?.map((channel) => (
-                      <Tag key={channel}>{channel}</Tag>
-                    ))}
+                    {task.continuousReminderEnabled ? <Tag>持续提醒</Tag> : null}
                   </Space>
                 }
               />

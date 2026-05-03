@@ -16,6 +16,7 @@ interface TaskMatrixViewProps {
   onEdit: (task: Task) => void;
   onComplete: (task: Task) => void;
   onReopen: (task: Task) => void;
+  onSnooze?: (task: Task) => void;
   onDelete: (task: Task) => void;
   onMove?: (task: Task, target: MatrixMoveTarget) => void;
   actionPending?: TaskActionPending | null;
@@ -68,6 +69,7 @@ function TaskCard({
   onEdit,
   onComplete,
   onReopen,
+  onSnooze,
   onDelete,
   actionPending,
   canMove,
@@ -79,6 +81,7 @@ function TaskCard({
   onEdit: (task: Task) => void;
   onComplete: (task: Task) => void;
   onReopen: (task: Task) => void;
+  onSnooze?: (task: Task) => void;
   onDelete: (task: Task) => void;
   actionPending?: TaskActionPending | null;
   canMove: boolean;
@@ -113,6 +116,7 @@ function TaskCard({
           onEdit={onEdit}
           onComplete={onComplete}
           onReopen={onReopen}
+          onSnooze={onSnooze}
           onDelete={onDelete}
           actionPending={actionPending}
         />
@@ -127,6 +131,7 @@ export function TaskMatrixView({
   onEdit,
   onComplete,
   onReopen,
+  onSnooze,
   onDelete,
   onMove,
   actionPending,
@@ -230,6 +235,7 @@ export function TaskMatrixView({
                     onEdit={onEdit}
                     onComplete={onComplete}
                     onReopen={onReopen}
+                    onSnooze={onSnooze}
                     onDelete={onDelete}
                     actionPending={actionPending}
                     canMove={canMoveTasks && movingTaskId !== task.id}

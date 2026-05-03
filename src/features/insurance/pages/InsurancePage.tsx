@@ -82,7 +82,6 @@ interface PolicyFormValues {
   paymentAmount?: number;
   ownerUserId?: number;
   remark?: string;
-  reminderChannels?: Array<'internal' | 'bark' | 'feishu'>;
   attachmentFileIds?: number[];
 }
 
@@ -169,7 +168,6 @@ function groupPoliciesByMember(policies: InsurancePolicy[], members: InsuranceMe
 function toPolicyPayload(
   values: PolicyFormValues
 ): CreateInsurancePolicyDto | UpdateInsurancePolicyDto {
-  const reminderChannels = normalizeReminderChannels(values.reminderChannels);
   return {
     name: values.name,
     company: values.company || null,
@@ -182,15 +180,8 @@ function toPolicyPayload(
     paymentAmount: values.paymentAmount ?? null,
     ownerUserId: values.ownerUserId,
     remark: values.remark || null,
-    reminderChannels,
     attachmentFileIds: values.attachmentFileIds ?? [],
   };
-}
-
-function normalizeReminderChannels(channels?: PolicyFormValues['reminderChannels']) {
-  return Array.from(new Set(['internal', ...(channels ?? [])])) as NonNullable<
-    PolicyFormValues['reminderChannels']
-  >;
 }
 
 function attachmentIds(policy?: InsurancePolicy | null) {
@@ -290,7 +281,6 @@ export function InsurancePage() {
     resetPolicyForm();
     policyForm.setFieldsValue({
       type: 'medical',
-      reminderChannels: ['internal'],
       attachmentFileIds: [],
     });
     setPolicyModalOpen(true);
@@ -311,7 +301,6 @@ export function InsurancePage() {
       paymentAmount: policy.paymentAmount ? Number(policy.paymentAmount) : undefined,
       ownerUserId: policy.ownerUserId,
       remark: policy.remark ?? undefined,
-      reminderChannels: policy.reminderChannels ?? ['internal'],
       attachmentFileIds: attachmentIds(policy),
     });
     setPolicyModalOpen(true);
@@ -787,17 +776,6 @@ export function InsurancePage() {
             </Form.Item>
             <Form.Item name="paymentAmount" label="缴费金额">
               <InputNumber className="w-full" min={0} precision={2} />
-            </Form.Item>
-            <Form.Item name="reminderChannels" label="提醒渠道">
-              <Select
-                mode="multiple"
-                optionFilterProp="label"
-                options={[
-                  { label: '站内', value: 'internal' },
-                  { label: 'Bark', value: 'bark' },
-                  { label: '飞书', value: 'feishu' },
-                ]}
-              />
             </Form.Item>
           </div>
           <Form.Item name="remark" label="备注">

@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { Button, Card, Dialog, List, NavBar, Tag } from 'antd-mobile';
+import { Button, Card, Checkbox, List, NavBar, Tag, Toast } from 'antd-mobile';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
+import { createFileAccessLink } from '@/features/file/services/file.service';
+import { resolveFileAccessUrl } from '@/features/file/utils/file-url';
 import {
   useCompleteTask,
   useDeleteTask,
   useReopenTask,
+  useSnoozeTaskReminder,
   useTask,
   useTaskAssignees,
   useTaskLists,
@@ -15,11 +18,13 @@ import type {
   CreateTaskDto,
   Task,
   TaskAssignee,
+  TaskAttachment,
   TaskList,
   UpdateTaskDto,
 } from '@/features/task/types/task.types';
+import { taskService } from '@/features/task/services/task.service';
 import { TaskEditorPopup } from './MobileTaskPage';
-import { formatTaskRecurrence, formatTaskReminderChannels } from '../utils/task';
+import { formatTaskRecurrence } from '../utils/task';
 
 function formatDateTime(value?: string | null) {
   return value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-';
@@ -37,6 +42,38 @@ function findAssignee(task: Task, users: TaskAssignee[]) {
   return task.assignee ?? users.find((user) => user.id === task.assigneeId) ?? null;
 }
 
+function isPreviewableAttachment(attachment: TaskAttachment) {
+  const mimeType = attachment.file?.mimeType ?? '';
+  return mimeType.startsWith('image/') || mimeType === 'application/pdf';
+}
+
+async function openAttachment(
+  task: Task,
+  attachment: TaskAttachment,
+  disposition: 'inline' | 'attachment'
+) {
+  try {
+    if (disposition === 'attachment') {
+      window.open(
+        taskService.getAttachmentDownloadUrl(task.id, attachment.fileId),
+        '_blank',
+        'noopener,noreferrer'
+      );
+      return;
+    }
+
+    const file = attachment.file;
+    if (file?.isPublic && file.url) {
+      window.open(resolveFileAccessUrl(file.url), '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const { url } = await createFileAccessLink(attachment.fileId, 'inline');
+    window.open(resolveFileAccessUrl(url), '_blank', 'noopener,noreferrer');
+  } catch {
+    Toast.show({ icon: 'fail', content: '附件访问失败', position: 'center' });
+  }
+}
+
 export function MobileTaskDetailPage() {
   const navigate = useNavigate();
   const params = useParams();
@@ -48,6 +85,7 @@ export function MobileTaskDetailPage() {
   const updateTask = useUpdateTask();
   const completeTask = useCompleteTask();
   const reopenTask = useReopenTask();
+  const snoozeTaskReminder = useSnoozeTaskReminder();
   const deleteTask = useDeleteTask();
   const task = taskQuery.data;
   const lists = listsQuery.data ?? [];
@@ -68,13 +106,6 @@ export function MobileTaskDetailPage() {
 
   const handleDelete = async () => {
     if (!task) return;
-    const confirmed = await Dialog.confirm({
-      title: '删除任务',
-      content: '删除后不可恢复，确定要删除这个任务吗？',
-      confirmText: '删除',
-      cancelText: '取消',
-    });
-    if (!confirmed) return;
     deleteTask.mutate(task.id, {
       onSuccess: () => navigate('/tasks', { replace: true }),
     });
@@ -111,11 +142,74 @@ export function MobileTaskDetailPage() {
               <List.Item extra={formatTaskRecurrence(task.recurrenceType, task.recurrenceInterval)}>
                 重复规则
               </List.Item>
-              <List.Item extra={formatTaskReminderChannels(task.reminderChannels)}>
-                提醒渠道
+              <List.Item extra={task.continuousReminderEnabled ? '每 30 分钟，直到完成' : '关闭'}>
+                持续提醒
               </List.Item>
               <List.Item extra={task.tags?.join(', ') || '-'}>标签</List.Item>
             </List>
+            {task.checkItems?.length ? (
+              <Card className="mobile-card">
+                <h2 className="mobile-section-title">检查清单</h2>
+                <div className="mobile-task-check-list">
+                  {task.checkItems.map((item, index) => (
+                    <Checkbox
+                      key={item.id ?? index}
+                      checked={item.completed}
+                      onChange={(completed) => {
+                        updateTask.mutate({
+                          id: task.id,
+                          data: {
+                            checkItems: task.checkItems?.map((current, currentIndex) => ({
+                              id: current.id,
+                              title: current.title,
+                              completed: currentIndex === index ? completed : current.completed,
+                              sort: current.sort ?? currentIndex,
+                            })),
+                          },
+                        });
+                      }}
+                    >
+                      {item.title}
+                    </Checkbox>
+                  ))}
+                </div>
+              </Card>
+            ) : null}
+            {task.attachments?.length ? (
+              <Card className="mobile-card">
+                <h2 className="mobile-section-title">附件</h2>
+                <div className="mobile-task-attachment-list">
+                  {task.attachments.map((attachment) => (
+                    <div key={attachment.fileId} className="mobile-task-attachment-row">
+                      <div>
+                        <strong>
+                          {attachment.file?.originalName || `文件 #${attachment.fileId}`}
+                        </strong>
+                        <span>{attachment.file?.mimeType || '未知类型'}</span>
+                      </div>
+                      <div>
+                        {isPreviewableAttachment(attachment) ? (
+                          <Button
+                            size="mini"
+                            fill="outline"
+                            onClick={() => void openAttachment(task, attachment, 'inline')}
+                          >
+                            预览
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="mini"
+                          fill="outline"
+                          onClick={() => void openAttachment(task, attachment, 'attachment')}
+                        >
+                          下载
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ) : null}
           </div>
         )}
       </div>
@@ -143,6 +237,22 @@ export function MobileTaskDetailPage() {
             <Button size="small" color="primary" onClick={() => setEditorOpen(true)}>
               编辑
             </Button>
+            {task.remindAt && !isCompleted ? (
+              <Button
+                size="small"
+                color="primary"
+                fill="outline"
+                loading={snoozeTaskReminder.isPending}
+                onClick={() =>
+                  snoozeTaskReminder.mutate({
+                    id: task.id,
+                    data: { snoozeUntil: dayjs().add(30, 'minute').toISOString() },
+                  })
+                }
+              >
+                稍后
+              </Button>
+            ) : null}
           </div>
         </div>
       ) : null}

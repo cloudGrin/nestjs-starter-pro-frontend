@@ -23,6 +23,7 @@ describe('taskService', () => {
     taskService.updateTask(9, { title: 'Pay rent' });
     taskService.completeTask(9);
     taskService.reopenTask(9);
+    taskService.snoozeTaskReminder(9, { snoozeUntil: '2026-05-01T10:30:00.000Z' });
     taskService.deleteTask(9);
 
     expect(request.get).toHaveBeenCalledWith('/tasks', {
@@ -36,6 +37,11 @@ describe('taskService', () => {
     expect(request.put).toHaveBeenCalledWith('/tasks/9', { title: 'Pay rent' }, expect.any(Object));
     expect(request.patch).toHaveBeenCalledWith('/tasks/9/complete', undefined, expect.any(Object));
     expect(request.patch).toHaveBeenCalledWith('/tasks/9/reopen', undefined, expect.any(Object));
+    expect(request.post).toHaveBeenCalledWith(
+      '/tasks/9/reminder/snooze',
+      { snoozeUntil: '2026-05-01T10:30:00.000Z' },
+      expect.any(Object)
+    );
     expect(request.delete).toHaveBeenCalledWith('/tasks/9', expect.any(Object));
   });
 

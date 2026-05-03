@@ -1,7 +1,4 @@
-import type {
-  TaskRecurrenceType,
-  TaskReminderChannel,
-} from '@/features/task/types/task.types';
+import type { TaskRecurrenceType } from '@/features/task/types/task.types';
 
 export const mobileTaskRecurrenceLabels: Record<TaskRecurrenceType, string> = {
   none: '不重复',
@@ -11,12 +8,6 @@ export const mobileTaskRecurrenceLabels: Record<TaskRecurrenceType, string> = {
   yearly: '每年',
   weekdays: '工作日',
   custom: '自定义间隔',
-};
-
-export const mobileTaskReminderChannelLabels: Record<TaskReminderChannel, string> = {
-  internal: '站内',
-  bark: 'Bark',
-  feishu: '飞书',
 };
 
 const recurrenceIntervalUnits: Partial<Record<TaskRecurrenceType, string>> = {
@@ -33,9 +24,4 @@ export function formatTaskRecurrence(type: TaskRecurrenceType, interval?: number
     return label;
   }
   return `每 ${interval} ${recurrenceIntervalUnits[type] ?? '次'}`;
-}
-
-export function formatTaskReminderChannels(channels?: TaskReminderChannel[] | null) {
-  const normalized: TaskReminderChannel[] = channels?.length ? channels : ['internal'];
-  return normalized.map((channel) => mobileTaskReminderChannelLabels[channel] ?? channel).join('、');
 }

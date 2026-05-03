@@ -19,8 +19,8 @@ const task: Task = {
   tags: ['home'],
   recurrenceType: 'none',
   recurrenceInterval: null,
-  reminderChannels: ['internal'],
-  sendExternalReminder: false,
+  continuousReminderEnabled: true,
+  continuousReminderIntervalMinutes: 30,
   createdAt: '2026-04-01T00:00:00.000Z',
   updatedAt: '2026-04-01T00:00:00.000Z',
 };
@@ -294,7 +294,7 @@ describe('TaskFormModal', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('derives external reminders from Bark or Feishu channels without a separate switch', async () => {
+  it('does not expose reminder channels and submits continuous reminders by default', async () => {
     const onSubmit = vi.fn();
 
     renderWithProviders(
@@ -311,22 +311,83 @@ describe('TaskFormModal', () => {
 
     await userEvent.type(
       screen.getByPlaceholderText('例如：给家里买菜、准备周会、结婚纪念日'),
-      '外部提醒任务'
+      '持续提醒任务'
     );
-    expect(screen.queryByRole('switch', { name: '外部提醒' })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByLabelText('提醒渠道'));
-    await userEvent.click(await screen.findByText('Bark'));
+    expect(screen.queryByLabelText('提醒渠道')).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'OK' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        sendExternalReminder: expect.any(Boolean),
+      expect.objectContaining({
+        continuousReminderEnabled: true,
       })
     );
+  });
+
+  it('submits checklist items from the task form', async () => {
+    const onSubmit = vi.fn();
+
+    renderWithProviders(
+      <TaskFormModal
+        open
+        task={null}
+        lists={[{ id: 1, name: '家庭计划', scope: 'family', sort: 0, isArchived: false }]}
+        users={[]}
+        submitting={false}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await userEvent.type(
+      screen.getByPlaceholderText('例如：给家里买菜、准备周会、结婚纪念日'),
+      '理赔材料'
+    );
+    await userEvent.click(screen.getByRole('button', { name: /添加检查项/ }));
+    await userEvent.type(screen.getByPlaceholderText('检查项 1'), '拍照');
+    await userEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        reminderChannels: ['internal', 'bark'],
+        checkItems: [expect.objectContaining({ title: '拍照', completed: false, sort: 0 })],
+      })
+    );
+  });
+
+  it('submits checklist items in the reordered display order', async () => {
+    const onSubmit = vi.fn();
+
+    renderWithProviders(
+      <TaskFormModal
+        open
+        task={null}
+        lists={[{ id: 1, name: '家庭计划', scope: 'family', sort: 0, isArchived: false }]}
+        users={[]}
+        submitting={false}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await userEvent.type(
+      screen.getByPlaceholderText('例如：给家里买菜、准备周会、结婚纪念日'),
+      '检查排序'
+    );
+    await userEvent.click(screen.getByRole('button', { name: /添加检查项/ }));
+    await userEvent.click(screen.getByRole('button', { name: /添加检查项/ }));
+    await userEvent.type(screen.getByPlaceholderText('检查项 1'), '第一项');
+    await userEvent.type(screen.getByPlaceholderText('检查项 2'), '第二项');
+    await userEvent.click(screen.getAllByRole('button', { name: /上移/ })[1]);
+    await userEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checkItems: [
+          expect.objectContaining({ title: '第二项', sort: 0 }),
+          expect.objectContaining({ title: '第一项', sort: 1 }),
+        ],
       })
     );
   });

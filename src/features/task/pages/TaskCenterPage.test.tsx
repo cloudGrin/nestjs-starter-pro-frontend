@@ -12,6 +12,7 @@ const taskHookMocks = vi.hoisted(() => ({
   useUpdateTask: vi.fn(),
   useCompleteTask: vi.fn(),
   useReopenTask: vi.fn(),
+  useSnoozeTaskReminder: vi.fn(),
   useDeleteTask: vi.fn(),
   useCreateTaskList: vi.fn(),
   useUpdateTaskList: vi.fn(),
@@ -80,7 +81,8 @@ function createTaskFixture(overrides: Record<string, unknown> = {}) {
     important: false,
     urgent: false,
     recurrenceType: 'none',
-    sendExternalReminder: false,
+    continuousReminderEnabled: true,
+    continuousReminderIntervalMinutes: 30,
     createdAt: '2026-04-01T00:00:00.000Z',
     updatedAt: '2026-04-01T00:00:00.000Z',
     ...overrides,
@@ -127,6 +129,7 @@ function TaskCenterWithTaskIdClear() {
 describe('TaskCenterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.removeItem('home-task-last-list-id');
     window.history.pushState({}, '', '/tasks');
     vi.stubGlobal('getComputedStyle', () => ({
       getPropertyValue: () => '',
@@ -149,6 +152,7 @@ describe('TaskCenterPage', () => {
     taskHookMocks.useUpdateTask.mockReturnValue(mockMutation());
     taskHookMocks.useCompleteTask.mockReturnValue(mockMutation());
     taskHookMocks.useReopenTask.mockReturnValue(mockMutation());
+    taskHookMocks.useSnoozeTaskReminder.mockReturnValue(mockMutation());
     taskHookMocks.useDeleteTask.mockReturnValue(mockMutation());
     taskHookMocks.useCreateTaskList.mockReturnValue(mockMutation());
     taskHookMocks.useUpdateTaskList.mockReturnValue(mockMutation());
@@ -234,6 +238,40 @@ describe('TaskCenterPage', () => {
     const payload = createMutation.mutate.mock.calls[0][0] as { dueAt: string };
     expect(dayjs(payload.dueAt).isBefore(dayjs(calendarParams.startDate))).toBe(false);
     expect(dayjs(payload.dueAt).isAfter(dayjs(calendarParams.endDate))).toBe(false);
+  });
+
+  it('uses the recent task list when creating from an aggregated PC view', async () => {
+    const createMutation = mockMutationWithSuccess();
+    window.localStorage.setItem('home-task-last-list-id', '2');
+    taskHookMocks.useTaskLists.mockReturnValue({
+      data: [
+        { id: 1, name: '家庭计划', scope: 'family', sort: 0, isArchived: false },
+        { id: 2, name: '个人事项', scope: 'personal', sort: 1, isArchived: false },
+      ],
+      isLoading: false,
+    });
+    taskHookMocks.useCreateTask.mockReturnValue(createMutation);
+    setMockUser(
+      createMockUser({
+        permissions: ['task:read', 'task:create'],
+      })
+    );
+
+    renderTaskCenter();
+    await userEvent.click(screen.getByRole('tab', { name: '今日' }));
+    await userEvent.click(screen.getByRole('button', { name: /新建任务/ }));
+    await userEvent.type(
+      screen.getByPlaceholderText('例如：给家里买菜、准备周会、结婚纪念日'),
+      '使用最近清单'
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    expect(createMutation.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        listId: 2,
+      }),
+      expect.any(Object)
+    );
   });
 
   it('initializes task query from notification taskId links', () => {
@@ -409,7 +447,8 @@ describe('TaskCenterPage', () => {
           important: false,
           urgent: false,
           recurrenceType: 'none',
-          sendExternalReminder: false,
+          continuousReminderEnabled: true,
+          continuousReminderIntervalMinutes: 30,
           createdAt: '2026-04-01T00:00:00.000Z',
           updatedAt: '2026-04-01T00:00:00.000Z',
         })),
@@ -624,7 +663,8 @@ describe('TaskCenterPage', () => {
             important: false,
             urgent: false,
             recurrenceType: 'none',
-            sendExternalReminder: false,
+            continuousReminderEnabled: true,
+            continuousReminderIntervalMinutes: 30,
             createdAt: '2026-04-01T00:00:00.000Z',
             updatedAt: '2026-04-01T00:00:00.000Z',
           },

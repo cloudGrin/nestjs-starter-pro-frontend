@@ -11,6 +11,7 @@ import {
   useCreateTask,
   useDeleteTask,
   useReopenTask,
+  useSnoozeTaskReminder,
   useTaskAssignees,
   useTaskLists,
   useTasks,
@@ -23,6 +24,7 @@ import { TaskListManageModal } from '../components/TaskListManageModal';
 import { TaskMatrixView } from '../components/TaskMatrixView';
 import { TaskTable } from '../components/TaskTable';
 import { formatTaskListOptionLabel } from '../utils/taskList';
+import { pickDefaultTaskListId, saveLastTaskListId } from '../utils/taskListPreference';
 import type {
   CreateTaskDto,
   QueryTasksParams,
@@ -147,6 +149,10 @@ function toDateRangeParams(dateRange?: [Dayjs, Dayjs]) {
 }
 
 function getDefaultCreateDueAt(view: TaskView, queryParams: QueryTasksParams) {
+  if (view === 'anniversary') {
+    return dayjs();
+  }
+
   if (view !== 'calendar') {
     return undefined;
   }
@@ -191,6 +197,7 @@ export function TaskCenterPage() {
   const updateTask = useUpdateTask();
   const completeTask = useCompleteTask();
   const reopenTask = useReopenTask();
+  const snoozeTaskReminder = useSnoozeTaskReminder();
   const deleteTask = useDeleteTask();
 
   const taskLists = taskListsQuery.data ?? [];
@@ -203,6 +210,7 @@ export function TaskCenterPage() {
       ? '请先创建或启用一个任务清单'
       : undefined;
   const defaultCreateDueAt = getDefaultCreateDueAt(activeView, queryParams);
+  const defaultCreateListId = pickDefaultTaskListId(activeTaskLists, queryParams.listId);
 
   useEffect(() => {
     const taskId = getTaskIdFromSearch(location.search);
@@ -333,6 +341,8 @@ export function TaskCenterPage() {
   };
 
   const handleTaskSubmit = (payload: CreateTaskDto | UpdateTaskDto) => {
+    saveLastTaskListId(payload.listId);
+
     if (currentTask) {
       updateTask.mutate(
         { id: currentTask.id, data: payload },
@@ -446,9 +456,14 @@ export function TaskCenterPage() {
     ? { type: 'complete' as const, taskId: completeTask.variables as number | undefined }
     : reopenTask.isPending
       ? { type: 'reopen' as const, taskId: reopenTask.variables as number | undefined }
-      : deleteTask.isPending
-        ? { type: 'delete' as const, taskId: deleteTask.variables as number | undefined }
-        : null;
+      : snoozeTaskReminder.isPending
+        ? {
+            type: 'snooze' as const,
+            taskId: (snoozeTaskReminder.variables as { id?: number } | undefined)?.id,
+          }
+        : deleteTask.isPending
+          ? { type: 'delete' as const, taskId: deleteTask.variables as number | undefined }
+          : null;
   const updatingTaskVariables = updateTask.variables as { id?: number } | undefined;
   const movingTaskId = updateTask.isPending ? updatingTaskVariables?.id : undefined;
 
@@ -476,12 +491,27 @@ export function TaskCenterPage() {
     );
   };
 
+  const handleSnooze = (task: Task) => {
+    snoozeTaskReminder.mutate(
+      {
+        id: task.id,
+        data: {
+          snoozeUntil: dayjs().add(30, 'minute').toISOString(),
+        },
+      },
+      {
+        onSuccess: resetHighVolumeViewAfterMutation,
+      }
+    );
+  };
+
   const sharedViewProps = {
     data: displayTasksData,
     loading: tasksLoading,
     onEdit: handleEdit,
     onComplete: (task: Task) => mutateTaskAction(completeTask, task),
     onReopen: (task: Task) => mutateTaskAction(reopenTask, task),
+    onSnooze: handleSnooze,
     onDelete: (task: Task) => mutateTaskAction(deleteTask, task),
     actionPending,
   };
@@ -642,6 +672,8 @@ export function TaskCenterPage() {
         lists={taskLists}
         users={users}
         defaultDueAt={defaultCreateDueAt}
+        defaultListId={defaultCreateListId}
+        defaultTaskType={activeView === 'anniversary' ? 'anniversary' : 'task'}
         submitting={createTask.isPending || updateTask.isPending}
         onCancel={closeTaskForm}
         onSubmit={handleTaskSubmit}

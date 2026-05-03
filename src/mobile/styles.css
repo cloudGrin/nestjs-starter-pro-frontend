@@ -540,6 +540,7 @@ body {
 }
 
 .mobile-calendar-date {
+  aspect-ratio: 1 / 1;
   position: relative;
   display: flex;
   min-height: 40px;
@@ -569,7 +570,7 @@ body {
   height: 4px;
   overflow: hidden;
   border-radius: 50%;
-  background: currentColor;
+  background: #10b981;
   text-indent: -999px;
 }
 
@@ -931,6 +932,76 @@ body {
   white-space: pre-wrap;
 }
 
+.mobile-task-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 8px;
+  background: var(--mobile-card);
+}
+
+.mobile-task-detail-card-title,
+.mobile-section-title {
+  margin: 0 0 8px;
+  color: var(--mobile-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.mobile-task-check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-task-attachment-list,
+.mobile-task-attachment-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-task-attachment-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--mobile-border);
+}
+
+.mobile-task-attachment-row:last-child {
+  border-bottom: 0;
+}
+
+.mobile-task-attachment-row > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-task-attachment-row strong {
+  overflow: hidden;
+  color: var(--mobile-text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-task-attachment-row span {
+  color: var(--mobile-muted);
+  font-size: 12px;
+}
+
+.mobile-task-attachment-row > div:last-child {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
 .mobile-insurance-attachment-card {
   padding: 12px;
   border: 1px solid var(--mobile-border);
@@ -1066,7 +1137,8 @@ body {
   gap: 8px;
 }
 
-.mobile-editor-toolbar button {
+.mobile-editor-toolbar button,
+.mobile-editor-upload-button {
   display: flex;
   min-height: 54px;
   flex-direction: column;
@@ -1080,7 +1152,12 @@ body {
   font-size: 12px;
 }
 
-.mobile-editor-toolbar button svg {
+.mobile-editor-upload-button input {
+  display: none;
+}
+
+.mobile-editor-toolbar button svg,
+.mobile-editor-upload-button svg {
   width: 18px;
   height: 18px;
 }
@@ -1097,6 +1174,102 @@ body {
 
 .mobile-editor-toolbar button.warning {
   color: #d97706;
+}
+
+.mobile-editor-list-shortcuts {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-bottom: 10px;
+  padding-bottom: 2px;
+}
+
+.mobile-editor-list-shortcuts button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 999px;
+  background: var(--mobile-card);
+  color: var(--mobile-muted);
+  font-size: 13px;
+}
+
+.mobile-editor-list-shortcuts button.active {
+  border-color: var(--mobile-primary);
+  background: color-mix(in srgb, var(--mobile-primary) 14%, transparent);
+  color: var(--mobile-primary);
+  font-weight: 700;
+}
+
+.mobile-editor-date-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  margin-bottom: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 8px;
+  background: var(--mobile-card);
+  color: var(--mobile-text);
+}
+
+.mobile-editor-date-card span {
+  color: var(--mobile-muted);
+  font-size: 13px;
+}
+
+.mobile-editor-date-card strong {
+  font-size: 14px;
+}
+
+.mobile-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 8px;
+  background: var(--mobile-card);
+}
+
+.mobile-editor-section > strong {
+  color: var(--mobile-text);
+  font-size: 14px;
+}
+
+.mobile-editor-check-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-editor-attachment-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-editor-check-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.mobile-editor-attachment-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.mobile-editor-attachment-row span {
+  overflow: hidden;
+  color: var(--mobile-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mobile-schedule-sheet {
@@ -1121,6 +1294,13 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.mobile-calendar-mode {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px 0;
 }
 
 .mobile-schedule-value {
@@ -1611,13 +1791,17 @@ body {
 .dark .mobile-calendar-selected-card,
 .dark .mobile-matrix-panel,
 .dark .mobile-task-detail-meta-card,
+.dark .mobile-task-detail-card,
 .dark .mobile-task-detail-note,
 .dark .mobile-insurance-row,
 .dark .mobile-insurance-reminder-row,
 .dark .mobile-insurance-family-card,
 .dark .mobile-insurance-attachment-card,
 .dark .mobile-schedule-card,
-.dark .mobile-editor-toolbar button {
+.dark .mobile-editor-toolbar button,
+.dark .mobile-editor-upload-button,
+.dark .mobile-editor-list-shortcuts button,
+.dark .mobile-editor-section {
   background: var(--mobile-card);
   color: var(--mobile-text);
 }

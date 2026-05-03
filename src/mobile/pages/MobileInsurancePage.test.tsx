@@ -33,8 +33,6 @@ const basePolicy: InsurancePolicy = {
   ownerUserId: 7,
   ownerUser: { id: 7, username: 'admin', realName: '管理员' },
   remark: '门诊和住院材料放在附件里',
-  reminderChannels: ['internal', 'bark'],
-  sendExternalReminder: true,
   attachments: [],
   reminders: [
     {

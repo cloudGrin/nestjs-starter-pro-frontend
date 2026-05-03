@@ -1,3 +1,5 @@
+import type { FileEntity } from '@/features/file/types/file.types';
+
 export type TaskStatus = 'pending' | 'completed';
 
 export type TaskType = 'task' | 'anniversary';
@@ -15,8 +17,6 @@ export type TaskListScope = 'personal' | 'family';
 
 export type TaskView = 'list' | 'today' | 'calendar' | 'matrix' | 'anniversary';
 
-export type TaskReminderChannel = 'internal' | 'bark' | 'feishu';
-
 export type TaskSortField =
   | 'createdAt'
   | 'updatedAt'
@@ -27,7 +27,7 @@ export type TaskSortField =
 
 export type TaskSortOrder = 'ASC' | 'DESC';
 
-export type TaskActionType = 'complete' | 'reopen' | 'delete';
+export type TaskActionType = 'complete' | 'reopen' | 'delete' | 'snooze';
 
 export interface TaskActionPending {
   type: TaskActionType;
@@ -53,6 +53,23 @@ export interface TaskAssignee {
   realName?: string | null;
 }
 
+export interface TaskAttachment {
+  id: number;
+  taskId: number;
+  fileId: number;
+  sort: number;
+  file?: FileEntity;
+}
+
+export interface TaskCheckItem {
+  id?: number;
+  taskId?: number;
+  title: string;
+  completed: boolean;
+  completedAt?: string | null;
+  sort: number;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -67,14 +84,17 @@ export interface Task {
   dueAt?: string | null;
   remindAt?: string | null;
   remindedAt?: string | null;
+  nextReminderAt?: string | null;
   completedAt?: string | null;
   important: boolean;
   urgent: boolean;
   tags?: string[] | null;
+  attachments?: TaskAttachment[];
+  checkItems?: TaskCheckItem[];
   recurrenceType: TaskRecurrenceType;
   recurrenceInterval?: number | null;
-  reminderChannels?: TaskReminderChannel[] | null;
-  sendExternalReminder: boolean;
+  continuousReminderEnabled: boolean;
+  continuousReminderIntervalMinutes: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -114,12 +134,24 @@ export interface CreateTaskDto {
   important?: boolean;
   urgent?: boolean;
   tags?: string[];
+  attachmentFileIds?: number[];
+  checkItems?: Array<{
+    id?: number;
+    title: string;
+    completed?: boolean;
+    sort?: number;
+  }>;
   recurrenceType?: TaskRecurrenceType;
   recurrenceInterval?: number | null;
-  reminderChannels?: TaskReminderChannel[];
+  continuousReminderEnabled?: boolean;
+  continuousReminderIntervalMinutes?: number;
 }
 
 export type UpdateTaskDto = Partial<CreateTaskDto>;
+
+export interface SnoozeTaskReminderDto {
+  snoozeUntil: string;
+}
 
 export interface CreateTaskListDto {
   name: string;

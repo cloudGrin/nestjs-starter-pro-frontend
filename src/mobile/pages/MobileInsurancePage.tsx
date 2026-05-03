@@ -590,22 +590,6 @@ function PolicyDetailSheet({
               <DetailLine label="金额" value={formatMoney(policy.paymentAmount)} />
             </div>
 
-            <div className="mobile-task-detail-meta-card">
-              <DetailLine
-                label="渠道"
-                value={
-                  policy.reminderChannels?.length
-                    ? policy.reminderChannels
-                        .map((channel) =>
-                          channel === 'internal' ? '站内' : channel === 'bark' ? 'Bark' : '飞书'
-                        )
-                        .join('、')
-                    : '站内'
-                }
-              />
-              <DetailLine label="外部" value={policy.sendExternalReminder ? '已开启' : '未开启'} />
-            </div>
-
             {policy.remark ? <div className="mobile-task-detail-note">{policy.remark}</div> : null}
 
             <div className="mobile-insurance-attachment-card">

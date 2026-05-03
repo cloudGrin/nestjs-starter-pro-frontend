@@ -4,7 +4,6 @@ import {
   Card,
   Checkbox,
   DatePicker,
-  Dialog,
   Input,
   List,
   Popup,
@@ -23,19 +22,25 @@ import {
   CheckSquareOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   EllipsisOutlined,
   ExclamationCircleOutlined,
+  EyeOutlined,
   FilterOutlined,
   FlagOutlined,
   FolderOpenOutlined,
+  PaperClipOutlined,
   PlusOutlined,
   SettingOutlined,
   TagsOutlined,
+  UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useSearchParams } from 'react-router-dom';
+import { createFileAccessLink, uploadFile } from '@/features/file/services/file.service';
+import { resolveFileAccessUrl } from '@/features/file/utils/file-url';
 import {
   useCompleteTask,
   useCreateTask,
@@ -43,6 +48,7 @@ import {
   useDeleteTask,
   useDeleteTaskList,
   useReopenTask,
+  useSnoozeTaskReminder,
   useTask,
   useTaskAssignees,
   useTaskLists,
@@ -56,21 +62,27 @@ import type {
   QueryTasksParams,
   Task,
   TaskAssignee,
+  TaskAttachment,
+  TaskCheckItem,
   TaskList,
   TaskRecurrenceType,
-  TaskReminderChannel,
   TaskStatus,
   TaskType,
   TaskView,
   UpdateTaskDto,
   UpdateTaskListDto,
 } from '@/features/task/types/task.types';
+import { taskService } from '@/features/task/services/task.service';
 import {
-  formatTaskRecurrence,
-  formatTaskReminderChannels,
-  mobileTaskRecurrenceLabels,
-  mobileTaskReminderChannelLabels,
-} from '../utils/task';
+  groupTasksByCalendarDate,
+  sortCalendarOccurrences,
+} from '@/features/task/utils/taskCalendar';
+import {
+  getTaskListShortcuts,
+  pickDefaultTaskListId,
+  saveLastTaskListId,
+} from '@/features/task/utils/taskListPreference';
+import { formatTaskRecurrence, mobileTaskRecurrenceLabels } from '../utils/task';
 import { MobileModuleHeader } from '../components/MobileModuleHeader';
 
 type MobileTaskView = TaskView;
@@ -86,9 +98,17 @@ interface TaskDraft {
   important: boolean;
   urgent: boolean;
   tags: string;
+  attachmentFileIds: number[];
+  attachments: TaskAttachment[];
+  checkItems: Array<{
+    id?: number;
+    title: string;
+    completed: boolean;
+    sort: number;
+  }>;
   recurrenceType: TaskRecurrenceType;
   recurrenceInterval: string;
-  reminderChannels: TaskReminderChannel[];
+  continuousReminderEnabled: boolean;
 }
 
 type MatrixQuadrant = 'important-urgent' | 'important' | 'urgent' | 'normal';
@@ -120,12 +140,6 @@ const recurrenceOptions: Array<{ label: string; value: TaskRecurrenceType }> = [
   { label: mobileTaskRecurrenceLabels.yearly, value: 'yearly' },
   { label: mobileTaskRecurrenceLabels.weekdays, value: 'weekdays' },
   { label: mobileTaskRecurrenceLabels.custom, value: 'custom' },
-];
-
-const reminderChannelOptions: Array<{ label: string; value: TaskReminderChannel }> = [
-  { label: mobileTaskReminderChannelLabels.internal, value: 'internal' },
-  { label: mobileTaskReminderChannelLabels.bark, value: 'bark' },
-  { label: mobileTaskReminderChannelLabels.feishu, value: 'feishu' },
 ];
 
 const reminderOffsetOptions = [
@@ -178,6 +192,11 @@ function getTaskAssignee(task: Task, users: TaskAssignee[]) {
 
 function getTaskList(task: Task, lists: TaskList[]) {
   return task.list ?? lists.find((list) => list.id === task.listId) ?? null;
+}
+
+function isPreviewableAttachment(attachment: TaskAttachment) {
+  const mimeType = attachment.file?.mimeType ?? '';
+  return mimeType.startsWith('image/') || mimeType === 'application/pdf';
 }
 
 function formatDateTime(value?: string | Date | null) {
@@ -255,14 +274,17 @@ function buildEmptyDraft({
     listId: defaultListId,
     assigneeId: undefined,
     taskType,
-    dueAt,
+    dueAt: taskType === 'anniversary' ? (dueAt ?? new Date()) : dueAt,
     remindAt: undefined,
     important: false,
     urgent: false,
     tags: '',
-    recurrenceType: 'none',
+    attachmentFileIds: [],
+    attachments: [],
+    checkItems: [],
+    recurrenceType: taskType === 'anniversary' ? 'yearly' : 'none',
     recurrenceInterval: '',
-    reminderChannels: ['internal'],
+    continuousReminderEnabled: taskType !== 'anniversary',
   };
 }
 
@@ -278,14 +300,19 @@ function draftFromTask(task: Task): TaskDraft {
     important: task.important,
     urgent: task.urgent,
     tags: task.tags?.join(', ') ?? '',
+    attachmentFileIds: task.attachments?.map((attachment) => attachment.fileId) ?? [],
+    attachments: task.attachments ?? [],
+    checkItems:
+      task.checkItems?.map((item, index) => ({
+        id: item.id,
+        title: item.title,
+        completed: item.completed,
+        sort: item.sort ?? index,
+      })) ?? [],
     recurrenceType: task.recurrenceType,
     recurrenceInterval: task.recurrenceInterval ? String(task.recurrenceInterval) : '',
-    reminderChannels: ensureInternalChannel(task.reminderChannels),
+    continuousReminderEnabled: task.continuousReminderEnabled ?? true,
   };
-}
-
-function ensureInternalChannel(channels?: TaskReminderChannel[] | null) {
-  return Array.from(new Set<TaskReminderChannel>(['internal', ...(channels ?? [])]));
 }
 
 function tagsFromText(value: string) {
@@ -324,9 +351,18 @@ function taskDraftToPayload(draft: TaskDraft, isEditing: boolean): CreateTaskDto
     important: draft.important,
     urgent: draft.urgent,
     tags: tagsFromText(draft.tags),
+    attachmentFileIds: draft.attachmentFileIds,
+    checkItems: draft.checkItems
+      .map((item, index) => ({
+        id: item.id,
+        title: item.title.trim(),
+        completed: item.completed,
+        sort: index,
+      }))
+      .filter((item) => item.title),
     recurrenceType: draft.recurrenceType,
     recurrenceInterval: draft.recurrenceInterval ? Number(draft.recurrenceInterval) : null,
-    reminderChannels: ensureInternalChannel(draft.reminderChannels),
+    continuousReminderEnabled: draft.continuousReminderEnabled,
   };
 
   return isEditing ? payload : payload;
@@ -381,6 +417,7 @@ export function MobileTaskPage() {
   const updateTask = useUpdateTask();
   const completeTask = useCompleteTask();
   const reopenTask = useReopenTask();
+  const snoozeTaskReminder = useSnoozeTaskReminder();
   const deleteTask = useDeleteTask();
   const togglePendingTaskId = (
     completeTask.isPending
@@ -398,7 +435,7 @@ export function MobileTaskPage() {
       }),
     [optimisticStatuses, rawTasks]
   );
-  const defaultListId = activeLists[0]?.id;
+  const defaultListId = pickDefaultTaskListId(activeLists, listId);
   const selectedTask =
     tasks.find((task) => task.id === selectedTaskId) ?? selectedTaskQuery.data ?? null;
   const defaultTaskType: TaskType = view === 'anniversary' ? 'anniversary' : 'task';
@@ -437,6 +474,9 @@ export function MobileTaskPage() {
   };
 
   const setTaskView = (nextView: MobileTaskView) => {
+    if (nextView === 'matrix') {
+      setStatus(undefined);
+    }
     updateQuery((next) => {
       next.set('view', nextView);
       next.delete('taskId');
@@ -485,6 +525,10 @@ export function MobileTaskPage() {
   };
 
   const handleSubmit = (payload: CreateTaskDto | UpdateTaskDto) => {
+    if (payload.listId) {
+      saveLastTaskListId(payload.listId);
+    }
+
     if (editingTask) {
       updateTask.mutate(
         { id: editingTask.id, data: payload },
@@ -628,6 +672,18 @@ export function MobileTaskPage() {
           closeTaskDetail();
         }}
         onToggleComplete={toggleComplete}
+        onSnooze={(task, snoozeUntil) =>
+          snoozeTaskReminder.mutate({ id: task.id, data: { snoozeUntil } })
+        }
+        snoozePending={snoozeTaskReminder.isPending}
+        onUpdateCheckItems={(task, checkItems) =>
+          updateTask.mutate({
+            id: task.id,
+            data: {
+              checkItems,
+            },
+          })
+        }
         onDelete={(task) =>
           deleteTask.mutate(task.id, {
             onSuccess: closeTaskDetail,
@@ -673,7 +729,6 @@ export function MobileTaskPage() {
         lists={taskLists}
         onClose={() => setListManageOpen(false)}
       />
-
     </div>
   );
 }
@@ -782,6 +837,8 @@ function TaskRow({
   togglePending,
   onDelete,
   compact,
+  displayDueAt,
+  displayRemindAt,
 }: {
   task: Task;
   lists: TaskList[];
@@ -792,10 +849,14 @@ function TaskRow({
   togglePending?: boolean;
   onDelete?: (task: Task) => void;
   compact?: boolean;
+  displayDueAt?: string | null;
+  displayRemindAt?: string | null;
 }) {
   const list = getTaskList(task, lists);
   const assignee = getTaskAssignee(task, users);
   const isCompleted = task.status === 'completed';
+  const dueAt = displayDueAt ?? task.dueAt;
+  const remindAt = displayRemindAt ?? task.remindAt;
   const content = (
     <div className={`mobile-task-row${compact ? ' compact' : ''}`} onClick={() => onOpen(task)}>
       <Checkbox
@@ -807,9 +868,15 @@ function TaskRow({
       <div className="mobile-task-row-main">
         <div className={`mobile-task-title${isCompleted ? ' completed' : ''}`}>{task.title}</div>
         <div className="mobile-task-meta-line">
-          {task.dueAt ? <span className="primary">{formatDateTime(task.dueAt)}</span> : null}
-          {task.remindAt ? <span>提醒</span> : null}
+          {dueAt ? <span className="primary">{formatDateTime(dueAt)}</span> : null}
+          {remindAt ? <span>提醒</span> : null}
           {task.recurrenceType !== 'none' ? <span>重复</span> : null}
+          {task.checkItems?.length ? (
+            <span>
+              {task.checkItems.filter((item) => item.completed).length}/{task.checkItems.length}
+            </span>
+          ) : null}
+          {task.attachments?.length ? <span>附件 {task.attachments.length}</span> : null}
           {assignee ? <span>{getUserName(assignee)}</span> : null}
         </div>
       </div>
@@ -874,19 +941,25 @@ function CalendarTaskView({
   togglePendingTaskId?: number;
   onDelete: (task: Task) => void;
 }) {
+  const [mode, setMode] = useState<'month' | 'list'>('month');
   const days = useMemo(() => {
     const start = month.startOf('month').startOf('week');
     return Array.from({ length: 42 }, (_, index) => start.add(index, 'day'));
   }, [month]);
-  const tasksByDay = useMemo(() => {
-    const map = new Map<string, Task[]>();
-    tasks.forEach((task) => {
-      const key = getTaskDay(task);
-      map.set(key, [...(map.get(key) ?? []), task]);
-    });
-    return map;
-  }, [tasks]);
-  const selectedTasks = tasksByDay.get(selectedDay) ?? [];
+  const monthStart = month.startOf('month').toISOString();
+  const monthEnd = month.endOf('month').toISOString();
+  const occurrencesByDay = useMemo(
+    () => groupTasksByCalendarDate(tasks, monthStart, monthEnd),
+    [monthEnd, monthStart, tasks]
+  );
+  const selectedOccurrences = sortCalendarOccurrences(occurrencesByDay.get(selectedDay) ?? []);
+  const groupedOccurrences = useMemo(
+    () =>
+      Array.from(occurrencesByDay.entries())
+        .filter(([day]) => dayjs(day).isSame(month, 'month'))
+        .sort(([left], [right]) => left.localeCompare(right)),
+    [month, occurrencesByDay]
+  );
 
   return (
     <div className="mobile-calendar-view">
@@ -899,55 +972,101 @@ function CalendarTaskView({
           下月
         </Button>
       </div>
-      <div className="mobile-calendar-weekdays">
-        {['日', '一', '二', '三', '四', '五', '六'].map((day) => (
-          <span key={day}>{day}</span>
-        ))}
+      <div className="mobile-calendar-mode">
+        <Button size="mini" color={mode === 'month' ? 'primary' : 'default'} onClick={() => setMode('month')}>
+          月历
+        </Button>
+        <Button size="mini" color={mode === 'list' ? 'primary' : 'default'} onClick={() => setMode('list')}>
+          列表
+        </Button>
       </div>
-      <div className="mobile-calendar-board">
-        {days.map((day) => {
-          const dateKey = day.format('YYYY-MM-DD');
-          const count = tasksByDay.get(dateKey)?.length ?? 0;
-          const active = selectedDay === dateKey;
-          return (
-            <button
-              key={dateKey}
-              className={`mobile-calendar-date${active ? ' active' : ''}${
-                day.isSame(month, 'month') ? '' : ' muted'
-              }`}
-              type="button"
-              onClick={() => onDayChange(dateKey)}
-            >
-              <span>{day.date()}</span>
-              {count > 0 ? <i>{count}</i> : null}
-            </button>
-          );
-        })}
-      </div>
-      <div className="mobile-calendar-selected-card">
-        <div className="mobile-calendar-selected-title">{dayjs(selectedDay).format('M月D日')}</div>
-        {loading ? (
-          <div className="mobile-muted">加载中...</div>
-        ) : selectedTasks.length === 0 ? (
-          <MobileEmptyState title={getCalendarEmptyText(selectedDay)} />
-        ) : (
-          <div className="mobile-task-list-card flush">
-            {selectedTasks.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                lists={lists}
-                users={users}
-                onOpen={onOpen}
-                onEdit={onEdit}
-                onToggleComplete={onToggleComplete}
-                togglePending={togglePendingTaskId === task.id}
-                onDelete={onDelete}
-              />
+      {mode === 'month' ? (
+        <>
+          <div className="mobile-calendar-weekdays">
+            {['日', '一', '二', '三', '四', '五', '六'].map((day) => (
+              <span key={day}>{day}</span>
             ))}
           </div>
-        )}
-      </div>
+          <div className="mobile-calendar-board">
+            {days.map((day) => {
+              const dateKey = day.format('YYYY-MM-DD');
+              const count = occurrencesByDay.get(dateKey)?.length ?? 0;
+              const active = selectedDay === dateKey;
+              return (
+                <div key={dateKey} className="flex items-center justify-center">
+                  <button
+                    className={`mobile-calendar-date${active ? ' active' : ''}${
+                      day.isSame(month, 'month') ? '' : ' muted'
+                    }`}
+                    type="button"
+                    onClick={() => onDayChange(dateKey)}
+                  >
+                    <span>{day.date()}</span>
+                    {count > 0 ? <i>{count}</i> : null}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mobile-calendar-selected-card">
+            <div className="mobile-calendar-selected-title">
+              {dayjs(selectedDay).format('M月D日')}
+            </div>
+            {loading ? (
+              <div className="mobile-muted">加载中...</div>
+            ) : selectedOccurrences.length === 0 ? (
+              <MobileEmptyState title={getCalendarEmptyText(selectedDay)} />
+            ) : (
+              <div className="mobile-task-list-card flush">
+                {selectedOccurrences.map((item) => (
+                  <TaskRow
+                    key={item.key}
+                    task={item.task}
+                    lists={lists}
+                    users={users}
+                    onOpen={onOpen}
+                    onEdit={onEdit}
+                    onToggleComplete={onToggleComplete}
+                    togglePending={togglePendingTaskId === item.task.id}
+                    onDelete={onDelete}
+                    displayDueAt={item.occurrenceDueAt}
+                    displayRemindAt={item.occurrenceRemindAt}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      ) : loading ? (
+        <Card className="mobile-task-list-card">加载中...</Card>
+      ) : groupedOccurrences.length === 0 ? (
+        <MobileEmptyState title="本月没有任务" />
+      ) : (
+        <div className="mobile-task-groups">
+          {groupedOccurrences.map(([day, items]) => (
+            <section key={day}>
+              <div className="mobile-task-day-title">{dayjs(day).format('MM月DD日')}</div>
+              <div className="mobile-task-list-card">
+                {sortCalendarOccurrences(items).map((item) => (
+                  <TaskRow
+                    key={item.key}
+                    task={item.task}
+                    lists={lists}
+                    users={users}
+                    onOpen={onOpen}
+                    onEdit={onEdit}
+                    onToggleComplete={onToggleComplete}
+                    togglePending={togglePendingTaskId === item.task.id}
+                    onDelete={onDelete}
+                    displayDueAt={item.occurrenceDueAt}
+                    displayRemindAt={item.occurrenceRemindAt}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1001,7 +1120,7 @@ function MatrixTaskView({
               <div className="mobile-matrix-empty">没有任务</div>
             ) : (
               <div className="mobile-matrix-task-list">
-                {quadrantTasks.slice(0, 8).map((task) => (
+                {quadrantTasks.map((task) => (
                   <TaskRow
                     key={task.id}
                     compact
@@ -1034,6 +1153,9 @@ function TaskDetailSheet({
   onClose,
   onEdit,
   onToggleComplete,
+  onSnooze,
+  snoozePending,
+  onUpdateCheckItems,
   onDelete,
 }: {
   open: boolean;
@@ -1045,22 +1167,18 @@ function TaskDetailSheet({
   onClose: () => void;
   onEdit: (task: Task) => void;
   onToggleComplete: (task: Task) => void;
+  onSnooze: (task: Task, snoozeUntil: string) => void;
+  snoozePending?: boolean;
+  onUpdateCheckItems: (task: Task, checkItems: TaskCheckItem[]) => void;
   onDelete: (task: Task) => void;
 }) {
+  const [snoozeOpen, setSnoozeOpen] = useState(false);
   const list = task ? getTaskList(task, lists) : null;
   const assignee = task ? getTaskAssignee(task, users) : null;
 
   const handleDelete = async () => {
     if (!task) return;
-    const confirmed = await Dialog.confirm({
-      title: '删除任务',
-      content: '删除后不可恢复，确定要删除这个任务吗？',
-      confirmText: '删除',
-      cancelText: '取消',
-    });
-    if (confirmed) {
-      onDelete(task);
-    }
+    onDelete(task);
   };
 
   return (
@@ -1093,10 +1211,40 @@ function TaskDetailSheet({
                 label="重复"
                 value={formatTaskRecurrence(task.recurrenceType, task.recurrenceInterval)}
               />
-              <DetailLine label="渠道" value={formatTaskReminderChannels(task.reminderChannels)} />
+              <DetailLine
+                label="持续"
+                value={task.continuousReminderEnabled ? '每 30 分钟，直到完成' : '关闭'}
+              />
             </div>
             {task.description ? (
               <div className="mobile-task-detail-note">{task.description}</div>
+            ) : null}
+            {task.checkItems?.length ? (
+              <div className="mobile-task-detail-card">
+                <div className="mobile-task-detail-card-title">检查清单</div>
+                {task.checkItems.map((item, index) => (
+                  <Checkbox
+                    key={item.id ?? index}
+                    checked={item.completed}
+                    onChange={(checked) => {
+                      const next = (task.checkItems ?? []).map((current, currentIndex) =>
+                        ({
+                          id: current.id,
+                          title: current.title,
+                          completed: currentIndex === index ? checked : current.completed,
+                          sort: current.sort ?? currentIndex,
+                        })
+                      );
+                      onUpdateCheckItems(task, next);
+                    }}
+                  >
+                    {item.title}
+                  </Checkbox>
+                ))}
+              </div>
+            ) : null}
+            {task.attachments?.length ? (
+              <TaskAttachmentList task={task} attachments={task.attachments} />
             ) : null}
             <div className="mobile-chip-row">
               {task.important ? <Tag color="danger">重要</Tag> : null}
@@ -1107,18 +1255,42 @@ function TaskDetailSheet({
               ))}
             </div>
             <div className="mobile-sheet-actions">
-              <Button size="small" color="danger" fill="outline" onClick={() => void handleDelete()}>
+              <Button
+                size="small"
+                color="danger"
+                fill="outline"
+                onClick={() => void handleDelete()}
+              >
                 <DeleteOutlined /> 删除
               </Button>
               <div>
                 <Button size="small" color="primary" fill="outline" onClick={() => onEdit(task)}>
                   <EditOutlined /> 编辑
                 </Button>
+                {task.remindAt && task.status !== 'completed' ? (
+                  <Button
+                    size="small"
+                    color="primary"
+                    fill="outline"
+                    loading={snoozePending}
+                    onClick={() => setSnoozeOpen(true)}
+                  >
+                    <ClockCircleOutlined /> 稍后
+                  </Button>
+                ) : null}
                 <Button size="small" color="success" onClick={() => onToggleComplete(task)}>
                   {task.status === 'completed' ? '取消完成' : '完成'}
                 </Button>
               </div>
             </div>
+            <SnoozeSheet
+              open={snoozeOpen}
+              onClose={() => setSnoozeOpen(false)}
+              onSelect={(snoozeUntil) => {
+                onSnooze(task, snoozeUntil);
+                setSnoozeOpen(false);
+              }}
+            />
           </>
         )}
       </div>
@@ -1132,6 +1304,138 @@ function DetailLine({ label, value }: { label: string; value: string }) {
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function TaskAttachmentList({
+  task,
+  attachments,
+}: {
+  task: Task;
+  attachments: TaskAttachment[];
+}) {
+  const openAttachment = async (attachment: TaskAttachment, disposition: 'inline' | 'attachment') => {
+    try {
+      if (disposition === 'attachment') {
+        window.open(
+          taskService.getAttachmentDownloadUrl(task.id, attachment.fileId),
+          '_blank',
+          'noopener,noreferrer'
+        );
+        return;
+      }
+
+      const file = attachment.file;
+      if (file?.isPublic && file.url) {
+        window.open(resolveFileAccessUrl(file.url), '_blank', 'noopener,noreferrer');
+        return;
+      }
+      const { url } = await createFileAccessLink(attachment.fileId, 'inline');
+      window.open(resolveFileAccessUrl(url), '_blank', 'noopener,noreferrer');
+    } catch {
+      Toast.show({ icon: 'fail', content: '附件访问失败', position: 'center' });
+    }
+  };
+
+  return (
+    <div className="mobile-task-detail-card">
+      <div className="mobile-task-detail-card-title">附件</div>
+      {attachments.map((attachment) => (
+        <div key={attachment.fileId} className="mobile-task-attachment-row">
+          <div>
+            <strong>{attachment.file?.originalName || `文件 #${attachment.fileId}`}</strong>
+            <span>{attachment.file?.mimeType || '未知类型'}</span>
+          </div>
+          <div>
+            {isPreviewableAttachment(attachment) ? (
+              <Button
+                size="mini"
+                fill="outline"
+                onClick={() => void openAttachment(attachment, 'inline')}
+              >
+                <EyeOutlined /> 预览
+              </Button>
+            ) : null}
+            <Button
+              size="mini"
+              fill="outline"
+              onClick={() => void openAttachment(attachment, 'attachment')}
+            >
+              <DownloadOutlined /> 下载
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const snoozeOptions = [
+  { label: '15 分钟', getValue: () => dayjs().add(15, 'minute').toISOString() },
+  { label: '30 分钟', getValue: () => dayjs().add(30, 'minute').toISOString() },
+  { label: '1 小时', getValue: () => dayjs().add(1, 'hour').toISOString() },
+  { label: '3 小时', getValue: () => dayjs().add(3, 'hour').toISOString() },
+  {
+    label: '明天',
+    getValue: () => dayjs().add(1, 'day').hour(9).minute(0).second(0).millisecond(0).toISOString(),
+  },
+  {
+    label: '明天上午',
+    getValue: () => dayjs().add(1, 'day').hour(10).minute(0).second(0).millisecond(0).toISOString(),
+  },
+  {
+    label: '下个整点',
+    getValue: () => dayjs().add(1, 'hour').minute(0).second(0).millisecond(0).toISOString(),
+  },
+];
+
+function SnoozeSheet({
+  open,
+  onClose,
+  onSelect,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (snoozeUntil: string) => void;
+}) {
+  const [customOpen, setCustomOpen] = useState(false);
+
+  return (
+    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '18px 18px 0 0' }}>
+      <div className="mobile-popup-body mobile-field-sheet">
+        <div className="mobile-popup-header">
+          <strong>稍后提醒</strong>
+          <Button size="mini" fill="none" onClick={onClose}>
+            关闭
+          </Button>
+        </div>
+        <div className="mobile-editor-chip-grid">
+          {snoozeOptions.map((option) => (
+            <Button
+              key={option.label}
+              size="small"
+              fill="outline"
+              onClick={() => onSelect(option.getValue())}
+            >
+              {option.label}
+            </Button>
+          ))}
+          <Button size="small" fill="outline" onClick={() => setCustomOpen(true)}>
+            自定义
+          </Button>
+        </div>
+      </div>
+      <DatePicker
+        visible={customOpen}
+        value={new Date()}
+        precision="minute"
+        onClose={() => setCustomOpen(false)}
+        onConfirm={(date) => {
+          setCustomOpen(false);
+          onSelect(date.toISOString());
+        }}
+      />
+    </Popup>
   );
 }
 
@@ -1164,6 +1468,7 @@ export function TaskEditorPopup({
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [anniversaryDateOpen, setAnniversaryDateOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -1179,10 +1484,26 @@ export function TaskEditorPopup({
     setAssigneeOpen(false);
     setTagsOpen(false);
     setMoreOpen(false);
+    setAnniversaryDateOpen(false);
   }, [open]);
 
   const updateDraft = (patch: Partial<TaskDraft>) => {
     setDraft((previous) => ({ ...previous, ...patch }));
+  };
+
+  const selectTaskType = (taskType: TaskType) => {
+    updateDraft({
+      taskType,
+      dueAt: taskType === 'anniversary' ? (draft.dueAt ?? new Date()) : draft.dueAt,
+      recurrenceType:
+        taskType === 'anniversary' && draft.recurrenceType === 'none'
+          ? 'yearly'
+          : draft.recurrenceType,
+      important: taskType === 'anniversary' ? false : draft.important,
+      urgent: taskType === 'anniversary' ? false : draft.urgent,
+      continuousReminderEnabled:
+        taskType === 'anniversary' ? false : draft.continuousReminderEnabled,
+    });
   };
 
   const handleSave = () => {
@@ -1199,22 +1520,151 @@ export function TaskEditorPopup({
 
   const selectedList = lists.find((list) => list.id === draft.listId);
   const selectedUser = users.find((user) => user.id === draft.assigneeId);
+  const isAnniversary = draft.taskType === 'anniversary';
+  const listShortcuts = getTaskListShortcuts(lists, draft.listId);
+  const hasMoreLists = lists.filter((list) => !list.isArchived).length > listShortcuts.length;
+
+  const handleAttachmentUpload = async (file?: File) => {
+    if (!file) return;
+    try {
+      const uploaded = await uploadFile(file, { module: 'task-attachment' });
+      updateDraft({
+        attachmentFileIds: [...draft.attachmentFileIds, uploaded.id],
+        attachments: [
+          ...draft.attachments,
+          {
+            id: uploaded.id,
+            taskId: task?.id ?? 0,
+            fileId: uploaded.id,
+            sort: draft.attachments.length,
+            file: uploaded,
+          },
+        ],
+      });
+      Toast.show({ icon: 'success', content: '附件已上传', position: 'center' });
+    } catch {
+      Toast.show({ icon: 'fail', content: '附件上传失败', position: 'center' });
+    }
+  };
+
+  const removeAttachment = (fileId: number) => {
+    updateDraft({
+      attachmentFileIds: draft.attachmentFileIds.filter((id) => id !== fileId),
+      attachments: draft.attachments.filter((attachment) => attachment.fileId !== fileId),
+    });
+  };
+
+  const openEditorAttachment = async (
+    attachment: TaskAttachment,
+    disposition: 'inline' | 'attachment'
+  ) => {
+    try {
+      if (disposition === 'attachment' && task?.id) {
+        window.open(
+          taskService.getAttachmentDownloadUrl(task.id, attachment.fileId),
+          '_blank'
+        );
+        return;
+      }
+
+      const file = attachment.file;
+      if (file?.isPublic && file.url) {
+        window.open(resolveFileAccessUrl(file.url), '_blank');
+        return;
+      }
+
+      const { url } = await createFileAccessLink(attachment.fileId, disposition);
+      window.open(resolveFileAccessUrl(url), '_blank');
+    } catch {
+      Toast.show({ icon: 'fail', content: '附件打开失败', position: 'center' });
+    }
+  };
+
+  const addCheckItem = () => {
+    updateDraft({
+      checkItems: [
+        ...draft.checkItems,
+        {
+          title: '',
+          completed: false,
+          sort: draft.checkItems.length,
+        },
+      ],
+    });
+  };
+
+  const updateCheckItem = (
+    index: number,
+    patch: Partial<{ title: string; completed: boolean }>
+  ) => {
+    updateDraft({
+      checkItems: draft.checkItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item
+      ),
+    });
+  };
+
+  const removeCheckItem = (index: number) => {
+    updateDraft({
+      checkItems: draft.checkItems.filter((_item, itemIndex) => itemIndex !== index),
+    });
+  };
+
+  const moveCheckItem = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= draft.checkItems.length) {
+      return;
+    }
+
+    const next = [...draft.checkItems];
+    const [item] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, item);
+    updateDraft({
+      checkItems: next.map((checkItem, index) => ({ ...checkItem, sort: index })),
+    });
+  };
 
   return (
     <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '18px 18px 0 0' }}>
       <div className="mobile-popup-body mobile-quick-editor">
         <div className="mobile-popup-header">
-          <strong>{task ? '编辑任务' : '新建任务'}</strong>
+          <strong>{task ? '编辑任务' : isAnniversary ? '新增纪念日' : '新建任务'}</strong>
           <Button size="mini" color="primary" loading={submitting} onClick={handleSave}>
-            保存
+            {isAnniversary ? '保存纪念日' : '保存'}
           </Button>
+        </div>
+        <div className="mobile-editor-list-shortcuts">
+          {listShortcuts.map((list) => (
+            <button
+              key={list.id}
+              type="button"
+              className={draft.listId === list.id ? 'active' : ''}
+              onClick={() => updateDraft({ listId: list.id })}
+            >
+              {list.name}
+            </button>
+          ))}
+          {hasMoreLists ? (
+            <button type="button" onClick={() => setListOpen(true)}>
+              更多
+            </button>
+          ) : null}
         </div>
         <Input
           className="mobile-editor-title-input"
           value={draft.title}
-          placeholder="准备做什么？"
+          placeholder={isAnniversary ? '纪念日名称' : '准备做什么？'}
           onChange={(title: string) => updateDraft({ title })}
         />
+        {isAnniversary ? (
+          <button
+            type="button"
+            className="mobile-editor-date-card"
+            onClick={() => setAnniversaryDateOpen(true)}
+          >
+            <span>纪念日日期</span>
+            <strong>{draft.dueAt ? dayjs(draft.dueAt).format('YYYY-MM-DD') : '请选择'}</strong>
+          </button>
+        ) : null}
         <TextArea
           className="mobile-editor-description"
           value={draft.description}
@@ -1239,30 +1689,53 @@ export function TaskEditorPopup({
         </div>
 
         <div className="mobile-editor-toolbar">
-          <button type="button" onClick={() => setScheduleOpen(true)}>
-            <CalendarOutlined />
-            <span>日期</span>
-          </button>
-          <button
-            type="button"
-            className={draft.important ? 'active danger' : ''}
-            onClick={() => updateDraft({ important: !draft.important })}
-          >
-            <FlagOutlined />
-            <span>重要</span>
-          </button>
-          <button
-            type="button"
-            className={draft.urgent ? 'active warning' : ''}
-            onClick={() => updateDraft({ urgent: !draft.urgent })}
-          >
-            <ExclamationCircleOutlined />
-            <span>紧急</span>
-          </button>
+          {isAnniversary ? null : (
+            <button type="button" onClick={() => setScheduleOpen(true)}>
+              <CalendarOutlined />
+              <span>日期</span>
+            </button>
+          )}
+          {isAnniversary ? null : (
+            <>
+              <button
+                type="button"
+                className={draft.important ? 'active danger' : ''}
+                onClick={() => updateDraft({ important: !draft.important })}
+              >
+                <FlagOutlined />
+                <span>重要</span>
+              </button>
+              <button
+                type="button"
+                className={draft.urgent ? 'active warning' : ''}
+                onClick={() => updateDraft({ urgent: !draft.urgent })}
+              >
+                <ExclamationCircleOutlined />
+                <span>紧急</span>
+              </button>
+            </>
+          )}
           <button type="button" onClick={() => setTagsOpen(true)}>
             <TagsOutlined />
             <span>标签</span>
           </button>
+          {!isAnniversary ? (
+            <button type="button" onClick={addCheckItem}>
+              <CheckSquareOutlined />
+              <span>检查项</span>
+            </button>
+          ) : null}
+          <label className="mobile-editor-upload-button">
+            <UploadOutlined />
+            <span>附件</span>
+            <input
+              type="file"
+              onChange={(event) => {
+                void handleAttachmentUpload(event.target.files?.[0]);
+                event.currentTarget.value = '';
+              }}
+            />
+          </label>
           <button type="button" onClick={() => setListOpen(true)}>
             <FolderOpenOutlined />
             <span>清单</span>
@@ -1276,6 +1749,77 @@ export function TaskEditorPopup({
             <span>更多</span>
           </button>
         </div>
+        {draft.checkItems.length ? (
+          <div className="mobile-editor-section">
+            <strong>检查清单</strong>
+            {draft.checkItems.map((item, index) => (
+              <div key={index} className="mobile-editor-check-item">
+                <Checkbox
+                  checked={item.completed}
+                  onChange={(completed) => updateCheckItem(index, { completed })}
+                />
+                <Input
+                  value={item.title}
+                  placeholder="检查项"
+                  onChange={(title) => updateCheckItem(index, { title })}
+                />
+                <div className="mobile-editor-check-actions">
+                  <Button
+                    size="mini"
+                    fill="none"
+                    disabled={index === 0}
+                    onClick={() => moveCheckItem(index, index - 1)}
+                  >
+                    上移
+                  </Button>
+                  <Button
+                    size="mini"
+                    fill="none"
+                    disabled={index === draft.checkItems.length - 1}
+                    onClick={() => moveCheckItem(index, index + 1)}
+                  >
+                    下移
+                  </Button>
+                </div>
+                <Button size="mini" fill="none" onClick={() => removeCheckItem(index)}>
+                  删除
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {draft.attachments.length ? (
+          <div className="mobile-editor-section">
+            <strong>附件</strong>
+            {draft.attachments.map((attachment) => (
+              <div key={attachment.fileId} className="mobile-editor-attachment-row">
+                <PaperClipOutlined />
+                <span>{attachment.file?.originalName || `文件 #${attachment.fileId}`}</span>
+                <div className="mobile-editor-attachment-actions">
+                  {isPreviewableAttachment(attachment) ? (
+                    <Button
+                      size="mini"
+                      fill="none"
+                      onClick={() => void openEditorAttachment(attachment, 'inline')}
+                    >
+                      预览
+                    </Button>
+                  ) : null}
+                  <Button
+                    size="mini"
+                    fill="none"
+                    onClick={() => void openEditorAttachment(attachment, 'attachment')}
+                  >
+                    下载
+                  </Button>
+                  <Button size="mini" fill="none" onClick={() => removeAttachment(attachment.fileId)}>
+                    删除
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <ScheduleSheet
@@ -1283,6 +1827,13 @@ export function TaskEditorPopup({
         draft={draft}
         onClose={() => setScheduleOpen(false)}
         onChange={updateDraft}
+      />
+      <DatePicker
+        visible={anniversaryDateOpen}
+        value={draft.dueAt ?? new Date()}
+        precision="day"
+        onClose={() => setAnniversaryDateOpen(false)}
+        onConfirm={(dueAt: Date) => updateDraft({ dueAt })}
       />
       <FieldSheet title="选择清单" open={listOpen} onClose={() => setListOpen(false)}>
         <Selector
@@ -1306,7 +1857,11 @@ export function TaskEditorPopup({
         />
       </FieldSheet>
       <FieldSheet title="标签" open={tagsOpen} onClose={() => setTagsOpen(false)}>
-        <Input value={draft.tags} placeholder="用逗号分隔" onChange={(tags) => updateDraft({ tags })} />
+        <Input
+          value={draft.tags}
+          placeholder="用逗号分隔"
+          onChange={(tags) => updateDraft({ tags })}
+        />
       </FieldSheet>
       <FieldSheet title="更多" open={moreOpen} onClose={() => setMoreOpen(false)}>
         <div className="mobile-field mobile-field-card">
@@ -1315,20 +1870,7 @@ export function TaskEditorPopup({
             options={taskTypeOptions}
             value={[draft.taskType]}
             onChange={(items: Array<string | number>) =>
-              updateDraft({ taskType: (items[0] as TaskType) || 'task' })
-            }
-          />
-        </div>
-        <div className="mobile-field mobile-field-card">
-          <label>提醒渠道</label>
-          <Selector
-            multiple
-            options={reminderChannelOptions}
-            value={draft.reminderChannels}
-            onChange={(items: Array<string | number>) =>
-              updateDraft({
-                reminderChannels: ensureInternalChannel(items as TaskReminderChannel[]),
-              })
+              selectTaskType((items[0] as TaskType) || 'task')
             }
           />
         </div>
@@ -1350,6 +1892,7 @@ function ScheduleSheet({
 }) {
   const [duePickerOpen, setDuePickerOpen] = useState(false);
   const [remindPickerOpen, setRemindPickerOpen] = useState(false);
+  const isAnniversary = draft.taskType === 'anniversary';
 
   const setDuePreset = (preset: 'today' | 'tomorrow' | 'next-week') => {
     const base =
@@ -1379,7 +1922,7 @@ function ScheduleSheet({
           </Button>
         </div>
         <div className="mobile-schedule-card">
-          <label>截止</label>
+          <label>{isAnniversary ? '纪念日日期' : '截止'}</label>
           <div className="mobile-editor-chip-grid">
             <Button size="small" fill="outline" onClick={() => setDuePreset('today')}>
               今天
@@ -1404,32 +1947,42 @@ function ScheduleSheet({
           </div>
         </div>
 
-        <div className="mobile-schedule-card">
-          <label>提醒</label>
-          <div className="mobile-editor-chip-grid">
-            {reminderOffsetOptions.map((option) => (
-              <Button
-                key={option.label}
-                size="small"
-                fill="outline"
-                onClick={() => setReminderOffset(option)}
-              >
-                {option.label}
+        {isAnniversary ? null : (
+          <div className="mobile-schedule-card">
+            <label>提醒</label>
+            <div className="mobile-editor-chip-grid">
+              {reminderOffsetOptions.map((option) => (
+                <Button
+                  key={option.label}
+                  size="small"
+                  fill="outline"
+                  onClick={() => setReminderOffset(option)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+              <Button size="small" fill="outline" onClick={() => setRemindPickerOpen(true)}>
+                自定义
               </Button>
-            ))}
-            <Button size="small" fill="outline" onClick={() => setRemindPickerOpen(true)}>
-              自定义
-            </Button>
+            </div>
+            <div className="mobile-schedule-value">
+              {draft.remindAt ? formatFullDateTime(draft.remindAt) : '未提醒'}
+              {draft.remindAt ? (
+                <Button size="mini" fill="none" onClick={() => onChange({ remindAt: undefined })}>
+                  清除
+                </Button>
+              ) : null}
+            </div>
+            <div className="mobile-schedule-value">
+              <span>持续提醒</span>
+              <Switch
+                checked={draft.continuousReminderEnabled}
+                onChange={(continuousReminderEnabled) => onChange({ continuousReminderEnabled })}
+              />
+            </div>
+            <div className="mobile-muted">每 30 分钟，直到完成</div>
           </div>
-          <div className="mobile-schedule-value">
-            {draft.remindAt ? formatFullDateTime(draft.remindAt) : '未提醒'}
-            {draft.remindAt ? (
-              <Button size="mini" fill="none" onClick={() => onChange({ remindAt: undefined })}>
-                清除
-              </Button>
-            ) : null}
-          </div>
-        </div>
+        )}
 
         <div className="mobile-schedule-card">
           <label>重复</label>

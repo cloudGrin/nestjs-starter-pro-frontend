@@ -10,8 +10,6 @@ export type InsurancePolicyType =
   | 'travel'
   | 'other';
 
-export type InsuranceReminderChannel = 'internal' | 'bark' | 'feishu';
-
 export type InsurancePolicySortField =
   | 'createdAt'
   | 'updatedAt'
@@ -71,8 +69,6 @@ export interface InsurancePolicy {
     realName?: string | null;
   };
   remark?: string | null;
-  reminderChannels?: InsuranceReminderChannel[] | null;
-  sendExternalReminder: boolean;
   attachments?: InsurancePolicyAttachment[];
   reminders?: InsurancePolicyReminder[];
   createdAt: string;
@@ -120,7 +116,6 @@ export interface CreateInsurancePolicyDto {
   paymentAmount?: number | null;
   ownerUserId?: number;
   remark?: string | null;
-  reminderChannels?: InsuranceReminderChannel[];
   attachmentFileIds?: number[];
 }
 

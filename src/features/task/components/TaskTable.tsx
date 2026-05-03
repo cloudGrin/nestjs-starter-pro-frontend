@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import { Space, Table, Tag, Tooltip } from 'antd';
 import {
   CheckCircleOutlined,
+  ClockCircleOutlined,
   DeleteOutlined,
   EditOutlined,
   RollbackOutlined,
@@ -18,6 +19,7 @@ interface TaskTableProps {
   onEdit: (task: Task) => void;
   onComplete: (task: Task) => void;
   onReopen: (task: Task) => void;
+  onSnooze?: (task: Task) => void;
   onDelete: (task: Task) => void;
   onTableChange: (pagination: TablePaginationConfig, sorter: SorterResult<Task>) => void;
   actionPending?: TaskActionPending | null;
@@ -61,6 +63,7 @@ export function TaskTable({
   onEdit,
   onComplete,
   onReopen,
+  onSnooze,
   onDelete,
   onTableChange,
   actionPending,
@@ -80,6 +83,15 @@ export function TaskTable({
           <span className="text-xs text-slate-500">
             {record.list?.name || `清单 #${record.listId}`}
           </span>
+          {record.checkItems?.length || record.attachments?.length ? (
+            <span className="text-xs text-slate-500">
+              {record.checkItems?.length
+                ? `检查项 ${record.checkItems.filter((item) => item.completed).length}/${record.checkItems.length}`
+                : null}
+              {record.checkItems?.length && record.attachments?.length ? ' · ' : null}
+              {record.attachments?.length ? `附件 ${record.attachments.length}` : null}
+            </span>
+          ) : null}
         </Space>
       ),
     },
@@ -170,6 +182,18 @@ export function TaskTable({
                 permission: 'task:update',
                 disabled: rowPending,
               },
+              ...(onSnooze && record.status !== 'completed' && record.remindAt
+                ? [
+                    {
+                      label: '稍后',
+                      icon: <ClockCircleOutlined />,
+                      onClick: () => onSnooze(record),
+                      permission: 'task:update',
+                      loading: isActionPending(actionPending, record, 'snooze'),
+                      disabled: rowPending,
+                    },
+                  ]
+                : []),
               {
                 label: '删除',
                 icon: <DeleteOutlined />,

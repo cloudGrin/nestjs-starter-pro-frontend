@@ -1,6 +1,7 @@
 import { Button, Space } from 'antd';
 import {
   CheckCircleOutlined,
+  ClockCircleOutlined,
   DeleteOutlined,
   EditOutlined,
   RollbackOutlined,
@@ -13,6 +14,7 @@ interface TaskQuickActionsProps {
   onEdit: (task: Task) => void;
   onComplete: (task: Task) => void;
   onReopen: (task: Task) => void;
+  onSnooze?: (task: Task) => void;
   onDelete: (task: Task) => void;
   actionPending?: TaskActionPending | null;
 }
@@ -30,6 +32,7 @@ export function TaskQuickActions({
   onEdit,
   onComplete,
   onReopen,
+  onSnooze,
   onDelete,
   actionPending,
 }: TaskQuickActionsProps) {
@@ -64,6 +67,20 @@ export function TaskQuickActions({
           </Button>
         </PermissionGuard>
       )}
+      {onSnooze && task.status !== 'completed' && task.remindAt ? (
+        <PermissionGuard permissions={['task:update']}>
+          <Button
+            size="small"
+            type="text"
+            icon={<ClockCircleOutlined />}
+            loading={isActionPending(actionPending, task, 'snooze')}
+            disabled={rowPending}
+            onClick={() => onSnooze(task)}
+          >
+            稍后
+          </Button>
+        </PermissionGuard>
+      ) : null}
       <PermissionGuard permissions={['task:update']}>
         <Button
           size="small"

@@ -16,7 +16,8 @@ const baseTask: Task = {
   important: false,
   urgent: false,
   recurrenceType: 'none',
-  sendExternalReminder: false,
+  continuousReminderEnabled: true,
+  continuousReminderIntervalMinutes: 30,
   createdAt: '2026-04-01T00:00:00.000Z',
   updatedAt: '2026-04-01T00:00:00.000Z',
 };
