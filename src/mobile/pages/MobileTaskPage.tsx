@@ -66,6 +66,8 @@ import type {
   TaskCheckItem,
   TaskList,
   TaskRecurrenceType,
+  TaskSortField,
+  TaskSortOrder,
   TaskStatus,
   TaskType,
   TaskView,
@@ -82,6 +84,7 @@ import {
   pickDefaultTaskListId,
   saveLastTaskListId,
 } from '@/features/task/utils/taskListPreference';
+import { usePermission } from '@/shared/hooks/usePermission';
 import { formatTaskRecurrence, mobileTaskRecurrenceLabels } from '../utils/task';
 import { MobileModuleHeader } from '../components/MobileModuleHeader';
 
@@ -112,6 +115,14 @@ interface TaskDraft {
 }
 
 type MatrixQuadrant = 'important-urgent' | 'important' | 'urgent' | 'normal';
+type MobileDatePreset = 'all' | 'today' | 'next7' | 'month' | 'custom';
+type MobileSortValue = 'default' | 'dueAtAsc' | 'dueAtDesc' | 'createdAtDesc';
+
+interface MobileDateFilter {
+  preset: MobileDatePreset;
+  customStart?: Date;
+  customEnd?: Date;
+}
 
 const taskViews: MobileTaskView[] = ['list', 'today', 'calendar', 'matrix', 'anniversary'];
 
@@ -158,6 +169,28 @@ const statusOptions: Array<{ label: string; value: 'all' | TaskStatus }> = [
   { label: '待办', value: 'pending' },
   { label: '完成', value: 'completed' },
 ];
+
+const datePresetOptions: Array<{ label: string; value: MobileDatePreset }> = [
+  { label: '全部日期', value: 'all' },
+  { label: '今天', value: 'today' },
+  { label: '未来 7 天', value: 'next7' },
+  { label: '本月', value: 'month' },
+  { label: '自定义', value: 'custom' },
+];
+
+const sortOptions: Array<{ label: string; value: MobileSortValue }> = [
+  { label: '默认排序', value: 'default' },
+  { label: '截止最近', value: 'dueAtAsc' },
+  { label: '截止最远', value: 'dueAtDesc' },
+  { label: '创建最新', value: 'createdAtDesc' },
+];
+
+const sortParams: Record<MobileSortValue, { sort?: TaskSortField; order?: TaskSortOrder }> = {
+  default: {},
+  dueAtAsc: { sort: 'dueAt', order: 'ASC' },
+  dueAtDesc: { sort: 'dueAt', order: 'DESC' },
+  createdAtDesc: { sort: 'createdAt', order: 'DESC' },
+};
 
 const quadrantOptions: Array<{
   label: string;
@@ -229,6 +262,38 @@ function getCalendarEmptyText(selectedDay: string) {
   return dayjs(selectedDay).isSame(dayjs(), 'day') ? '今天没有任务' : '当天没有任务';
 }
 
+function getDateFilterRange(filter: MobileDateFilter) {
+  if (filter.preset === 'today') {
+    return {
+      startDate: dayjs().startOf('day').toISOString(),
+      endDate: dayjs().endOf('day').toISOString(),
+    };
+  }
+
+  if (filter.preset === 'next7') {
+    return {
+      startDate: dayjs().startOf('day').toISOString(),
+      endDate: dayjs().add(7, 'day').endOf('day').toISOString(),
+    };
+  }
+
+  if (filter.preset === 'month') {
+    return {
+      startDate: dayjs().startOf('month').toISOString(),
+      endDate: dayjs().endOf('month').toISOString(),
+    };
+  }
+
+  if (filter.preset === 'custom' && filter.customStart && filter.customEnd) {
+    return {
+      startDate: dayjs(filter.customStart).startOf('day').toISOString(),
+      endDate: dayjs(filter.customEnd).endOf('day').toISOString(),
+    };
+  }
+
+  return {};
+}
+
 function buildQueryParams(
   view: MobileTaskView,
   filters: {
@@ -237,23 +302,31 @@ function buildQueryParams(
     assigneeId?: number;
     status?: TaskStatus;
     tags?: string[];
+    page: number;
+    sortValue: MobileSortValue;
+    dateFilter: MobileDateFilter;
   },
   month: dayjs.Dayjs
 ): QueryTasksParams {
+  const sort = sortParams[filters.sortValue];
   const params: QueryTasksParams = {
     view,
-    page: 1,
+    page: filters.page,
     limit: highVolumeViews.has(view) ? 100 : 50,
     keyword: filters.keyword || undefined,
     listId: filters.listId,
     assigneeId: filters.assigneeId,
     status: filters.status,
     tags: filters.tags?.length ? filters.tags : undefined,
+    sort: sort.sort,
+    order: sort.order,
   };
 
   if (view === 'calendar') {
     params.startDate = month.startOf('month').toISOString();
     params.endDate = month.endOf('month').toISOString();
+  } else if (view === 'list') {
+    Object.assign(params, getDateFilterRange(filters.dateFilter));
   }
 
   return params;
@@ -375,22 +448,62 @@ function getTaskQuadrant(task: Task): MatrixQuadrant {
   return 'normal';
 }
 
+function getQuadrantTarget(value: MatrixQuadrant) {
+  return {
+    important: value === 'important-urgent' || value === 'important',
+    urgent: value === 'important-urgent' || value === 'urgent',
+  };
+}
+
+function isSameTaskList(left: Task[], right: Task[]) {
+  return (
+    left.length === right.length &&
+    left.every((task, index) => {
+      const other = right[index];
+      return other && task.id === other.id && task.updatedAt === other.updatedAt;
+    })
+  );
+}
+
+function flattenPagedTasks(pagedTasks: Record<number, Task[]>, page: number) {
+  const tasksById = new Map<number, Task>();
+
+  for (let pageIndex = 1; pageIndex <= page; pageIndex += 1) {
+    (pagedTasks[pageIndex] ?? []).forEach((task) => {
+      tasksById.set(task.id, task);
+    });
+  }
+
+  return Array.from(tasksById.values());
+}
+
 export function MobileTaskPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { hasPermission } = usePermission();
   const view = parseTaskView(searchParams.get('view'));
   const selectedTaskId = parseTaskId(searchParams.get('taskId'));
   const selectedDay = searchParams.get('date') || dayjs().format('YYYY-MM-DD');
+  const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState('');
   const [listId, setListId] = useState<number>();
   const [assigneeId, setAssigneeId] = useState<number>();
   const [status, setStatus] = useState<TaskStatus>();
   const [tagText, setTagText] = useState('');
+  const [sortValue, setSortValue] = useState<MobileSortValue>('default');
+  const [dateFilter, setDateFilter] = useState<MobileDateFilter>({ preset: 'all' });
   const [calendarMonth, setCalendarMonth] = useState(() => dayjs(selectedDay).startOf('month'));
   const [editorOpen, setEditorOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [listManageOpen, setListManageOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [optimisticStatuses, setOptimisticStatuses] = useState<Record<number, TaskStatus>>({});
+  const [pagedTasks, setPagedTasks] = useState<Record<number, Task[]>>({});
+  const [matrixMoveTask, setMatrixMoveTask] = useState<Task | null>(null);
+  const canCreate = hasPermission(['task:create']);
+  const canUpdate = hasPermission(['task:update']);
+  const canDelete = hasPermission(['task:delete']);
+  const canComplete = hasPermission(['task:complete']);
+  const canManageLists = hasPermission(['task-list:manage']);
 
   const taskListsQuery = useTaskLists();
   const assigneesQuery = useTaskAssignees();
@@ -407,10 +520,24 @@ export function MobileTaskPage() {
         assigneeId,
         status,
         tags,
+        page,
+        sortValue,
+        dateFilter,
       },
       calendarMonth
     );
-  }, [assigneeId, calendarMonth, keyword, listId, status, tagText, view]);
+  }, [
+    assigneeId,
+    calendarMonth,
+    dateFilter,
+    keyword,
+    listId,
+    page,
+    sortValue,
+    status,
+    tagText,
+    view,
+  ]);
   const tasksQuery = useTasks(queryParams);
   const selectedTaskQuery = useTask(selectedTaskId ?? null);
   const createTask = useCreateTask();
@@ -426,7 +553,26 @@ export function MobileTaskPage() {
         ? reopenTask.variables
         : undefined
   ) as number | undefined;
-  const rawTasks = useMemo(() => tasksQuery.data?.items ?? [], [tasksQuery.data?.items]);
+  const aggregationKey = useMemo(
+    () =>
+      [
+        view,
+        keyword.trim(),
+        listId,
+        assigneeId,
+        status,
+        tagText,
+        sortValue,
+        dateFilter.preset,
+        dateFilter.customStart?.toISOString(),
+        dateFilter.customEnd?.toISOString(),
+        calendarMonth.format('YYYY-MM'),
+      ].join('|'),
+    [assigneeId, calendarMonth, dateFilter, keyword, listId, sortValue, status, tagText, view]
+  );
+  const pageTasks = useMemo(() => tasksQuery.data?.items ?? [], [tasksQuery.data?.items]);
+  const aggregatedTasks = useMemo(() => flattenPagedTasks(pagedTasks, page), [page, pagedTasks]);
+  const rawTasks = page <= 1 ? pageTasks : aggregatedTasks;
   const tasks = useMemo(
     () =>
       rawTasks.map((task) => {
@@ -435,10 +581,36 @@ export function MobileTaskPage() {
       }),
     [optimisticStatuses, rawTasks]
   );
+  const canLoadMore = (tasksQuery.data?.total ?? 0) > rawTasks.length;
   const defaultListId = pickDefaultTaskListId(activeLists, listId);
   const selectedTask =
     tasks.find((task) => task.id === selectedTaskId) ?? selectedTaskQuery.data ?? null;
   const defaultTaskType: TaskType = view === 'anniversary' ? 'anniversary' : 'task';
+
+  useEffect(() => {
+    setPagedTasks({});
+    setPage(1);
+  }, [aggregationKey]);
+
+  useEffect(() => {
+    setPagedTasks((previous) => {
+      const hasStalePages = Object.keys(previous).some((pageKey) => Number(pageKey) > page);
+      const previousPageTasks = previous[page] ?? [];
+      if (!hasStalePages && isSameTaskList(previousPageTasks, pageTasks)) {
+        return previous;
+      }
+
+      const next: Record<number, Task[]> = {};
+      Object.entries(previous).forEach(([pageKey, tasks]) => {
+        const pageNumber = Number(pageKey);
+        if (pageNumber <= page) {
+          next[pageNumber] = tasks;
+        }
+      });
+      next[page] = pageTasks;
+      return next;
+    });
+  }, [page, pageTasks]);
 
   useEffect(() => {
     setOptimisticStatuses((previous) => {
@@ -474,6 +646,7 @@ export function MobileTaskPage() {
   };
 
   const setTaskView = (nextView: MobileTaskView) => {
+    setPage(1);
     if (nextView === 'matrix') {
       setStatus(undefined);
     }
@@ -487,6 +660,7 @@ export function MobileTaskPage() {
   };
 
   const setCalendarDay = (day: string) => {
+    setPage(1);
     updateQuery((next) => {
       next.set('view', 'calendar');
       next.set('date', day);
@@ -498,8 +672,14 @@ export function MobileTaskPage() {
     const normalized = nextMonth.startOf('month');
     const currentDate = dayjs(selectedDay).date();
     const nextDay = normalized.date(Math.min(currentDate, normalized.daysInMonth()));
+    setPage(1);
     setCalendarMonth(normalized);
     setCalendarDay(nextDay.format('YYYY-MM-DD'));
+  };
+
+  const changeKeyword = (value: string) => {
+    setKeyword(value);
+    setPage(1);
   };
 
   const openTaskDetail = (task: Task) => {
@@ -522,6 +702,26 @@ export function MobileTaskPage() {
   const openEdit = (task: Task) => {
     setEditingTask(task);
     setEditorOpen(true);
+  };
+
+  const moveTaskToQuadrant = (task: Task, target: Pick<UpdateTaskDto, 'important' | 'urgent'>) => {
+    if (task.important === target.important && task.urgent === target.urgent) {
+      setMatrixMoveTask(null);
+      return;
+    }
+
+    updateTask.mutate(
+      {
+        id: task.id,
+        data: target,
+      },
+      {
+        onSuccess: () => {
+          setMatrixMoveTask(null);
+          setPage(1);
+        },
+      }
+    );
   };
 
   const handleSubmit = (payload: CreateTaskDto | UpdateTaskDto) => {
@@ -594,15 +794,17 @@ export function MobileTaskPage() {
             <Button fill="none" onClick={() => setFilterOpen(true)}>
               <FilterOutlined />
             </Button>
-            <Button fill="none" onClick={() => setListManageOpen(true)}>
-              <SettingOutlined />
-            </Button>
+            {canManageLists ? (
+              <Button fill="none" onClick={() => setListManageOpen(true)}>
+                <SettingOutlined />
+              </Button>
+            ) : null}
           </>
         }
       />
 
       <div className="mobile-task-search">
-        <SearchBar placeholder="搜索任务" value={keyword} onChange={setKeyword} />
+        <SearchBar placeholder="搜索任务" value={keyword} onChange={changeKeyword} />
       </div>
 
       <div className="mobile-task-content">
@@ -622,6 +824,9 @@ export function MobileTaskPage() {
               onToggleComplete={toggleComplete}
               togglePendingTaskId={togglePendingTaskId}
               onDelete={(task) => deleteTask.mutate(task.id)}
+              canUpdate={canUpdate}
+              canDelete={canDelete}
+              canComplete={canComplete}
             />
           ) : view === 'matrix' ? (
             <MatrixTaskView
@@ -634,6 +839,9 @@ export function MobileTaskPage() {
               onToggleComplete={toggleComplete}
               togglePendingTaskId={togglePendingTaskId}
               onDelete={(task) => deleteTask.mutate(task.id)}
+              canUpdate={canUpdate}
+              canDelete={canDelete}
+              canComplete={canComplete}
             />
           ) : (
             <TaskListView
@@ -648,14 +856,31 @@ export function MobileTaskPage() {
               onToggleComplete={toggleComplete}
               togglePendingTaskId={togglePendingTaskId}
               onDelete={(task) => deleteTask.mutate(task.id)}
+              canUpdate={canUpdate}
+              canDelete={canDelete}
+              canComplete={canComplete}
             />
           )}
         </PullToRefresh>
+        {canLoadMore ? (
+          <div className="mobile-load-more">
+            <Button
+              size="small"
+              fill="outline"
+              loading={tasksQuery.isFetching}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              加载更多
+            </Button>
+          </div>
+        ) : null}
       </div>
 
-      <Button className="mobile-fab mobile-task-fab" color="primary" onClick={openCreate}>
-        <PlusOutlined />
-      </Button>
+      {canCreate && activeLists.length > 0 ? (
+        <Button className="mobile-fab mobile-task-fab" color="primary" onClick={openCreate}>
+          <PlusOutlined />
+        </Button>
+      ) : null}
 
       <TaskDock view={view} onChange={setTaskView} />
 
@@ -689,6 +914,10 @@ export function MobileTaskPage() {
             onSuccess: closeTaskDetail,
           })
         }
+        onMoveQuadrant={(task) => setMatrixMoveTask(task)}
+        canUpdate={canUpdate}
+        canDelete={canDelete}
+        canComplete={canComplete}
       />
 
       <TaskEditorPopup
@@ -714,20 +943,38 @@ export function MobileTaskPage() {
         assigneeId={assigneeId}
         status={status}
         tagText={tagText}
+        sortValue={sortValue}
+        dateFilter={dateFilter}
+        view={view}
         onClose={() => setFilterOpen(false)}
         onApply={(next) => {
+          setPage(1);
           setListId(next.listId);
           setAssigneeId(next.assigneeId);
           setStatus(next.status);
           setTagText(next.tagText);
+          setSortValue(next.sortValue);
+          setDateFilter(next.dateFilter);
           setFilterOpen(false);
         }}
       />
 
-      <TaskListManagePopup
-        open={listManageOpen}
-        lists={taskLists}
-        onClose={() => setListManageOpen(false)}
+      {canManageLists ? (
+        <TaskListManagePopup
+          open={listManageOpen}
+          lists={taskLists}
+          onClose={() => setListManageOpen(false)}
+        />
+      ) : null}
+
+      <TaskQuadrantSheet
+        open={Boolean(matrixMoveTask)}
+        task={matrixMoveTask}
+        onClose={() => setMatrixMoveTask(null)}
+        onSelect={(target) => {
+          if (!matrixMoveTask) return;
+          moveTaskToQuadrant(matrixMoveTask, target);
+        }}
       />
     </div>
   );
@@ -769,6 +1016,9 @@ function TaskListView({
   onToggleComplete,
   togglePendingTaskId,
   onDelete,
+  canUpdate,
+  canDelete,
+  canComplete,
 }: {
   tasks: Task[];
   lists: TaskList[];
@@ -781,6 +1031,9 @@ function TaskListView({
   onToggleComplete: (task: Task) => void;
   togglePendingTaskId?: number;
   onDelete: (task: Task) => void;
+  canUpdate: boolean;
+  canDelete: boolean;
+  canComplete: boolean;
 }) {
   const grouped = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -814,10 +1067,11 @@ function TaskListView({
                 lists={lists}
                 users={users}
                 onOpen={onOpen}
-                onEdit={onEdit}
+                onEdit={canUpdate ? onEdit : undefined}
                 onToggleComplete={onToggleComplete}
                 togglePending={togglePendingTaskId === task.id}
-                onDelete={onDelete}
+                onDelete={canDelete ? onDelete : undefined}
+                canToggleComplete={task.status === 'completed' ? canUpdate : canComplete}
               />
             ))}
           </div>
@@ -836,6 +1090,7 @@ function TaskRow({
   onToggleComplete,
   togglePending,
   onDelete,
+  canToggleComplete = true,
   compact,
   displayDueAt,
   displayRemindAt,
@@ -848,6 +1103,7 @@ function TaskRow({
   onToggleComplete: (task: Task) => void;
   togglePending?: boolean;
   onDelete?: (task: Task) => void;
+  canToggleComplete?: boolean;
   compact?: boolean;
   displayDueAt?: string | null;
   displayRemindAt?: string | null;
@@ -861,9 +1117,13 @@ function TaskRow({
     <div className={`mobile-task-row${compact ? ' compact' : ''}`} onClick={() => onOpen(task)}>
       <Checkbox
         checked={isCompleted}
-        disabled={togglePending}
+        disabled={togglePending || !canToggleComplete}
         onClick={(event: MouseEvent) => event.stopPropagation()}
-        onChange={() => onToggleComplete(task)}
+        onChange={() => {
+          if (canToggleComplete) {
+            onToggleComplete(task);
+          }
+        }}
       />
       <div className="mobile-task-row-main">
         <div className={`mobile-task-title${isCompleted ? ' completed' : ''}`}>{task.title}</div>
@@ -884,20 +1144,20 @@ function TaskRow({
     </div>
   );
 
-  if (!onEdit || !onDelete || compact) {
+  const rightActions = [
+    ...(onEdit
+      ? [{ key: 'edit', text: '编辑', color: 'primary' as const, onClick: () => onEdit(task) }]
+      : []),
+    ...(onDelete
+      ? [{ key: 'delete', text: '删除', color: 'danger' as const, onClick: () => onDelete(task) }]
+      : []),
+  ];
+
+  if (rightActions.length === 0 || compact) {
     return content;
   }
 
-  return (
-    <SwipeAction
-      rightActions={[
-        { key: 'edit', text: '编辑', color: 'primary', onClick: () => onEdit(task) },
-        { key: 'delete', text: '删除', color: 'danger', onClick: () => onDelete(task) },
-      ]}
-    >
-      {content}
-    </SwipeAction>
-  );
+  return <SwipeAction rightActions={rightActions}>{content}</SwipeAction>;
 }
 
 function MobileEmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -926,6 +1186,9 @@ function CalendarTaskView({
   onToggleComplete,
   togglePendingTaskId,
   onDelete,
+  canUpdate,
+  canDelete,
+  canComplete,
 }: {
   month: dayjs.Dayjs;
   selectedDay: string;
@@ -940,6 +1203,9 @@ function CalendarTaskView({
   onToggleComplete: (task: Task) => void;
   togglePendingTaskId?: number;
   onDelete: (task: Task) => void;
+  canUpdate: boolean;
+  canDelete: boolean;
+  canComplete: boolean;
 }) {
   const [mode, setMode] = useState<'month' | 'list'>('month');
   const days = useMemo(() => {
@@ -973,10 +1239,18 @@ function CalendarTaskView({
         </Button>
       </div>
       <div className="mobile-calendar-mode">
-        <Button size="mini" color={mode === 'month' ? 'primary' : 'default'} onClick={() => setMode('month')}>
+        <Button
+          size="mini"
+          color={mode === 'month' ? 'primary' : 'default'}
+          onClick={() => setMode('month')}
+        >
           月历
         </Button>
-        <Button size="mini" color={mode === 'list' ? 'primary' : 'default'} onClick={() => setMode('list')}>
+        <Button
+          size="mini"
+          color={mode === 'list' ? 'primary' : 'default'}
+          onClick={() => setMode('list')}
+        >
           列表
         </Button>
       </div>
@@ -1025,10 +1299,11 @@ function CalendarTaskView({
                     lists={lists}
                     users={users}
                     onOpen={onOpen}
-                    onEdit={onEdit}
+                    onEdit={canUpdate ? onEdit : undefined}
                     onToggleComplete={onToggleComplete}
                     togglePending={togglePendingTaskId === item.task.id}
-                    onDelete={onDelete}
+                    onDelete={canDelete ? onDelete : undefined}
+                    canToggleComplete={item.task.status === 'completed' ? canUpdate : canComplete}
                     displayDueAt={item.occurrenceDueAt}
                     displayRemindAt={item.occurrenceRemindAt}
                   />
@@ -1054,10 +1329,11 @@ function CalendarTaskView({
                     lists={lists}
                     users={users}
                     onOpen={onOpen}
-                    onEdit={onEdit}
+                    onEdit={canUpdate ? onEdit : undefined}
                     onToggleComplete={onToggleComplete}
                     togglePending={togglePendingTaskId === item.task.id}
-                    onDelete={onDelete}
+                    onDelete={canDelete ? onDelete : undefined}
+                    canToggleComplete={item.task.status === 'completed' ? canUpdate : canComplete}
                     displayDueAt={item.occurrenceDueAt}
                     displayRemindAt={item.occurrenceRemindAt}
                   />
@@ -1081,6 +1357,9 @@ function MatrixTaskView({
   onToggleComplete,
   togglePendingTaskId,
   onDelete,
+  canUpdate,
+  canDelete,
+  canComplete,
 }: {
   tasks: Task[];
   lists: TaskList[];
@@ -1091,6 +1370,9 @@ function MatrixTaskView({
   onToggleComplete: (task: Task) => void;
   togglePendingTaskId?: number;
   onDelete: (task: Task) => void;
+  canUpdate: boolean;
+  canDelete: boolean;
+  canComplete: boolean;
 }) {
   const tasksByQuadrant = useMemo(() => {
     const map = new Map<MatrixQuadrant, Task[]>();
@@ -1128,10 +1410,11 @@ function MatrixTaskView({
                     lists={lists}
                     users={users}
                     onOpen={onOpen}
-                    onEdit={onEdit}
+                    onEdit={canUpdate ? onEdit : undefined}
                     onToggleComplete={onToggleComplete}
                     togglePending={togglePendingTaskId === task.id}
-                    onDelete={onDelete}
+                    onDelete={canDelete ? onDelete : undefined}
+                    canToggleComplete={task.status === 'completed' ? canUpdate : canComplete}
                   />
                 ))}
               </div>
@@ -1157,6 +1440,10 @@ function TaskDetailSheet({
   snoozePending,
   onUpdateCheckItems,
   onDelete,
+  onMoveQuadrant,
+  canUpdate,
+  canDelete,
+  canComplete,
 }: {
   open: boolean;
   loading?: boolean;
@@ -1171,10 +1458,15 @@ function TaskDetailSheet({
   snoozePending?: boolean;
   onUpdateCheckItems: (task: Task, checkItems: TaskCheckItem[]) => void;
   onDelete: (task: Task) => void;
+  onMoveQuadrant: (task: Task) => void;
+  canUpdate: boolean;
+  canDelete: boolean;
+  canComplete: boolean;
 }) {
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const list = task ? getTaskList(task, lists) : null;
   const assignee = task ? getTaskAssignee(task, users) : null;
+  const canToggleTask = task ? (task.status === 'completed' ? canUpdate : canComplete) : false;
 
   const handleDelete = async () => {
     if (!task) return;
@@ -1197,8 +1489,12 @@ function TaskDetailSheet({
             <div className="mobile-task-detail-title-row">
               <Checkbox
                 checked={task.status === 'completed'}
-                disabled={togglePendingTaskId === task.id}
-                onChange={() => onToggleComplete(task)}
+                disabled={togglePendingTaskId === task.id || !canToggleTask}
+                onChange={() => {
+                  if (canToggleTask) {
+                    onToggleComplete(task);
+                  }
+                }}
               />
               <h2 className={task.status === 'completed' ? 'completed' : ''}>{task.title}</h2>
             </div>
@@ -1226,15 +1522,15 @@ function TaskDetailSheet({
                   <Checkbox
                     key={item.id ?? index}
                     checked={item.completed}
+                    disabled={!canUpdate}
                     onChange={(checked) => {
-                      const next = (task.checkItems ?? []).map((current, currentIndex) =>
-                        ({
-                          id: current.id,
-                          title: current.title,
-                          completed: currentIndex === index ? checked : current.completed,
-                          sort: current.sort ?? currentIndex,
-                        })
-                      );
+                      if (!canUpdate) return;
+                      const next = (task.checkItems ?? []).map((current, currentIndex) => ({
+                        id: current.id,
+                        title: current.title,
+                        completed: currentIndex === index ? checked : current.completed,
+                        sort: current.sort ?? currentIndex,
+                      }));
                       onUpdateCheckItems(task, next);
                     }}
                   >
@@ -1255,19 +1551,33 @@ function TaskDetailSheet({
               ))}
             </div>
             <div className="mobile-sheet-actions">
-              <Button
-                size="small"
-                color="danger"
-                fill="outline"
-                onClick={() => void handleDelete()}
-              >
-                <DeleteOutlined /> 删除
-              </Button>
-              <div>
-                <Button size="small" color="primary" fill="outline" onClick={() => onEdit(task)}>
-                  <EditOutlined /> 编辑
+              {canDelete ? (
+                <Button
+                  size="small"
+                  color="danger"
+                  fill="outline"
+                  onClick={() => void handleDelete()}
+                >
+                  <DeleteOutlined /> 删除
                 </Button>
-                {task.remindAt && task.status !== 'completed' ? (
+              ) : null}
+              <div>
+                {canUpdate ? (
+                  <Button
+                    size="small"
+                    color="primary"
+                    fill="outline"
+                    onClick={() => onMoveQuadrant(task)}
+                  >
+                    <AppstoreOutlined /> 移动象限
+                  </Button>
+                ) : null}
+                {canUpdate ? (
+                  <Button size="small" color="primary" fill="outline" onClick={() => onEdit(task)}>
+                    <EditOutlined /> 编辑
+                  </Button>
+                ) : null}
+                {canUpdate && task.remindAt && task.status !== 'completed' ? (
                   <Button
                     size="small"
                     color="primary"
@@ -1278,9 +1588,11 @@ function TaskDetailSheet({
                     <ClockCircleOutlined /> 稍后
                   </Button>
                 ) : null}
-                <Button size="small" color="success" onClick={() => onToggleComplete(task)}>
-                  {task.status === 'completed' ? '取消完成' : '完成'}
-                </Button>
+                {canToggleTask ? (
+                  <Button size="small" color="success" onClick={() => onToggleComplete(task)}>
+                    {task.status === 'completed' ? '取消完成' : '完成'}
+                  </Button>
+                ) : null}
               </div>
             </div>
             <SnoozeSheet
@@ -1307,14 +1619,11 @@ function DetailLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TaskAttachmentList({
-  task,
-  attachments,
-}: {
-  task: Task;
-  attachments: TaskAttachment[];
-}) {
-  const openAttachment = async (attachment: TaskAttachment, disposition: 'inline' | 'attachment') => {
+function TaskAttachmentList({ task, attachments }: { task: Task; attachments: TaskAttachment[] }) {
+  const openAttachment = async (
+    attachment: TaskAttachment,
+    disposition: 'inline' | 'attachment'
+  ) => {
     try {
       if (disposition === 'attachment') {
         window.open(
@@ -1389,7 +1698,7 @@ const snoozeOptions = [
   },
 ];
 
-function SnoozeSheet({
+export function SnoozeSheet({
   open,
   onClose,
   onSelect,
@@ -1435,6 +1744,46 @@ function SnoozeSheet({
           onSelect(date.toISOString());
         }}
       />
+    </Popup>
+  );
+}
+
+export function TaskQuadrantSheet({
+  open,
+  task,
+  onClose,
+  onSelect,
+}: {
+  open: boolean;
+  task: Task | null;
+  onClose: () => void;
+  onSelect: (target: Pick<UpdateTaskDto, 'important' | 'urgent'>) => void;
+}) {
+  const current = task ? getTaskQuadrant(task) : undefined;
+
+  return (
+    <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '18px 18px 0 0' }}>
+      <div className="mobile-popup-body mobile-field-sheet">
+        <div className="mobile-popup-header">
+          <strong>移动到四象限</strong>
+          <Button size="mini" fill="none" onClick={onClose}>
+            关闭
+          </Button>
+        </div>
+        <div className="mobile-editor-chip-grid">
+          {quadrantOptions.map((option) => (
+            <Button
+              key={option.value}
+              size="small"
+              color={current === option.value ? 'primary' : 'default'}
+              fill={current === option.value ? 'solid' : 'outline'}
+              onClick={() => onSelect(getQuadrantTarget(option.value))}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+      </div>
     </Popup>
   );
 }
@@ -1560,10 +1909,7 @@ export function TaskEditorPopup({
   ) => {
     try {
       if (disposition === 'attachment' && task?.id) {
-        window.open(
-          taskService.getAttachmentDownloadUrl(task.id, attachment.fileId),
-          '_blank'
-        );
+        window.open(taskService.getAttachmentDownloadUrl(task.id, attachment.fileId), '_blank');
         return;
       }
 
@@ -1812,7 +2158,11 @@ export function TaskEditorPopup({
                   >
                     下载
                   </Button>
-                  <Button size="mini" fill="none" onClick={() => removeAttachment(attachment.fileId)}>
+                  <Button
+                    size="mini"
+                    fill="none"
+                    onClick={() => removeAttachment(attachment.fileId)}
+                  >
                     删除
                   </Button>
                 </div>
@@ -2055,6 +2405,9 @@ function TaskFilterPopup({
   assigneeId,
   status,
   tagText,
+  sortValue,
+  dateFilter,
+  view,
   onClose,
   onApply,
 }: {
@@ -2065,18 +2418,27 @@ function TaskFilterPopup({
   assigneeId?: number;
   status?: TaskStatus;
   tagText: string;
+  sortValue: MobileSortValue;
+  dateFilter: MobileDateFilter;
+  view: MobileTaskView;
   onClose: () => void;
   onApply: (values: {
     listId?: number;
     assigneeId?: number;
     status?: TaskStatus;
     tagText: string;
+    sortValue: MobileSortValue;
+    dateFilter: MobileDateFilter;
   }) => void;
 }) {
   const [draftListId, setDraftListId] = useState<number | undefined>(listId);
   const [draftAssigneeId, setDraftAssigneeId] = useState<number | undefined>(assigneeId);
   const [draftStatus, setDraftStatus] = useState<TaskStatus | undefined>(status);
   const [draftTags, setDraftTags] = useState(tagText);
+  const [draftSortValue, setDraftSortValue] = useState<MobileSortValue>(sortValue);
+  const [draftDateFilter, setDraftDateFilter] = useState<MobileDateFilter>(dateFilter);
+  const [customStartOpen, setCustomStartOpen] = useState(false);
+  const [customEndOpen, setCustomEndOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -2084,14 +2446,19 @@ function TaskFilterPopup({
     setDraftAssigneeId(assigneeId);
     setDraftStatus(status);
     setDraftTags(tagText);
-  }, [assigneeId, listId, open, status, tagText]);
+    setDraftSortValue(sortValue);
+    setDraftDateFilter(dateFilter);
+  }, [assigneeId, dateFilter, listId, open, sortValue, status, tagText]);
 
   const resetFilters = () => {
     setDraftListId(undefined);
     setDraftAssigneeId(undefined);
     setDraftStatus(undefined);
     setDraftTags('');
+    setDraftSortValue('default');
+    setDraftDateFilter({ preset: 'all' });
   };
+  const showDateFilter = view === 'list';
 
   return (
     <Popup visible={open} onMaskClick={onClose} bodyStyle={{ borderRadius: '18px 18px 0 0' }}>
@@ -2142,6 +2509,45 @@ function TaskFilterPopup({
           <label>标签</label>
           <Input value={draftTags} placeholder="用逗号分隔" onChange={setDraftTags} />
         </div>
+        <div className="mobile-field mobile-field-card">
+          <label>排序</label>
+          <Selector
+            options={sortOptions}
+            value={[draftSortValue]}
+            onChange={(items: Array<string | number>) =>
+              setDraftSortValue((items[0] as MobileSortValue) || 'default')
+            }
+          />
+        </div>
+        {showDateFilter ? (
+          <div className="mobile-field mobile-field-card">
+            <label>日期</label>
+            <Selector
+              options={datePresetOptions}
+              value={[draftDateFilter.preset]}
+              onChange={(items: Array<string | number>) =>
+                setDraftDateFilter((previous) => ({
+                  ...previous,
+                  preset: (items[0] as MobileDatePreset) || 'all',
+                }))
+              }
+            />
+            {draftDateFilter.preset === 'custom' ? (
+              <div className="mobile-editor-chip-grid mt-2">
+                <Button size="small" fill="outline" onClick={() => setCustomStartOpen(true)}>
+                  {draftDateFilter.customStart
+                    ? dayjs(draftDateFilter.customStart).format('MM-DD')
+                    : '开始日期'}
+                </Button>
+                <Button size="small" fill="outline" onClick={() => setCustomEndOpen(true)}>
+                  {draftDateFilter.customEnd
+                    ? dayjs(draftDateFilter.customEnd).format('MM-DD')
+                    : '结束日期'}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div className="mobile-popup-actions">
           <Button size="small" fill="outline" onClick={resetFilters}>
             重置
@@ -2155,12 +2561,34 @@ function TaskFilterPopup({
                 assigneeId: draftAssigneeId,
                 status: draftStatus,
                 tagText: draftTags,
+                sortValue: draftSortValue,
+                dateFilter: showDateFilter ? draftDateFilter : { preset: 'all' },
               })
             }
           >
             应用
           </Button>
         </div>
+        <DatePicker
+          visible={customStartOpen}
+          value={draftDateFilter.customStart ?? new Date()}
+          precision="day"
+          onClose={() => setCustomStartOpen(false)}
+          onConfirm={(date) => {
+            setCustomStartOpen(false);
+            setDraftDateFilter((previous) => ({ ...previous, customStart: date }));
+          }}
+        />
+        <DatePicker
+          visible={customEndOpen}
+          value={draftDateFilter.customEnd ?? draftDateFilter.customStart ?? new Date()}
+          precision="day"
+          onClose={() => setCustomEndOpen(false)}
+          onConfirm={(date) => {
+            setCustomEndOpen(false);
+            setDraftDateFilter((previous) => ({ ...previous, customEnd: date }));
+          }}
+        />
       </div>
     </Popup>
   );

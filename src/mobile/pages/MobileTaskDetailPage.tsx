@@ -23,7 +23,8 @@ import type {
   UpdateTaskDto,
 } from '@/features/task/types/task.types';
 import { taskService } from '@/features/task/services/task.service';
-import { TaskEditorPopup } from './MobileTaskPage';
+import { usePermission } from '@/shared/hooks/usePermission';
+import { SnoozeSheet, TaskEditorPopup, TaskQuadrantSheet } from './MobileTaskPage';
 import { formatTaskRecurrence } from '../utils/task';
 
 function formatDateTime(value?: string | null) {
@@ -79,6 +80,9 @@ export function MobileTaskDetailPage() {
   const params = useParams();
   const taskId = Number(params.id);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [snoozeOpen, setSnoozeOpen] = useState(false);
+  const [quadrantOpen, setQuadrantOpen] = useState(false);
+  const { hasPermission } = usePermission();
   const taskQuery = useTask(Number.isInteger(taskId) ? taskId : null);
   const listsQuery = useTaskLists();
   const usersQuery = useTaskAssignees();
@@ -93,6 +97,10 @@ export function MobileTaskDetailPage() {
   const list = task ? findList(task, lists) : null;
   const assignee = task ? findAssignee(task, users) : null;
   const isCompleted = task?.status === 'completed';
+  const canUpdate = hasPermission(['task:update']);
+  const canDelete = hasPermission(['task:delete']);
+  const canComplete = hasPermission(['task:complete']);
+  const canToggleTask = task ? (task.status === 'completed' ? canUpdate : canComplete) : false;
 
   const handleSubmit = (payload: CreateTaskDto | UpdateTaskDto) => {
     if (!task) return;
@@ -109,6 +117,24 @@ export function MobileTaskDetailPage() {
     deleteTask.mutate(task.id, {
       onSuccess: () => navigate('/tasks', { replace: true }),
     });
+  };
+
+  const handleMoveQuadrant = (target: Pick<UpdateTaskDto, 'important' | 'urgent'>) => {
+    if (!task) return;
+    if (task.important === target.important && task.urgent === target.urgent) {
+      setQuadrantOpen(false);
+      return;
+    }
+
+    updateTask.mutate(
+      {
+        id: task.id,
+        data: target,
+      },
+      {
+        onSuccess: () => setQuadrantOpen(false),
+      }
+    );
   };
 
   return (
@@ -155,7 +181,9 @@ export function MobileTaskDetailPage() {
                     <Checkbox
                       key={item.id ?? index}
                       checked={item.completed}
+                      disabled={!canUpdate}
                       onChange={(completed) => {
+                        if (!canUpdate) return;
                         updateTask.mutate({
                           id: task.id,
                           data: {
@@ -215,40 +243,51 @@ export function MobileTaskDetailPage() {
       </div>
       {task ? (
         <div className="mobile-bottom-actions">
-          <Button
-            size="small"
-            color="danger"
-            fill="outline"
-            loading={deleteTask.isPending}
-            onClick={() => void handleDelete()}
-          >
-            删除
-          </Button>
-          <div className="mobile-bottom-actions-right">
+          {canDelete ? (
             <Button
               size="small"
-              color={isCompleted ? 'default' : 'success'}
-              onClick={() =>
-                isCompleted ? reopenTask.mutate(task.id) : completeTask.mutate(task.id)
-              }
+              color="danger"
+              fill="outline"
+              loading={deleteTask.isPending}
+              onClick={() => void handleDelete()}
             >
-              {isCompleted ? '重开' : '完成'}
+              删除
             </Button>
-            <Button size="small" color="primary" onClick={() => setEditorOpen(true)}>
-              编辑
-            </Button>
-            {task.remindAt && !isCompleted ? (
+          ) : null}
+          <div className="mobile-bottom-actions-right">
+            {canUpdate ? (
+              <Button
+                size="small"
+                color="primary"
+                fill="outline"
+                onClick={() => setQuadrantOpen(true)}
+              >
+                移动象限
+              </Button>
+            ) : null}
+            {canToggleTask ? (
+              <Button
+                size="small"
+                color={isCompleted ? 'default' : 'success'}
+                onClick={() =>
+                  isCompleted ? reopenTask.mutate(task.id) : completeTask.mutate(task.id)
+                }
+              >
+                {isCompleted ? '重开' : '完成'}
+              </Button>
+            ) : null}
+            {canUpdate ? (
+              <Button size="small" color="primary" onClick={() => setEditorOpen(true)}>
+                编辑
+              </Button>
+            ) : null}
+            {canUpdate && task.remindAt && !isCompleted ? (
               <Button
                 size="small"
                 color="primary"
                 fill="outline"
                 loading={snoozeTaskReminder.isPending}
-                onClick={() =>
-                  snoozeTaskReminder.mutate({
-                    id: task.id,
-                    data: { snoozeUntil: dayjs().add(30, 'minute').toISOString() },
-                  })
-                }
+                onClick={() => setSnoozeOpen(true)}
               >
                 稍后
               </Button>
@@ -265,6 +304,21 @@ export function MobileTaskDetailPage() {
         submitting={updateTask.isPending}
         onClose={() => setEditorOpen(false)}
         onSubmit={handleSubmit}
+      />
+      <SnoozeSheet
+        open={snoozeOpen}
+        onClose={() => setSnoozeOpen(false)}
+        onSelect={(snoozeUntil) => {
+          if (!task) return;
+          snoozeTaskReminder.mutate({ id: task.id, data: { snoozeUntil } });
+          setSnoozeOpen(false);
+        }}
+      />
+      <TaskQuadrantSheet
+        open={quadrantOpen}
+        task={task ?? null}
+        onClose={() => setQuadrantOpen(false)}
+        onSelect={handleMoveQuadrant}
       />
     </div>
   );

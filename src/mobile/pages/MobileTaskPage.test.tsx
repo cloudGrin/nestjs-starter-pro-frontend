@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MobileTaskPage, TaskEditorPopup } from './MobileTaskPage';
 import type { Task } from '@/features/task/types/task.types';
+import { useAuthStore } from '@/features/auth/stores/authStore';
 
 const fileServiceMocks = vi.hoisted(() => ({
   createFileAccessLink: vi.fn(),
@@ -37,6 +38,24 @@ vi.mock('@/features/task/services/task.service', () => ({
 vi.mock('@/features/task/hooks/useTasks', () => taskHooks);
 
 const mutate = vi.fn();
+const updateMutate = vi.fn();
+
+function setMobilePermissions(permissions: string[]) {
+  useAuthStore.setState({
+    token: 'token',
+    refreshToken: 'refresh-token',
+    user: {
+      id: 1,
+      username: 'tester',
+      email: 'tester@example.com',
+      status: 'active',
+      roles: [],
+      permissions,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    },
+  });
+}
 
 const baseTask: Task = {
   id: 42,
@@ -74,6 +93,14 @@ function renderPage(initialPath = '/tasks') {
 describe('MobileTaskPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setMobilePermissions([
+      'task:read',
+      'task:create',
+      'task:update',
+      'task:delete',
+      'task:complete',
+      'task-list:manage',
+    ]);
     fileServiceMocks.createFileAccessLink.mockResolvedValue({ url: '/inline-preview' });
     taskServiceMocks.getAttachmentDownloadUrl.mockReturnValue('/task-download');
     window.localStorage.removeItem('home-task-last-list-id');
@@ -90,7 +117,7 @@ describe('MobileTaskPage', () => {
     });
     taskHooks.useTask.mockReturnValue({ data: undefined, isLoading: false });
     taskHooks.useCreateTask.mockReturnValue({ mutate, isPending: false });
-    taskHooks.useUpdateTask.mockReturnValue({ mutate, isPending: false });
+    taskHooks.useUpdateTask.mockReturnValue({ mutate: updateMutate, isPending: false });
     taskHooks.useCompleteTask.mockReturnValue({ mutate, isPending: false });
     taskHooks.useReopenTask.mockReturnValue({ mutate, isPending: false });
     taskHooks.useSnoozeTaskReminder.mockReturnValue({ mutate, isPending: false });
@@ -298,5 +325,112 @@ describe('MobileTaskPage', () => {
         expect.any(Object)
       )
     );
+  });
+
+  it('loads the next mobile task page and appends it to the current view', async () => {
+    taskHooks.useTasks.mockImplementation((params) => ({
+      data: {
+        items: params.page === 2 ? [{ ...baseTask, id: 43, title: '第二页任务' }] : [baseTask],
+        total: 2,
+        page: params.page ?? 1,
+        pageSize: 1,
+      },
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    }));
+
+    renderPage('/tasks?view=today');
+
+    expect(await screen.findByText('交电费')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '加载更多' }));
+
+    await waitFor(() =>
+      expect(taskHooks.useTasks).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }))
+    );
+    expect(await screen.findByText('第二页任务')).toBeInTheDocument();
+  });
+
+  it('removes stale tasks when a loaded mobile page no longer returns them', async () => {
+    let includeSecondPageTask = true;
+    taskHooks.useTasks.mockImplementation((params) => ({
+      data: {
+        items:
+          params.page === 2
+            ? includeSecondPageTask
+              ? [{ ...baseTask, id: 43, title: '第二页任务' }]
+              : []
+            : [baseTask],
+        total: includeSecondPageTask ? 2 : 1,
+        page: params.page ?? 1,
+        pageSize: 1,
+      },
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    }));
+    const view = renderPage('/tasks?view=today');
+
+    fireEvent.click(await screen.findByRole('button', { name: '加载更多' }));
+    expect(await screen.findByText('第二页任务')).toBeInTheDocument();
+
+    includeSecondPageTask = false;
+    view.rerender(
+      <MemoryRouter initialEntries={['/tasks?view=today']}>
+        <MobileTaskPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.queryByText('第二页任务')).not.toBeInTheDocument());
+  });
+
+  it('applies mobile-friendly list date and sort filters', async () => {
+    const { container } = renderPage('/tasks?view=list');
+
+    const filterButton = container.querySelector('.mobile-task-header-actions button');
+    expect(filterButton).not.toBeNull();
+    fireEvent.click(filterButton as Element);
+    fireEvent.click(await screen.findByText('未来 7 天'));
+    fireEvent.click(screen.getByText('截止最近'));
+    fireEvent.click(screen.getByRole('button', { name: '应用' }));
+
+    await waitFor(() =>
+      expect(taskHooks.useTasks).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          view: 'list',
+          sort: 'dueAt',
+          order: 'ASC',
+          startDate: expect.any(String),
+          endDate: expect.any(String),
+        })
+      )
+    );
+  });
+
+  it('moves a mobile matrix task through the detail action sheet', async () => {
+    taskHooks.useTask.mockReturnValue({ data: baseTask, isLoading: false });
+
+    renderPage('/tasks?taskId=42');
+
+    fireEvent.click(await screen.findByRole('button', { name: /移动象限/ }));
+    fireEvent.click(screen.getByText('重要且紧急'));
+
+    expect(updateMutate).toHaveBeenCalledWith(
+      { id: 42, data: { important: true, urgent: true } },
+      expect.any(Object)
+    );
+  });
+
+  it('hides mobile task actions when the user lacks write permissions', async () => {
+    setMobilePermissions(['task:read']);
+    taskHooks.useTask.mockReturnValue({ data: baseTask, isLoading: false });
+    const { container } = renderPage('/tasks?taskId=42');
+
+    expect(container.querySelector('.mobile-task-fab')).toBeNull();
+    expect(await screen.findByText('任务详情')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /编辑/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /删除/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /移动象限/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /完成/ })).not.toBeInTheDocument();
   });
 });
