@@ -475,7 +475,7 @@ export function InsurancePage() {
         <Space direction="vertical" size={2}>
           <Button
             type="link"
-            className="h-auto p-0 font-medium"
+            className="h-auto p-0! font-medium"
             onClick={() => setDetailPolicy(record)}
           >
             {name}
