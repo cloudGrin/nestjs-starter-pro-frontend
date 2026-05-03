@@ -153,9 +153,9 @@ body {
 
 .mobile-task-day-title,
 .mobile-calendar-selected-title {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: var(--mobile-text);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -508,19 +508,19 @@ body {
 .mobile-calendar-view {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .mobile-calendar-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2px 2px 4px;
+  padding: 0 2px 2px;
 }
 
 .mobile-calendar-controls strong {
   color: var(--mobile-text);
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .mobile-calendar-weekdays,
@@ -531,25 +531,25 @@ body {
 
 .mobile-calendar-weekdays {
   color: var(--mobile-muted);
-  font-size: 12px;
+  font-size: 11px;
   text-align: center;
 }
 
 .mobile-calendar-board {
-  row-gap: 9px;
+  row-gap: 4px;
 }
 
 .mobile-calendar-date {
   position: relative;
   display: flex;
-  min-height: 48px;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
   border: 0;
   border-radius: 50%;
   background: transparent;
   color: var(--mobile-text);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -564,9 +564,9 @@ body {
 
 .mobile-calendar-date i {
   position: absolute;
-  bottom: 5px;
-  width: 5px;
-  height: 5px;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
   overflow: hidden;
   border-radius: 50%;
   background: currentColor;
@@ -574,8 +574,8 @@ body {
 }
 
 .mobile-calendar-selected-card {
-  min-height: 142px;
-  padding: 14px;
+  min-height: 124px;
+  padding: 12px;
   border: 1px solid var(--mobile-border);
   border-radius: 8px;
   background: var(--mobile-card);
@@ -1006,23 +1006,55 @@ body {
 }
 
 .mobile-editor-title-input {
-  --font-size: 22px;
-  margin-bottom: 12px;
-  font-weight: 700;
+  --font-size: 16px;
+  --placeholder-color: var(--mobile-muted);
+  box-sizing: border-box;
+  min-height: 42px;
+  margin-bottom: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 8px;
+  background: var(--mobile-card);
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 .mobile-editor-title-input .adm-input-element {
-  font-weight: 700;
+  color: var(--mobile-text);
+  font-size: 16px !important;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.mobile-editor-title-input .adm-input-element::placeholder {
+  color: var(--mobile-muted);
+  font-size: 16px;
+  font-weight: 400;
 }
 
 .mobile-editor-description {
   min-height: 72px;
   margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 8px;
+  background: var(--mobile-card);
+}
+
+.mobile-editor-description .adm-text-area-element {
+  color: var(--mobile-text);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.mobile-editor-description .adm-text-area-element::placeholder {
+  color: var(--mobile-muted);
 }
 
 .mobile-editor-summary {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   min-height: 26px;
   margin-bottom: 12px;
@@ -1440,14 +1472,14 @@ body {
 
 .adm-selector-item {
   border-radius: var(--mobile-radius);
-  border-color: var(--mobile-border);
-  background: var(--mobile-card);
+  border-color: color-mix(in srgb, var(--mobile-border) 70%, var(--mobile-primary) 30%);
+  background: color-mix(in srgb, var(--mobile-card) 88%, var(--mobile-primary) 12%);
   color: var(--mobile-text);
 }
 
 .adm-selector-item-active {
   border-color: var(--mobile-primary);
-  background: rgba(47, 111, 237, 0.1);
+  background: color-mix(in srgb, var(--mobile-card) 78%, var(--mobile-primary) 22%);
   color: var(--mobile-primary);
 }
 
@@ -1485,6 +1517,11 @@ body {
 
 .adm-tag {
   --adm-tag-border-radius: 999px;
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   padding: 3px 8px;
   border-color: color-mix(in srgb, var(--border-color) 34%, transparent) !important;
   background: color-mix(in srgb, var(--border-color) 12%, transparent) !important;
@@ -1492,6 +1529,7 @@ body {
   font-size: 11px;
   font-weight: 500;
   line-height: 1.2;
+  vertical-align: middle;
 }
 
 .adm-button-fill-outline,

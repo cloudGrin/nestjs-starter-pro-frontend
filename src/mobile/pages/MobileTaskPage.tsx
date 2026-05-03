@@ -200,6 +200,16 @@ function getViewTitle(view: MobileTaskView, month: dayjs.Dayjs) {
   return '任务';
 }
 
+function getTaskListEmptyText(view: MobileTaskView) {
+  if (view === 'today') return '今天没有任务';
+  if (view === 'anniversary') return '暂无纪念日';
+  return '暂无任务';
+}
+
+function getCalendarEmptyText(selectedDay: string) {
+  return dayjs(selectedDay).isSame(dayjs(), 'day') ? '今天没有任务' : '当天没有任务';
+}
+
 function buildQueryParams(
   view: MobileTaskView,
   filters: {
@@ -230,13 +240,21 @@ function buildQueryParams(
   return params;
 }
 
-function buildEmptyDraft(defaultListId?: number, dueAt?: Date): TaskDraft {
+function buildEmptyDraft({
+  defaultListId,
+  taskType = 'task',
+  dueAt,
+}: {
+  defaultListId?: number;
+  taskType?: TaskType;
+  dueAt?: Date;
+} = {}): TaskDraft {
   return {
     title: '',
     description: '',
     listId: defaultListId,
     assigneeId: undefined,
-    taskType: 'task',
+    taskType,
     dueAt,
     remindAt: undefined,
     important: false,
@@ -383,6 +401,7 @@ export function MobileTaskPage() {
   const defaultListId = activeLists[0]?.id;
   const selectedTask =
     tasks.find((task) => task.id === selectedTaskId) ?? selectedTaskQuery.data ?? null;
+  const defaultTaskType: TaskType = view === 'anniversary' ? 'anniversary' : 'task';
 
   useEffect(() => {
     setOptimisticStatuses((previous) => {
@@ -578,7 +597,7 @@ export function MobileTaskPage() {
               lists={taskLists}
               users={users}
               loading={tasksQuery.isLoading}
-              emptyText={view === 'anniversary' ? '暂无纪念日' : '今天没有任务'}
+              emptyText={getTaskListEmptyText(view)}
               showDayHeader={view === 'list'}
               onOpen={openTaskDetail}
               onEdit={openEdit}
@@ -622,6 +641,7 @@ export function MobileTaskPage() {
         lists={activeLists}
         users={users}
         defaultListId={defaultListId}
+        defaultTaskType={defaultTaskType}
         submitting={createTask.isPending || updateTask.isPending}
         onClose={() => {
           setEditorOpen(false);
@@ -909,7 +929,7 @@ function CalendarTaskView({
         {loading ? (
           <div className="mobile-muted">加载中...</div>
         ) : selectedTasks.length === 0 ? (
-          <MobileEmptyState title="你这一天没有任务" />
+          <MobileEmptyState title={getCalendarEmptyText(selectedDay)} />
         ) : (
           <div className="mobile-task-list-card flush">
             {selectedTasks.map((task) => (
@@ -1121,6 +1141,7 @@ export function TaskEditorPopup({
   lists,
   users,
   defaultListId,
+  defaultTaskType = 'task',
   submitting,
   onClose,
   onSubmit,
@@ -1130,11 +1151,14 @@ export function TaskEditorPopup({
   lists: TaskList[];
   users: TaskAssignee[];
   defaultListId?: number;
+  defaultTaskType?: TaskType;
   submitting?: boolean;
   onClose: () => void;
   onSubmit: (payload: CreateTaskDto | UpdateTaskDto) => void;
 }) {
-  const [draft, setDraft] = useState<TaskDraft>(() => buildEmptyDraft(defaultListId));
+  const [draft, setDraft] = useState<TaskDraft>(() =>
+    buildEmptyDraft({ defaultListId, taskType: defaultTaskType })
+  );
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [assigneeOpen, setAssigneeOpen] = useState(false);
@@ -1143,8 +1167,10 @@ export function TaskEditorPopup({
 
   useEffect(() => {
     if (!open) return;
-    setDraft(task ? draftFromTask(task) : buildEmptyDraft(defaultListId));
-  }, [defaultListId, open, task]);
+    setDraft(
+      task ? draftFromTask(task) : buildEmptyDraft({ defaultListId, taskType: defaultTaskType })
+    );
+  }, [defaultListId, defaultTaskType, open, task]);
 
   useEffect(() => {
     if (open) return;

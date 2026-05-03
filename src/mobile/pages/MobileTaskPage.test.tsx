@@ -121,4 +121,27 @@ describe('MobileTaskPage', () => {
     expect(screen.getByText('紧急不重要')).toBeInTheDocument();
     expect(screen.getByText('不重要不紧急')).toBeInTheDocument();
   });
+
+  it('creates anniversary tasks from the anniversary dock view', async () => {
+    const { container } = renderPage('/tasks?view=anniversary');
+
+    const createButton = container.querySelector('.mobile-task-fab');
+    expect(createButton).not.toBeNull();
+    fireEvent.click(createButton as Element);
+
+    fireEvent.change(await screen.findByPlaceholderText('准备做什么？'), {
+      target: { value: '结婚纪念日' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /日期/ }));
+    fireEvent.click(await screen.findByRole('button', { name: '今天' }));
+    fireEvent.click(screen.getByRole('button', { name: '完成' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await waitFor(() =>
+      expect(mutate).toHaveBeenCalledWith(
+        expect.objectContaining({ taskType: 'anniversary' }),
+        expect.any(Object)
+      )
+    );
+  });
 });
