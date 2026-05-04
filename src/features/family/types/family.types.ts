@@ -42,6 +42,7 @@ export interface FamilyPost {
   comments: FamilyPostComment[];
   likeCount: number;
   likedByMe: boolean;
+  likedUsers?: FamilyUserSummary[];
   createdAt: string;
   updatedAt: string;
 }

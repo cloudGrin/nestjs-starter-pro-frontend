@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, Empty, PullToRefresh, Selector, TextArea, Toast } from 'antd-mobile';
+import { Button, Card, Empty, PullToRefresh, TextArea, Toast } from 'antd-mobile';
 import {
+  CameraOutlined,
+  CloseCircleFilled,
   HeartFilled,
   HeartOutlined,
   MessageOutlined,
   PictureOutlined,
+  PlayCircleFilled,
   SendOutlined,
-  UploadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useSearchParams } from 'react-router-dom';
@@ -26,7 +28,6 @@ import type {
   FamilyMedia,
   FamilyMediaTarget,
   FamilyPost,
-  FamilyUploadedMedia,
   FamilyUserSummary,
 } from '@/features/family/types/family.types';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -38,6 +39,8 @@ interface DraftMediaItem {
   fileId: number;
   name: string;
   target: FamilyMediaTarget;
+  mediaType?: FamilyMedia['mediaType'];
+  previewUrl?: string;
 }
 
 function parseFamilyTab(value: string | null): FamilyTab {
@@ -48,6 +51,10 @@ function displayName(user?: FamilyUserSummary) {
   return user?.realName || user?.nickname || user?.username || '家人';
 }
 
+function avatarInitial(user?: FamilyUserSummary) {
+  return displayName(user).slice(0, 1).toUpperCase();
+}
+
 function formatTime(value: string) {
   return dayjs(value).format('MM-DD HH:mm');
 }
@@ -56,20 +63,107 @@ function isVideo(media: FamilyMedia) {
   return media.mediaType === 'video' || media.mimeType?.startsWith('video/');
 }
 
-function MediaGrid({ media }: { media: FamilyMedia[] }) {
+function getPreviewUrl(file: File) {
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+    return undefined;
+  }
+
+  try {
+    return URL.createObjectURL(file);
+  } catch {
+    return undefined;
+  }
+}
+
+function revokeDraftPreview(item: DraftMediaItem) {
+  if (item.previewUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+    URL.revokeObjectURL(item.previewUrl);
+  }
+}
+
+function FamilyAvatar({ user, small = false }: { user?: FamilyUserSummary; small?: boolean }) {
+  const name = displayName(user);
+  const className = small ? 'mobile-family-avatar small' : 'mobile-family-avatar';
+
+  if (user?.avatar) {
+    return <img className={className} src={user.avatar} alt={name} />;
+  }
+
+  return <span className={className}>{avatarInitial(user)}</span>;
+}
+
+function MediaGrid({ media, compact = false }: { media: FamilyMedia[]; compact?: boolean }) {
   if (!media?.length) {
     return null;
   }
 
+  const visibleMedia = compact ? media.slice(0, 2) : media.slice(0, 9);
+  const remainingCount = media.length - visibleMedia.length;
+  const className = [
+    'mobile-family-media-grid',
+    media.length === 1 ? 'single' : '',
+    compact ? 'compact' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className="mobile-family-media-grid">
-      {media.map((item) =>
-        isVideo(item) ? (
-          <video key={item.id} src={item.displayUrl} controls playsInline preload="metadata" />
-        ) : (
-          <img key={item.id} src={item.displayUrl} alt="家庭图片" loading="lazy" />
-        )
-      )}
+    <div className={className}>
+      {visibleMedia.map((item, index) => (
+        <div className="mobile-family-media-item" key={item.id}>
+          {isVideo(item) ? (
+            <>
+              <video src={item.displayUrl} controls playsInline preload="metadata" />
+              <span className="mobile-family-video-mark">
+                <PlayCircleFilled />
+              </span>
+            </>
+          ) : (
+            <img src={item.displayUrl} alt="家庭图片" loading="lazy" />
+          )}
+          {remainingCount > 0 && index === visibleMedia.length - 1 ? (
+            <span className="mobile-family-media-more">+{remainingCount}</span>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DraftMediaGrid({
+  items,
+  uploading,
+  onAdd,
+  onRemove,
+}: {
+  items: DraftMediaItem[];
+  uploading: boolean;
+  onAdd: () => void;
+  onRemove: (fileId: number) => void;
+}) {
+  return (
+    <div className="mobile-family-compose-grid">
+      {items.map((item) => (
+        <div className="mobile-family-draft-tile" key={`${item.target}-${item.fileId}`}>
+          {item.previewUrl && item.mediaType === 'video' ? (
+            <video src={item.previewUrl} muted playsInline preload="metadata" />
+          ) : item.previewUrl ? (
+            <img src={item.previewUrl} alt={item.name} />
+          ) : (
+            <span className="mobile-family-draft-file">{item.name}</span>
+          )}
+          <button type="button" onClick={() => onRemove(item.fileId)}>
+            <CloseCircleFilled />
+          </button>
+          <span>{item.name}</span>
+        </div>
+      ))}
+      {items.length < 9 ? (
+        <Button className="mobile-family-add-media-tile" loading={uploading} onClick={onAdd}>
+          <CameraOutlined />
+          <span>添加图片/视频</span>
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -80,10 +174,26 @@ function DraftMediaList({ items }: { items: DraftMediaItem[] }) {
   return (
     <div className="mobile-family-draft-media">
       {items.map((item) => (
-        <span key={`${item.target}-${item.fileId}`}>
-          {item.name}
-        </span>
+        <span key={`${item.target}-${item.fileId}`}>{item.name}</span>
       ))}
+    </div>
+  );
+}
+
+function LikedUserStack({ users = [] }: { users?: FamilyUserSummary[] }) {
+  if (users.length === 0) {
+    return null;
+  }
+
+  const visibleUsers = users.slice(0, 6);
+  const remainingCount = users.length - visibleUsers.length;
+
+  return (
+    <div className="mobile-family-liked-users">
+      {visibleUsers.map((user) => (
+        <FamilyAvatar key={user.id} user={user} small />
+      ))}
+      {remainingCount > 0 ? <span>+{remainingCount}</span> : null}
     </div>
   );
 }
@@ -100,6 +210,7 @@ export function MobileFamilyPage() {
   const postInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const token = useAuthStore((state) => state.token);
+  const currentUser = useAuthStore((state) => state.user);
 
   const postsQuery = useFamilyPosts({ page: 1, limit: 30 });
   const chatQuery = useFamilyChatMessages({ page: 1, limit: 100 });
@@ -110,8 +221,24 @@ export function MobileFamilyPage() {
   const createChatMessage = useCreateFamilyChatMessage();
   const { refetch: refetchPosts } = postsQuery;
   const { refetch: refetchChatMessages } = chatQuery;
-  const posts = postsQuery.data?.items ?? [];
-  const messages = chatQuery.data?.items ?? [];
+  const posts = useMemo(() => postsQuery.data?.items ?? [], [postsQuery.data?.items]);
+  const messages = useMemo(() => chatQuery.data?.items ?? [], [chatQuery.data?.items]);
+  const heroUsers = useMemo(() => {
+    const users = [
+      currentUser,
+      ...posts.map((item) => item.author),
+      ...messages.map((item) => item.sender),
+    ];
+    const seen = new Set<number>();
+    return users
+      .filter((user): user is FamilyUserSummary => Boolean(user?.id))
+      .filter((user) => {
+        if (seen.has(user.id)) return false;
+        seen.add(user.id);
+        return true;
+      })
+      .slice(0, 4);
+  }, [currentUser, messages, posts]);
 
   useEffect(() => {
     return connectFamilySocket(token, {
@@ -123,16 +250,21 @@ export function MobileFamilyPage() {
     });
   }, [refetchChatMessages, refetchPosts, token]);
 
-  const tabOptions = useMemo(
-    () => [
-      { label: '家庭圈', value: 'circle' },
-      { label: '群聊', value: 'chat' },
-    ],
-    []
-  );
-
   const switchTab = (tab: FamilyTab) => {
     setSearchParams(tab === 'chat' ? { tab } : {});
+  };
+
+  const removeDraftMedia = (target: FamilyMediaTarget, fileId: number) => {
+    const update = (current: DraftMediaItem[]) => {
+      current.filter((item) => item.fileId === fileId).forEach(revokeDraftPreview);
+      return current.filter((item) => item.fileId !== fileId);
+    };
+
+    if (target === 'circle') {
+      setPostMedia(update);
+    } else {
+      setChatMedia(update);
+    }
   };
 
   const uploadFiles = async (files: FileList | null | undefined, target: FamilyMediaTarget) => {
@@ -143,15 +275,17 @@ export function MobileFamilyPage() {
 
     setUploadingTarget(target);
     try {
-      const uploaded: FamilyUploadedMedia[] = [];
+      const draftItems: DraftMediaItem[] = [];
       for (const file of selected) {
-        uploaded.push(await familyService.uploadFamilyMedia(file, target));
+        const uploadedFile = await familyService.uploadFamilyMedia(file, target);
+        draftItems.push({
+          fileId: uploadedFile.id,
+          name: uploadedFile.originalName || uploadedFile.filename || `文件 ${uploadedFile.id}`,
+          target,
+          mediaType: file.type.startsWith('video/') ? 'video' : 'image',
+          previewUrl: getPreviewUrl(file),
+        });
       }
-      const draftItems = uploaded.map((file) => ({
-        fileId: file.id,
-        name: file.originalName || file.filename || `文件 ${file.id}`,
-        target,
-      }));
       if (target === 'circle') {
         setPostMedia((current) => [...current, ...draftItems].slice(0, 9));
       } else {
@@ -173,6 +307,7 @@ export function MobileFamilyPage() {
     }
 
     await createPost.mutateAsync({ content, mediaFileIds });
+    postMedia.forEach(revokeDraftPreview);
     setPostText('');
     setPostMedia([]);
   };
@@ -194,53 +329,90 @@ export function MobileFamilyPage() {
     }
 
     await createChatMessage.mutateAsync({ content, mediaFileIds });
+    chatMedia.forEach(revokeDraftPreview);
     setChatText('');
     setChatMedia([]);
   };
 
   return (
     <div className="mobile-page mobile-family-page">
-      <MobileModuleHeader title="家庭" subtitle="家庭圈和群聊" />
-
-      <Selector
-        className="mobile-family-tabs"
-        options={tabOptions}
-        value={[activeTab]}
-        onChange={(items: Array<string | number>) => switchTab((items[0] as FamilyTab) || 'circle')}
-      />
+      <section className="mobile-family-hero">
+        <MobileModuleHeader
+          title="家庭"
+          subtitle={activeTab === 'circle' ? '珍藏生活的每个瞬间' : '不错过每一条消息'}
+          actions={
+            <Button
+              className="mobile-family-view-switch"
+              fill="none"
+              size="small"
+              onClick={() => switchTab(activeTab === 'circle' ? 'chat' : 'circle')}
+            >
+              {activeTab === 'circle' ? <MessageOutlined /> : <PictureOutlined />}
+              {activeTab === 'circle' ? '群聊' : '家庭圈'}
+            </Button>
+          }
+        />
+        <div className="mobile-family-hero-panel">
+          <div>
+            <span>{dayjs().format('MM月DD日')}</span>
+            <strong>
+              {activeTab === 'circle' ? `${posts.length} 条动态` : `${messages.length} 条消息`}
+            </strong>
+          </div>
+          <div className="mobile-family-hero-avatars">
+            {heroUsers.length > 0 ? (
+              heroUsers.map((user) => <FamilyAvatar key={user.id} user={user} small />)
+            ) : (
+              <FamilyAvatar small />
+            )}
+          </div>
+        </div>
+      </section>
 
       {activeTab === 'circle' ? (
         <PullToRefresh onRefresh={async () => void (await postsQuery.refetch())}>
           <section className="mobile-family-section">
             <Card className="mobile-card mobile-family-composer">
+              <div className="mobile-family-composer-title">
+                <span>
+                  <CameraOutlined />
+                </span>
+                <strong>今天想分享什么</strong>
+              </div>
+              <input
+                ref={postInputRef}
+                type="file"
+                hidden
+                multiple
+                accept="image/*,video/*"
+                onChange={(event) => {
+                  void uploadFiles(event.currentTarget.files, 'circle');
+                  event.currentTarget.value = '';
+                }}
+              />
+              <DraftMediaGrid
+                items={postMedia}
+                uploading={uploadingTarget === 'circle'}
+                onAdd={() => postInputRef.current?.click()}
+                onRemove={(fileId) => removeDraftMedia('circle', fileId)}
+              />
               <TextArea
                 value={postText}
-                placeholder="记录家庭里的新鲜事"
-                rows={3}
+                placeholder="这一刻的想法..."
+                rows={1}
+                autoSize={{ minRows: 1, maxRows: 4 }}
                 maxLength={5000}
                 onChange={setPostText}
               />
-              <DraftMediaList items={postMedia} />
               <div className="mobile-family-composer-actions">
-                <input
-                  ref={postInputRef}
-                  type="file"
-                  hidden
-                  multiple
-                  accept="image/*,video/*"
-                  onChange={(event) => {
-                    void uploadFiles(event.currentTarget.files, 'circle');
-                    event.currentTarget.value = '';
-                  }}
-                />
+                <span>最多 9 张图片/视频</span>
                 <Button
+                  className="mobile-family-primary-button"
+                  color="primary"
                   size="small"
-                  onClick={() => postInputRef.current?.click()}
-                  loading={uploadingTarget === 'circle'}
+                  loading={createPost.isPending}
+                  onClick={submitPost}
                 >
-                  <UploadOutlined /> 图片/视频
-                </Button>
-                <Button color="primary" size="small" loading={createPost.isPending} onClick={submitPost}>
                   发布
                 </Button>
               </div>
@@ -273,7 +445,13 @@ export function MobileFamilyPage() {
               {messages.length === 0 ? (
                 <Empty description={chatQuery.isLoading ? '加载中...' : '还没有群聊消息'} />
               ) : (
-                messages.map((message) => <ChatMessageBubble key={message.id} message={message} />)
+                messages.map((message) => (
+                  <ChatMessageBubble
+                    key={message.id}
+                    message={message}
+                    mine={message.senderId === currentUser?.id}
+                  />
+                ))
               )}
             </div>
           </PullToRefresh>
@@ -308,7 +486,12 @@ export function MobileFamilyPage() {
               />
               <DraftMediaList items={chatMedia} />
             </div>
-            <Button color="primary" loading={createChatMessage.isPending} onClick={submitChatMessage}>
+            <Button
+              className="mobile-family-primary-button"
+              color="primary"
+              loading={createChatMessage.isPending}
+              onClick={submitChatMessage}
+            >
               <SendOutlined /> 发送
             </Button>
           </div>
@@ -334,14 +517,22 @@ function FamilyPostCard({
   return (
     <Card className="mobile-card mobile-family-post-card">
       <div className="mobile-family-author">
-        <strong>{displayName(post.author)}</strong>
-        <span>{formatTime(post.createdAt)}</span>
+        <div className="mobile-family-author-main">
+          <FamilyAvatar user={post.author} />
+          <div>
+            <strong>{displayName(post.author)}</strong>
+            <span>{formatTime(post.createdAt)}</span>
+          </div>
+        </div>
+        <span className="mobile-family-post-mark">家庭圈</span>
       </div>
       {post.content ? <p className="mobile-family-content">{post.content}</p> : null}
       <MediaGrid media={post.media} />
+      <LikedUserStack users={post.likedUsers} />
       <div className="mobile-family-post-actions">
         <Button size="small" fill="none" onClick={onToggleLike}>
-          {post.likedByMe ? <HeartFilled /> : <HeartOutlined />} {post.likeCount}
+          {post.likedByMe ? <HeartFilled /> : <HeartOutlined />}{' '}
+          {post.likedByMe ? '已喜欢' : '喜欢'}
         </Button>
         <span>
           <MessageOutlined /> {post.comments.length}
@@ -373,17 +564,27 @@ function FamilyPostCard({
   );
 }
 
-function ChatMessageBubble({ message }: { message: FamilyChatMessage }) {
+function ChatMessageBubble({
+  message,
+  mine = false,
+}: {
+  message: FamilyChatMessage;
+  mine?: boolean;
+}) {
   return (
-    <div className="mobile-family-chat-message">
-      <div className="mobile-family-chat-meta">
-        <strong>{displayName(message.sender)}</strong>
-        <span>{formatTime(message.createdAt)}</span>
+    <div className={mine ? 'mobile-family-chat-message mine' : 'mobile-family-chat-message'}>
+      {!mine ? <FamilyAvatar user={message.sender} small /> : null}
+      <div className="mobile-family-chat-body">
+        <div className="mobile-family-chat-meta">
+          <strong>{displayName(message.sender)}</strong>
+          <span>{formatTime(message.createdAt)}</span>
+        </div>
+        <div className="mobile-family-chat-bubble">
+          {message.content ? <p>{message.content}</p> : null}
+          <MediaGrid media={message.media} compact />
+        </div>
       </div>
-      <div className="mobile-family-chat-bubble">
-        {message.content ? <p>{message.content}</p> : null}
-        <MediaGrid media={message.media} />
-      </div>
+      {mine ? <FamilyAvatar user={message.sender} small /> : null}
     </div>
   );
 }

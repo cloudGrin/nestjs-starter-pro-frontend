@@ -2,10 +2,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MobileFamilyPage } from './MobileFamilyPage';
-import type {
-  FamilyChatMessage,
-  FamilyPost,
-} from '@/features/family/types/family.types';
+import type { FamilyChatMessage, FamilyPost } from '@/features/family/types/family.types';
 
 const familyHooks = vi.hoisted(() => ({
   familyQueryKeys: {
@@ -72,6 +69,10 @@ const post: FamilyPost = {
   ],
   likeCount: 2,
   likedByMe: false,
+  likedUsers: [
+    { id: 4, username: 'mom', nickname: '妈妈', avatar: 'https://example.com/mom.png' },
+    { id: 5, username: 'grandpa', nickname: '爷爷' },
+  ],
   createdAt: '2026-05-04T07:00:00.000Z',
   updatedAt: '2026-05-04T07:00:00.000Z',
 };
@@ -151,12 +152,14 @@ describe('MobileFamilyPage', () => {
       'src',
       '/api/v1/files/17/access?token=webp'
     );
+    expect(screen.getByAltText('妈妈')).toHaveAttribute('src', 'https://example.com/mom.png');
+    expect(screen.queryByText('2 人喜欢')).not.toBeInTheDocument();
   });
 
   it('publishes text posts and comments', async () => {
     renderPage();
 
-    fireEvent.change(screen.getByPlaceholderText('记录家庭里的新鲜事'), {
+    fireEvent.change(screen.getByPlaceholderText('这一刻的想法...'), {
       target: { value: '今天一起做饭' },
     });
     fireEvent.click(screen.getByRole('button', { name: '发布' }));
@@ -207,11 +210,14 @@ describe('MobileFamilyPage', () => {
     await waitFor(() =>
       expect(familyServiceMocks.familyService.uploadFamilyMedia).toHaveBeenCalledTimes(8)
     );
-    expect(await screen.findByText('existing-7.jpg')).toBeInTheDocument();
+    expect((await screen.findAllByText('existing-7.jpg')).length).toBeGreaterThan(0);
 
     fireEvent.change(input, { target: { files: makeFiles(9, 'extra') } });
-    expect(await screen.findByText('extra-0.jpg')).toBeInTheDocument();
+    expect((await screen.findAllByText('extra-0.jpg')).length).toBeGreaterThan(0);
 
-    expect(familyServiceMocks.familyService.uploadFamilyMedia).toHaveBeenCalledTimes(9);
+    await waitFor(() =>
+      expect(familyServiceMocks.familyService.uploadFamilyMedia).toHaveBeenCalledTimes(9)
+    );
+    expect(screen.queryByText('extra-1.jpg')).not.toBeInTheDocument();
   });
 });
