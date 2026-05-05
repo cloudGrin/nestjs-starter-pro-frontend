@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+  type TouchEvent,
+} from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Dialog, Empty, PullToRefresh, TextArea, Toast } from 'antd-mobile';
 import {
   CloseCircleFilled,
   DeleteOutlined,
-  EllipsisOutlined,
   HeartFilled,
   HeartOutlined,
   LeftOutlined,
@@ -82,8 +90,16 @@ function formatChatDivider(value: string) {
   return dayjs(value).format('YYYY/M/D HH:mm');
 }
 
+function joinClassNames(...classNames: Array<string | undefined>) {
+  return classNames.filter(Boolean).join(' ');
+}
+
 function isVideo(media: Pick<FamilyMedia, 'mediaType' | 'mimeType'>) {
   return media.mediaType === 'video' || media.mimeType?.startsWith('video/');
+}
+
+function isVideoFile(file: File) {
+  return file.type.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi|wmv)$/i.test(file.name);
 }
 
 function getPreviewUrl(file: File) {
@@ -170,7 +186,7 @@ function useDraftMedia() {
           id: `${Date.now()}-${sequenceRef.current}-${file.name}`,
           file,
           name: file.name,
-          mediaType: file.type.startsWith('video/') ? 'video' : 'image',
+          mediaType: isVideoFile(file) ? 'video' : 'image',
           previewUrl: getPreviewUrl(file),
         } satisfies DraftMediaItem;
       });
@@ -194,6 +210,49 @@ function useDraftMedia() {
   }, []);
 
   return { items, addFiles, removeItem, clearItems };
+}
+
+function FamilyIconButton({
+  label,
+  className,
+  onClick,
+  children,
+}: {
+  label: string;
+  className?: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      className={joinClassNames('mobile-family-icon-button', className)}
+      type="button"
+      onClick={onClick}
+    >
+      {children}
+      <span className="mobile-family-sr">{label}</span>
+    </button>
+  );
+}
+
+function FamilyTopBar({
+  title,
+  className,
+  left,
+  right,
+}: {
+  title: string;
+  className?: string;
+  left?: ReactNode;
+  right?: ReactNode;
+}) {
+  return (
+    <header className={joinClassNames('mobile-family-top-bar', className)}>
+      <div className="mobile-family-top-bar-slot start">{left}</div>
+      <h1 className="mobile-family-top-bar-title">{title}</h1>
+      <div className="mobile-family-top-bar-slot end">{right}</div>
+    </header>
+  );
 }
 
 async function uploadDraftMedia(items: DraftMediaItem[], target: FamilyMediaTarget) {
@@ -292,6 +351,7 @@ function MediaGrid({
   const className = [
     'mobile-family-media-grid',
     media.length === 1 ? 'single' : '',
+    !compact && media.length === 4 ? 'quad' : '',
     compact ? 'compact' : '',
   ]
     .filter(Boolean)
@@ -336,8 +396,12 @@ function DraftMediaGrid({
   onRemove: (id: string) => void;
   onPreview: (index: number) => void;
 }) {
+  const className = items.length
+    ? 'mobile-family-compose-grid has-items'
+    : 'mobile-family-compose-grid empty';
+
   return (
-    <div className="mobile-family-compose-grid">
+    <div className={className}>
       {items.map((item, index) => (
         <div className="mobile-family-draft-tile" key={item.id}>
           <button type="button" onClick={() => onPreview(index)}>
@@ -357,7 +421,10 @@ function DraftMediaGrid({
       ))}
       {items.length < 9 ? (
         <button className="mobile-family-add-media-tile" type="button" onClick={onAdd}>
-          <PlusOutlined />
+          <span className="mobile-family-add-media-icon">
+            <PlusOutlined />
+          </span>
+          <strong>照片/视频</strong>
         </button>
       ) : null}
     </div>
@@ -419,9 +486,16 @@ function MediaPreviewOverlay({
   onDelete?: (id: string) => void;
 }) {
   const [currentIndex, setCurrentIndex] = useState(index ?? 0);
+  const [transitionDirection, setTransitionDirection] = useState<'next' | 'previous' | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     setCurrentIndex(index ?? 0);
+    setTransitionDirection(null);
+    setDragOffset(0);
+    setIsDragging(false);
   }, [index]);
 
   if (index === null || items.length === 0) {
@@ -432,6 +506,72 @@ function MediaPreviewOverlay({
   const item = items[safeIndex];
   const canGoPrevious = safeIndex > 0;
   const canGoNext = safeIndex < items.length - 1;
+  const showPrevious = () => {
+    setIsDragging(false);
+    setDragOffset(0);
+    setTransitionDirection('previous');
+    setCurrentIndex((current) => Math.max(0, current - 1));
+  };
+  const showNext = () => {
+    setIsDragging(false);
+    setDragOffset(0);
+    setTransitionDirection('next');
+    setCurrentIndex((current) => Math.min(items.length - 1, current + 1));
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+    setTransitionDirection(null);
+    setDragOffset(0);
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    const touch = event.touches[0];
+    if (!start || !touch) return;
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 6 || Math.abs(deltaX) < Math.abs(deltaY) * 0.75) return;
+
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    const isEdgeDrag = (deltaX > 0 && !canGoPrevious) || (deltaX < 0 && !canGoNext);
+    setDragOffset(isEdgeDrag ? deltaX * 0.28 : deltaX);
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    const touch = event.changedTouches[0];
+    swipeStartRef.current = null;
+    setIsDragging(false);
+    if (!start || !touch) {
+      setDragOffset(0);
+      return;
+    }
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 44 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) {
+      setDragOffset(0);
+      return;
+    }
+
+    if (deltaX < 0 && canGoNext) {
+      showNext();
+      return;
+    }
+    if (deltaX > 0 && canGoPrevious) {
+      showPrevious();
+      return;
+    }
+    setDragOffset(0);
+  };
 
   const handleDelete = () => {
     void Dialog.confirm({
@@ -448,9 +588,24 @@ function MediaPreviewOverlay({
       },
     });
   };
+  const frameDragStyle =
+    dragOffset === 0
+      ? undefined
+      : {
+          opacity: Math.max(0.72, 1 - Math.abs(dragOffset) / 520),
+          transform: `translateX(${dragOffset}px) scale(${Math.max(
+            0.96,
+            1 - Math.abs(dragOffset) / 2200
+          )})`,
+        };
 
   return (
-    <div className="mobile-family-preview">
+    <div
+      className="mobile-family-preview"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="mobile-family-preview-header">
         <button type="button" onClick={onClose}>
           <LeftOutlined />
@@ -467,29 +622,53 @@ function MediaPreviewOverlay({
         )}
       </div>
       <div className="mobile-family-preview-media">
-        {item.mediaType === 'video' ? (
-          <video src={item.url} controls playsInline />
-        ) : (
-          <img src={item.url} alt={item.name || '家庭图片'} />
-        )}
+        <div
+          className={[
+            'mobile-family-preview-media-frame',
+            transitionDirection,
+            isDragging ? 'dragging' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          key={item.id}
+          style={frameDragStyle}
+        >
+          {item.mediaType === 'video' ? (
+            <video src={item.url} controls playsInline />
+          ) : (
+            <img src={item.url} alt={item.name || '家庭图片'} />
+          )}
+        </div>
       </div>
       {canGoPrevious ? (
         <button
           className="mobile-family-preview-arrow previous"
           type="button"
-          onClick={() => setCurrentIndex((current) => current - 1)}
+          onClick={showPrevious}
         >
           <LeftOutlined />
+          <span className="mobile-family-sr">上一张</span>
         </button>
       ) : null}
       {canGoNext ? (
-        <button
-          className="mobile-family-preview-arrow next"
-          type="button"
-          onClick={() => setCurrentIndex((current) => current + 1)}
-        >
+        <button className="mobile-family-preview-arrow next" type="button" onClick={showNext}>
           <LeftOutlined />
+          <span className="mobile-family-sr">下一张</span>
         </button>
+      ) : null}
+      {items.length > 1 ? (
+        <div className="mobile-family-preview-dots">
+          {items.map((previewItem, dotIndex) => (
+            <span
+              className={
+                dotIndex === safeIndex
+                  ? 'mobile-family-preview-dot active'
+                  : 'mobile-family-preview-dot'
+              }
+              key={previewItem.id}
+            />
+          ))}
+        </div>
       ) : null}
     </div>
   );
@@ -526,8 +705,7 @@ function FamilyPostCard({
   const comments = post.comments ?? [];
   const reactions = (
     <div className="mobile-family-feed-reactions">
-      <LikedUserStack users={post.likedUsers} />
-      <div className="mobile-family-feed-action-group">
+      <div className="mobile-family-like-cluster">
         <button
           className={
             post.likedByMe ? 'mobile-family-like-action active' : 'mobile-family-like-action'
@@ -538,11 +716,12 @@ function FamilyPostCard({
           {post.likedByMe ? <HeartFilled /> : <HeartOutlined />}
           <span className="mobile-family-sr">点赞</span>
         </button>
-        <button className="mobile-family-comment-action" type="button" onClick={onToggleComment}>
-          <MessageFilled />
-          <span className="mobile-family-action-label">评论</span>
-        </button>
+        <LikedUserStack users={post.likedUsers} />
       </div>
+      <button className="mobile-family-comment-action" type="button" onClick={onToggleComment}>
+        <MessageFilled />
+        <span className="mobile-family-sr">评论</span>
+      </button>
     </div>
   );
 
@@ -559,10 +738,9 @@ function FamilyPostCard({
           <span>{formatFeedDate(post.createdAt)}</span>
         </div>
       </div>
-      <MediaGrid media={post.media} onPreview={onPreview} />
-      {hasMedia ? reactions : null}
       {post.content ? <div className="mobile-family-feed-content">{post.content}</div> : null}
-      {!hasMedia ? reactions : null}
+      <MediaGrid media={post.media} onPreview={onPreview} />
+      {reactions}
       {comments.length ? (
         <div className="mobile-family-comment-list">
           {comments.map((comment) => (
@@ -731,25 +909,28 @@ export function MobileFamilyPage() {
 
   return (
     <div className="mobile-family-page warm">
-      <header className="mobile-family-home-header">
-        <button
-          className="mobile-round-button mobile-family-menu-button"
-          type="button"
-          onClick={() => setModuleMenuOpen(true)}
-        >
-          <MenuOutlined />
-          <span className="mobile-family-sr">菜单</span>
-        </button>
-        <h1 className="mobile-family-home-title">家庭圈</h1>
-        <button
-          className="mobile-family-logo-button"
-          type="button"
-          onClick={() => navigate('/family/chat')}
-        >
-          <MessageFilled />
-          <span className="mobile-family-sr">家庭群聊</span>
-        </button>
-      </header>
+      <FamilyTopBar
+        className="mobile-family-home-header"
+        title="家庭圈"
+        left={
+          <FamilyIconButton
+            className="mobile-family-menu-button"
+            label="菜单"
+            onClick={() => setModuleMenuOpen(true)}
+          >
+            <MenuOutlined />
+          </FamilyIconButton>
+        }
+        right={
+          <FamilyIconButton
+            className="mobile-family-logo-button"
+            label="家庭群聊"
+            onClick={() => navigate('/family/chat')}
+          >
+            <MessageFilled />
+          </FamilyIconButton>
+        }
+      />
 
       <PullToRefresh onRefresh={async () => void (await postsQuery.refetch())}>
         <section className="mobile-family-feed">
@@ -838,14 +1019,28 @@ export function MobileFamilyComposePage() {
 
   return (
     <div className="mobile-family-compose-page">
-      <header className="mobile-family-compose-header">
-        <button type="button" onClick={() => navigate('/family')}>
-          取消
-        </button>
-        <Button color="primary" loading={uploading || createPost.isPending} onClick={submitPost}>
-          发布
-        </Button>
-      </header>
+      <FamilyTopBar
+        className="mobile-family-compose-header"
+        title="发布动态"
+        left={
+          <button
+            className="mobile-family-text-button"
+            type="button"
+            onClick={() => navigate('/family')}
+          >
+            取消
+          </button>
+        }
+        right={
+          <Button
+            className="mobile-family-publish-button"
+            loading={uploading || createPost.isPending}
+            onClick={submitPost}
+          >
+            发布
+          </Button>
+        }
+      />
       <input
         ref={inputRef}
         type="file"
@@ -857,20 +1052,26 @@ export function MobileFamilyComposePage() {
           event.currentTarget.value = '';
         }}
       />
-      <DraftMediaGrid
-        items={draft.items}
-        onAdd={() => inputRef.current?.click()}
-        onRemove={draft.removeItem}
-        onPreview={setPreviewIndex}
-      />
-      <TextArea
-        value={content}
-        placeholder="这一刻的想法..."
-        rows={2}
-        autoSize={{ minRows: 2, maxRows: 6 }}
-        maxLength={5000}
-        onChange={setContent}
-      />
+      <main className="mobile-family-compose-body">
+        <section className="mobile-family-compose-panel">
+          <DraftMediaGrid
+            items={draft.items}
+            onAdd={() => inputRef.current?.click()}
+            onRemove={draft.removeItem}
+            onPreview={setPreviewIndex}
+          />
+          <div className="mobile-family-compose-caption">
+            <TextArea
+              value={content}
+              placeholder="配一句话..."
+              rows={2}
+              autoSize={{ minRows: 2, maxRows: 6 }}
+              maxLength={5000}
+              onChange={setContent}
+            />
+          </div>
+        </section>
+      </main>
       <MediaPreviewOverlay
         items={previewItems}
         index={previewIndex}
@@ -878,6 +1079,36 @@ export function MobileFamilyComposePage() {
         onDelete={draft.removeItem}
       />
     </div>
+  );
+}
+
+function ChatMessageMediaBubble({
+  media,
+  index,
+  onPreview,
+}: {
+  media: FamilyMedia;
+  index: number;
+  onPreview: (index: number) => void;
+}) {
+  const video = isVideo(media);
+
+  if (video) {
+    return (
+      <div className="mobile-family-chat-media-bubble video">
+        <video src={media.displayUrl} controls playsInline preload="metadata" />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      className="mobile-family-chat-media-bubble image"
+      type="button"
+      onClick={() => onPreview(index)}
+    >
+      <img src={media.displayUrl} alt="家庭图片" loading="lazy" />
+    </button>
   );
 }
 
@@ -889,15 +1120,25 @@ function ChatMessageBubble({
   mine?: boolean;
 }) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const hasContent = Boolean(message.content);
 
   return (
     <div className={mine ? 'mobile-family-chat-message mine' : 'mobile-family-chat-message'}>
       {!mine ? <FamilyAvatar user={message.sender} size="small" /> : null}
       <div className="mobile-family-chat-body">
-        <div className="mobile-family-chat-bubble">
-          {message.content ? <p>{message.content}</p> : null}
-          <MediaGrid media={message.media} compact onPreview={setPreviewIndex} />
-        </div>
+        {hasContent ? (
+          <div className="mobile-family-chat-bubble">
+            <p>{message.content}</p>
+          </div>
+        ) : null}
+        {message.media.map((item, index) => (
+          <ChatMessageMediaBubble
+            key={item.id}
+            media={item}
+            index={index}
+            onPreview={setPreviewIndex}
+          />
+        ))}
       </div>
       {mine ? <FamilyAvatar user={message.sender} size="small" /> : null}
       <MediaPreviewOverlay
@@ -911,17 +1152,15 @@ function ChatMessageBubble({
 
 function FamilyChatHeader({ onBack }: { onBack: () => void }) {
   return (
-    <header className="mobile-family-chat-header">
-      <button className="mobile-family-chat-back" type="button" onClick={onBack}>
-        <LeftOutlined />
-        <span className="mobile-family-sr">返回家庭圈</span>
-      </button>
-      <h1>家庭群聊</h1>
-      <button className="mobile-family-chat-more" type="button">
-        <EllipsisOutlined />
-        <span className="mobile-family-sr">更多</span>
-      </button>
-    </header>
+    <FamilyTopBar
+      className="mobile-family-chat-header"
+      title="家庭群聊"
+      left={
+        <FamilyIconButton className="mobile-family-chat-back" label="返回家庭圈" onClick={onBack}>
+          <LeftOutlined />
+        </FamilyIconButton>
+      }
+    />
   );
 }
 

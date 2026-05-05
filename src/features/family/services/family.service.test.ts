@@ -96,4 +96,46 @@ describe('family.service', () => {
       expect.any(Object)
     );
   });
+
+  it('infers mp4 mime type for OSS direct upload when the browser omits file.type', async () => {
+    appConfig.familyMediaUploadMode = 'oss';
+    const file = new File(['video'], 'family-video.MP4');
+    vi.mocked(request.post)
+      .mockResolvedValueOnce({
+        method: 'PUT',
+        uploadUrl: 'https://oss.example.com/signed-video',
+        uploadToken: 'token-video',
+        expiresAt: '2026-05-05T00:00:00.000Z',
+        headers: { 'Content-Type': 'video/mp4' },
+      })
+      .mockResolvedValueOnce({ id: 18 });
+    vi.mocked(axios.put).mockResolvedValue({ status: 200 });
+
+    await familyService.uploadFamilyMedia(file, 'chat');
+
+    expect(request.post).toHaveBeenNthCalledWith(
+      1,
+      '/family/media/direct-upload/initiate',
+      {
+        target: 'chat',
+        originalName: 'family-video.MP4',
+        mimeType: 'video/mp4',
+        size: file.size,
+      },
+      expect.any(Object)
+    );
+  });
+
+  it('normalizes mp4 file type for local upload when the browser omits file.type', async () => {
+    const file = new File(['video'], 'family-video.mp4');
+    vi.mocked(request.post).mockResolvedValue({ id: 19 });
+
+    await familyService.uploadFamilyMedia(file, 'chat');
+
+    const formData = vi.mocked(request.post).mock.calls[0][1] as FormData;
+    const uploadedFile = formData.get('file') as File;
+    expect(uploadedFile.name).toBe('family-video.mp4');
+    expect(uploadedFile.type).toBe('video/mp4');
+    expect(formData.get('target')).toBe('chat');
+  });
 });

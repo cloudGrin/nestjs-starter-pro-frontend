@@ -1647,8 +1647,9 @@ function TaskAttachmentList({ task, attachments }: { task: Task; attachments: Ta
         window.open(resolveFileAccessUrl(file.url), '_blank', 'noopener,noreferrer');
         return;
       }
+      openedWindow = openAttachmentWindow();
       const { url } = await createFileAccessLink(attachment.fileId, 'inline');
-      window.open(resolveFileAccessUrl(url), '_blank', 'noopener,noreferrer');
+      navigateAttachmentWindow(openedWindow, resolveFileAccessUrl(url));
     } catch {
       closeAttachmentWindow(openedWindow);
       Toast.show({ icon: 'fail', content: '附件访问失败', position: 'center' });
@@ -1933,8 +1934,9 @@ export function TaskEditorPopup({
         return;
       }
 
+      openedWindow = openAttachmentWindow();
       const { url } = await createFileAccessLink(attachment.fileId, disposition);
-      window.open(resolveFileAccessUrl(url), '_blank');
+      navigateAttachmentWindow(openedWindow, resolveFileAccessUrl(url));
     } catch {
       closeAttachmentWindow(openedWindow);
       Toast.show({ icon: 'fail', content: '附件打开失败', position: 'center' });

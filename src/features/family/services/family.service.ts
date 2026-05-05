@@ -17,6 +17,51 @@ import type {
 
 const BASE_URL = '/family';
 
+const FAMILY_MEDIA_MIME_TYPES: Record<string, string> = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.heic': 'image/heic',
+  '.heif': 'image/heif',
+  '.mp4': 'video/mp4',
+  '.mov': 'video/quicktime',
+  '.webm': 'video/webm',
+  '.mkv': 'video/x-matroska',
+  '.avi': 'video/x-msvideo',
+  '.wmv': 'video/x-ms-wmv',
+};
+
+function getFileExtension(filename: string) {
+  const dotIndex = filename.lastIndexOf('.');
+  return dotIndex >= 0 ? filename.slice(dotIndex).toLowerCase() : '';
+}
+
+function inferFamilyMediaMimeType(file: File) {
+  if (file.type && file.type !== 'application/octet-stream') {
+    return file.type;
+  }
+
+  return (
+    FAMILY_MEDIA_MIME_TYPES[getFileExtension(file.name)] ||
+    file.type ||
+    'application/octet-stream'
+  );
+}
+
+function normalizeFamilyUploadFile(file: File) {
+  const mimeType = inferFamilyMediaMimeType(file);
+  if (file.type === mimeType) {
+    return file;
+  }
+
+  return new File([file], file.name, {
+    type: mimeType,
+    lastModified: file.lastModified,
+  });
+}
+
 export const familyService = {
   getPosts: (params: QueryFamilyPostsParams) =>
     request.get<FamilyPaginationResult<FamilyPost>>(`${BASE_URL}/posts`, { params }),
@@ -69,7 +114,7 @@ export const familyService = {
     onProgress?: (progress: number) => void
   ): Promise<FamilyUploadedMedia> => {
     if (appConfig.familyMediaUploadMode === 'oss') {
-      const contentType = file.type || 'application/octet-stream';
+      const contentType = inferFamilyMediaMimeType(file);
       const initResult = await request.post<FamilyMediaDirectUploadInitResponse>(
         `${BASE_URL}/media/direct-upload/initiate`,
         {
@@ -108,7 +153,7 @@ export const familyService = {
     }
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', normalizeFamilyUploadFile(file));
     formData.append('target', target);
 
     const media = await request.post<FamilyUploadedMedia>(`${BASE_URL}/media/upload`, formData, {

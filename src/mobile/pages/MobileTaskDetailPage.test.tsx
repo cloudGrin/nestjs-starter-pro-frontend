@@ -204,4 +204,50 @@ describe('MobileTaskDetailPage', () => {
     );
     await waitFor(() => expect(openedWindow.location.href).toBe('/task-download'));
   });
+
+  it('preopens a window before awaiting private attachment preview links', async () => {
+    const openedWindow = {
+      close: vi.fn(),
+      location: { href: '' },
+      opener: {},
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => openedWindow);
+    const accessLink = deferred<{ url: string }>();
+    fileServiceMocks.createFileAccessLink.mockReturnValueOnce(accessLink.promise);
+    taskHooks.useTask.mockReturnValue({
+      data: {
+        ...baseTask,
+        attachments: [
+          {
+            id: 7,
+            taskId: baseTask.id,
+            fileId: 71,
+            sort: 0,
+            file: {
+              id: 71,
+              originalName: '理赔材料.pdf',
+              mimeType: 'application/pdf',
+              size: 1024,
+              module: 'task-attachment',
+              createdAt: '2026-05-01T00:00:00.000Z',
+              updatedAt: '2026-05-01T00:00:00.000Z',
+            },
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: '预览' }));
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank');
+    expect(openedWindow.location.href).toBe('');
+
+    accessLink.resolve({ url: '/inline-preview' });
+    await waitFor(() =>
+      expect(fileServiceMocks.createFileAccessLink).toHaveBeenCalledWith(71, 'inline')
+    );
+    await waitFor(() => expect(openedWindow.location.href).toBe('/inline-preview'));
+  });
 });

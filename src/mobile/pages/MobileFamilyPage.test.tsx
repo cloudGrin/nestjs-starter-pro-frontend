@@ -141,6 +141,15 @@ function renderPage(path = '/family') {
   );
 }
 
+function readMobileCss() {
+  return readFileSync('src/mobile/styles.css', 'utf8');
+}
+
+function cssRule(selector: string) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return readMobileCss().match(new RegExp(`${escapedSelector} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? '';
+}
+
 describe('MobileFamilyPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -192,6 +201,9 @@ describe('MobileFamilyPage', () => {
 
     expect(screen.getByRole('button', { name: /菜单/ })).toBeInTheDocument();
     expect(screen.getByText('家庭圈')).toBeInTheDocument();
+    expect(document.querySelector('.mobile-family-home-header')).toHaveClass(
+      'mobile-family-top-bar'
+    );
     expect(screen.getByRole('button', { name: /发布家庭圈/ })).toBeInTheDocument();
     expect(screen.queryByText('首页')).not.toBeInTheDocument();
     expect(screen.queryByText('我的')).not.toBeInTheDocument();
@@ -217,6 +229,156 @@ describe('MobileFamilyPage', () => {
 
     expect(likePost).toHaveBeenCalledWith(1, expect.any(Object));
     expect(likeButton).toHaveClass('active');
+  });
+
+  it('uses the family-only top bar on home, compose, and chat routes', () => {
+    const home = renderPage('/family');
+    expect(document.querySelector('.mobile-family-home-header')).toHaveClass(
+      'mobile-family-top-bar'
+    );
+    home.unmount();
+
+    const compose = renderPage('/family/compose');
+    expect(screen.getByRole('heading', { name: '发布动态' })).toBeInTheDocument();
+    expect(document.querySelector('.mobile-family-compose-header')).toHaveClass(
+      'mobile-family-top-bar'
+    );
+    expect(screen.getByRole('button', { name: '发布' })).not.toHaveClass('adm-button-primary');
+    compose.unmount();
+
+    renderPage('/family/chat');
+    expect(document.querySelector('.mobile-family-chat-header')).toHaveClass(
+      'mobile-family-top-bar'
+    );
+  });
+
+  it('keeps media post actions below content instead of overlapping images', () => {
+    renderPage();
+
+    const card = screen.getByText('宝宝今天会走路了').closest('article');
+    expect(card).toHaveClass('has-media');
+
+    const mediaGrid = card?.querySelector('.mobile-family-media-grid');
+    const content = card?.querySelector('.mobile-family-feed-content');
+    const reactions = card?.querySelector('.mobile-family-feed-reactions');
+
+    expect(mediaGrid).toBeTruthy();
+    expect(content).toBeTruthy();
+    expect(reactions).toBeTruthy();
+    expect(
+      Boolean(content!.compareDocumentPosition(reactions!) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true);
+
+    const css = readMobileCss();
+    const hasMediaReactionsBlock =
+      css.match(
+        /\.mobile-family-feed-card\.has-media \.mobile-family-feed-reactions \{[\s\S]*?\n\}/
+      )?.[0] ?? '';
+    expect(hasMediaReactionsBlock).not.toContain('margin-top: -');
+  });
+
+  it('uses the same reaction button UI for text and media posts', () => {
+    const css = readMobileCss();
+
+    expect(css).not.toContain('.mobile-family-feed-card.text-only .mobile-family-feed-reactions');
+    expect(css).not.toContain('.mobile-family-feed-card.text-only .mobile-family-like-action');
+    expect(css).not.toContain('.mobile-family-feed-card.text-only .mobile-family-comment-action');
+  });
+
+  it('places the like button before liked users and keeps comment on the right', () => {
+    renderPage();
+
+    const css = readMobileCss();
+    const card = screen.getByText('宝宝今天会走路了').closest('article');
+    const reactions = card?.querySelector('.mobile-family-feed-reactions');
+    const likeCluster = card?.querySelector('.mobile-family-like-cluster');
+    const likeAction = card?.querySelector('.mobile-family-like-action');
+    const likedUsers = card?.querySelector('.mobile-family-liked-users');
+    const commentAction = card?.querySelector('.mobile-family-comment-action');
+
+    expect(reactions?.firstElementChild).toBe(likeCluster);
+    expect(likeCluster?.firstElementChild).toBe(likeAction);
+    expect(
+      Boolean(likeAction!.compareDocumentPosition(likedUsers!) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true);
+    expect(reactions?.lastElementChild).toBe(commentAction);
+    expect(commentAction?.querySelector('.mobile-family-action-label')).not.toBeInTheDocument();
+    expect(commentAction?.querySelector('.mobile-family-sr')).toHaveTextContent('评论');
+
+    expect(cssRule('.mobile-family-like-cluster')).toContain('display: inline-flex;');
+    expect(cssRule('.mobile-family-comment-action')).toContain('width: 40px;');
+    expect(cssRule('.mobile-family-comment-action')).toContain('border-radius: 50%;');
+    expect(css).not.toContain('.mobile-family-comment-action .mobile-family-action-label');
+    expect(css).not.toContain('min-width: 58px;');
+  });
+
+  it('switches to the next image in feed media preview', () => {
+    const multiImagePost: FamilyPost = {
+      ...post,
+      media: [0, 1, 2].map((index) => ({
+        ...post.media[0],
+        id: 70 + index,
+        fileId: 170 + index,
+        sort: index,
+        displayUrl: `/api/v1/files/${170 + index}/access?token=image-${index}`,
+      })),
+    };
+    familyHooks.useFamilyPosts.mockReturnValue({
+      data: { items: [multiImagePost], meta: { totalItems: 1 } },
+      isLoading: false,
+      refetch,
+    });
+
+    renderPage();
+
+    fireEvent.click(screen.getAllByAltText('家庭图片')[0].closest('button')!);
+    expect(screen.getByText('1/3')).toBeInTheDocument();
+    expect(document.querySelector('.mobile-family-preview-media img')).toHaveAttribute(
+      'src',
+      '/api/v1/files/170/access?token=image-0'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /下一张/ }));
+
+    expect(screen.getByText('2/3')).toBeInTheDocument();
+    expect(document.querySelector('.mobile-family-preview-media img')).toHaveAttribute(
+      'src',
+      '/api/v1/files/171/access?token=image-1'
+    );
+    expect(document.querySelectorAll('.mobile-family-preview-dot')).toHaveLength(3);
+    expect(document.querySelectorAll('.mobile-family-preview-dot')[1]).toHaveClass('active');
+
+    fireEvent.touchStart(document.querySelector('.mobile-family-preview')!, {
+      touches: [{ clientX: 260, clientY: 180 }],
+    });
+    fireEvent.touchEnd(document.querySelector('.mobile-family-preview')!, {
+      changedTouches: [{ clientX: 40, clientY: 188 }],
+    });
+
+    expect(screen.getByText('3/3')).toBeInTheDocument();
+    expect(document.querySelector('.mobile-family-preview-media img')).toHaveAttribute(
+      'src',
+      '/api/v1/files/172/access?token=image-2'
+    );
+    expect(document.querySelectorAll('.mobile-family-preview-dot')[2]).toHaveClass('active');
+    expect(cssRule('.mobile-family-preview-arrow')).toContain('z-index: 1;');
+    expect(cssRule('.mobile-family-preview-dots')).toContain(
+      'bottom: calc(24px + env(safe-area-inset-bottom));'
+    );
+  });
+
+  it('keeps family headers vertically aligned through the shared top bar', () => {
+    const topBar = cssRule('.mobile-family-top-bar');
+
+    expect(topBar).toContain('grid-template-columns: 54px minmax(0, 1fr) 54px;');
+    expect(topBar).toContain('min-height: 88px;');
+    expect(topBar).toContain('padding: calc(14px + env(safe-area-inset-top)) 18px 18px;');
+  });
+
+  it('aligns family home menu and chat back buttons to the same left edge', () => {
+    expect(cssRule('.mobile-family-top-bar-slot.start')).toContain('justify-self: start;');
+    expect(cssRule('.mobile-family-top-bar-slot.end')).toContain('justify-self: end;');
+    expect(cssRule('.mobile-family-icon-button')).toContain('width: 44px;');
   });
 
   it('keeps family avatars visually consistent across feed likes and chat messages', () => {
@@ -247,7 +409,7 @@ describe('MobileFamilyPage', () => {
     renderPage('/family/chat');
     expect(screen.getByAltText('妈妈')).toHaveClass('mobile-family-avatar small image');
 
-    const css = readFileSync('src/mobile/styles.css', 'utf8');
+    const css = readMobileCss();
     expect(css).not.toContain('.mobile-family-liked-users .mobile-family-avatar');
     expect(css).not.toContain('.mobile-family-feed-author span');
     expect(css).not.toContain('.mobile-family-author-main span');
@@ -297,8 +459,24 @@ describe('MobileFamilyPage', () => {
   it('keeps selected compose media local until publishing', async () => {
     const { container } = renderPage('/family/compose');
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const composePanel = document.querySelector('.mobile-family-compose-panel');
+    const composeGrid = document.querySelector('.mobile-family-compose-grid');
+    const caption = document.querySelector('.mobile-family-compose-caption');
 
-    fireEvent.change(screen.getByPlaceholderText('这一刻的想法...'), {
+    expect(screen.getByRole('heading', { name: '发布动态' })).toBeInTheDocument();
+    expect(composePanel).toBeInTheDocument();
+    expect(composePanel?.firstElementChild).toBe(composeGrid);
+    expect(composeGrid).toHaveClass('empty');
+    expect(caption).toBeInTheDocument();
+    expect(
+      Boolean(composeGrid!.compareDocumentPosition(caption!) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true);
+    expect(cssRule('.mobile-family-compose-panel')).toContain('border-radius: 8px;');
+    expect(cssRule('.mobile-family-publish-button')).toContain('--text-color: #ffffff;');
+    expect(cssRule('.mobile-family-compose-grid.empty')).toContain('grid-template-columns: 1fr;');
+    expect(cssRule('.mobile-family-compose-caption .adm-text-area')).toContain('min-height: 58px;');
+
+    fireEvent.change(screen.getByPlaceholderText('配一句话...'), {
       target: { value: '今天一起做饭' },
     });
     fireEvent.change(input, {
@@ -364,17 +542,23 @@ describe('MobileFamilyPage', () => {
 
     expect(screen.getByRole('button', { name: /返回家庭圈/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '家庭群聊' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /更多/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /更多/ })).not.toBeInTheDocument();
     expect(document.querySelector('.mobile-family-chat-page')).toHaveClass('wechat-warm');
     expect(document.querySelector('.mobile-family-chat-logo')).not.toBeInTheDocument();
     expect(screen.getByText('2026/5/4 17:00')).toBeInTheDocument();
     expect(screen.queryByText('发布了一条动态')).not.toBeInTheDocument();
     expect(screen.queryByText('留下了心情')).not.toBeInTheDocument();
     expect(screen.getByText('看这个视频')).toBeInTheDocument();
-    expect(document.querySelector('video')).toHaveAttribute(
+    const textBubble = screen.getByText('看这个视频').closest('.mobile-family-chat-bubble');
+    expect(textBubble?.querySelector('video')).toBeNull();
+    const mediaBubble = document.querySelector('.mobile-family-chat-media-bubble.video');
+    expect(mediaBubble).toBeTruthy();
+    expect(mediaBubble?.tagName).toBe('DIV');
+    expect(mediaBubble?.querySelector('video')).toHaveAttribute(
       'src',
       '/api/v1/files/20/access?token=video'
     );
+    expect(mediaBubble?.querySelector('video')).toHaveAttribute('controls');
 
     fireEvent.change(screen.getByPlaceholderText('给家里人发消息'), {
       target: { value: '收到' },

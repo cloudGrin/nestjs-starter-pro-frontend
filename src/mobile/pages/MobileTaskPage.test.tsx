@@ -266,12 +266,20 @@ describe('MobileTaskPage', () => {
   });
 
   it('previews and downloads existing attachments from the mobile editor', async () => {
-    const openedWindow = {
+    const previewWindow = {
       close: vi.fn(),
       location: { href: '' },
       opener: {},
     } as unknown as Window;
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => openedWindow);
+    const downloadWindow = {
+      close: vi.fn(),
+      location: { href: '' },
+      opener: {},
+    } as unknown as Window;
+    const openSpy = vi
+      .spyOn(window, 'open')
+      .mockImplementationOnce(() => previewWindow)
+      .mockImplementationOnce(() => downloadWindow);
     const accessLink = deferred<{ url: string }>();
     taskServiceMocks.createAttachmentAccessLink.mockReturnValueOnce(accessLink.promise);
 
@@ -310,11 +318,12 @@ describe('MobileTaskPage', () => {
     await waitFor(() =>
       expect(fileServiceMocks.createFileAccessLink).toHaveBeenCalledWith(71, 'inline')
     );
-    expect(openSpy).toHaveBeenCalledWith('/inline-preview', '_blank');
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank');
+    expect(previewWindow.location.href).toBe('/inline-preview');
 
     fireEvent.click(screen.getByRole('button', { name: '下载' }));
     expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank');
-    expect(openedWindow.location.href).toBe('');
+    expect(downloadWindow.location.href).toBe('');
 
     accessLink.resolve({ url: '/task-download' });
     await waitFor(() =>
@@ -324,7 +333,59 @@ describe('MobileTaskPage', () => {
         'attachment'
       )
     );
-    await waitFor(() => expect(openedWindow.location.href).toBe('/task-download'));
+    await waitFor(() => expect(downloadWindow.location.href).toBe('/task-download'));
+  });
+
+  it('preopens a window before awaiting private attachment preview links from the mobile editor', async () => {
+    const openedWindow = {
+      close: vi.fn(),
+      location: { href: '' },
+      opener: {},
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => openedWindow);
+    const accessLink = deferred<{ url: string }>();
+    fileServiceMocks.createFileAccessLink.mockReturnValueOnce(accessLink.promise);
+
+    render(
+      <TaskEditorPopup
+        open
+        task={{
+          ...baseTask,
+          attachments: [
+            {
+              id: 7,
+              taskId: baseTask.id,
+              fileId: 71,
+              sort: 0,
+              file: {
+                id: 71,
+                originalName: '理赔材料.pdf',
+                mimeType: 'application/pdf',
+                size: 1024,
+                module: 'task-attachment',
+                createdAt: '2026-05-01T00:00:00.000Z',
+                updatedAt: '2026-05-01T00:00:00.000Z',
+              },
+            },
+          ],
+        }}
+        lists={[{ id: 1, name: '收集箱', scope: 'family', sort: 1, isArchived: false }]}
+        users={[]}
+        defaultListId={1}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '预览' }));
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank');
+    expect(openedWindow.location.href).toBe('');
+
+    accessLink.resolve({ url: '/inline-preview' });
+    await waitFor(() =>
+      expect(fileServiceMocks.createFileAccessLink).toHaveBeenCalledWith(71, 'inline')
+    );
+    await waitFor(() => expect(openedWindow.location.href).toBe('/inline-preview'));
   });
 
   it('uses the shared recent task list when creating on mobile', async () => {
