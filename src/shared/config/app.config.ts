@@ -1,3 +1,9 @@
+export type FamilyMediaUploadMode = 'local' | 'oss';
+
+function resolveFamilyMediaUploadMode(value?: string): FamilyMediaUploadMode {
+  return value === 'oss' ? 'oss' : 'local';
+}
+
 /**
  * 应用配置
  */
@@ -7,6 +13,11 @@ export const appConfig = {
 
   // API 基础 URL
   apiBaseUrl: import.meta.env.VITE_API_URL || '/api/v1',
+
+  // 家庭圈/群聊媒体上传模式。未接 OSS 时默认走本地上传。
+  familyMediaUploadMode: resolveFamilyMediaUploadMode(
+    import.meta.env.VITE_FAMILY_MEDIA_UPLOAD_MODE
+  ),
 
   // Token 存储键名
   tokenKey: 'auth-token',

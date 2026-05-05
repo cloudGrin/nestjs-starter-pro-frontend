@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { appConfig } from '@/shared/config/app.config';
 import { request } from '@/shared/utils/request';
 import type {
   CreateFamilyChatMessageDto,
@@ -67,40 +68,62 @@ export const familyService = {
     target: FamilyMediaTarget,
     onProgress?: (progress: number) => void
   ): Promise<FamilyUploadedMedia> => {
-    const contentType = file.type || 'application/octet-stream';
-    const initResult = await request.post<FamilyMediaDirectUploadInitResponse>(
-      `${BASE_URL}/media/direct-upload/initiate`,
-      {
-        target,
-        originalName: file.name,
-        mimeType: contentType,
-        size: file.size,
-      },
-      {
-        requestOptions: {
-          messageConfig: { successMessage: false },
+    if (appConfig.familyMediaUploadMode === 'oss') {
+      const contentType = file.type || 'application/octet-stream';
+      const initResult = await request.post<FamilyMediaDirectUploadInitResponse>(
+        `${BASE_URL}/media/direct-upload/initiate`,
+        {
+          target,
+          originalName: file.name,
+          mimeType: contentType,
+          size: file.size,
         },
-      }
-    );
+        {
+          requestOptions: {
+            messageConfig: { successMessage: false },
+          },
+        }
+      );
 
-    await axios.put(initResult.uploadUrl, file, {
-      headers: initResult.headers,
-      onUploadProgress: (progressEvent) => {
+      await axios.put(initResult.uploadUrl, file, {
+        headers: initResult.headers,
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total && onProgress) {
+            onProgress(Math.round((progressEvent.loaded * 95) / progressEvent.total));
+          }
+        },
+      });
+
+      const media = await request.post<FamilyUploadedMedia>(
+        `${BASE_URL}/media/direct-upload/complete`,
+        { uploadToken: initResult.uploadToken },
+        {
+          requestOptions: {
+            messageConfig: { successMessage: false },
+          },
+        }
+      );
+      onProgress?.(100);
+      return media;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('target', target);
+
+    const media = await request.post<FamilyUploadedMedia>(`${BASE_URL}/media/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      requestOptions: {
+        messageConfig: { successMessage: false },
+      },
+      onUploadProgress: (progressEvent: { loaded: number; total?: number }) => {
         if (progressEvent.total && onProgress) {
-          onProgress(Math.round((progressEvent.loaded * 95) / progressEvent.total));
+          onProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
         }
       },
     });
-
-    const media = await request.post<FamilyUploadedMedia>(
-      `${BASE_URL}/media/direct-upload/complete`,
-      { uploadToken: initResult.uploadToken },
-      {
-        requestOptions: {
-          messageConfig: { successMessage: false },
-        },
-      }
-    );
     onProgress?.(100);
     return media;
   },
