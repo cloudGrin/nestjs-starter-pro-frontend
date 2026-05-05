@@ -42,6 +42,11 @@ import { useSearchParams } from 'react-router-dom';
 import { createFileAccessLink, uploadFile } from '@/features/file/services/file.service';
 import { resolveFileAccessUrl } from '@/features/file/utils/file-url';
 import {
+  closeAttachmentWindow,
+  navigateAttachmentWindow,
+  openAttachmentWindow,
+} from '@/features/task/utils/attachmentWindow';
+import {
   useCompleteTask,
   useCreateTask,
   useCreateTaskList,
@@ -1624,13 +1629,16 @@ function TaskAttachmentList({ task, attachments }: { task: Task; attachments: Ta
     attachment: TaskAttachment,
     disposition: 'inline' | 'attachment'
   ) => {
+    let openedWindow: Window | null = null;
     try {
       if (disposition === 'attachment') {
-        window.open(
-          taskService.getAttachmentDownloadUrl(task.id, attachment.fileId),
-          '_blank',
-          'noopener,noreferrer'
+        openedWindow = openAttachmentWindow();
+        const { url } = await taskService.createAttachmentAccessLink(
+          task.id,
+          attachment.fileId,
+          'attachment'
         );
+        navigateAttachmentWindow(openedWindow, resolveFileAccessUrl(url));
         return;
       }
 
@@ -1642,6 +1650,7 @@ function TaskAttachmentList({ task, attachments }: { task: Task; attachments: Ta
       const { url } = await createFileAccessLink(attachment.fileId, 'inline');
       window.open(resolveFileAccessUrl(url), '_blank', 'noopener,noreferrer');
     } catch {
+      closeAttachmentWindow(openedWindow);
       Toast.show({ icon: 'fail', content: '附件访问失败', position: 'center' });
     }
   };
@@ -1907,9 +1916,14 @@ export function TaskEditorPopup({
     attachment: TaskAttachment,
     disposition: 'inline' | 'attachment'
   ) => {
+    let openedWindow: Window | null = null;
     try {
-      if (disposition === 'attachment' && task?.id) {
-        window.open(taskService.getAttachmentDownloadUrl(task.id, attachment.fileId), '_blank');
+      if (disposition === 'attachment') {
+        openedWindow = openAttachmentWindow();
+        const { url } = task?.id
+          ? await taskService.createAttachmentAccessLink(task.id, attachment.fileId, 'attachment')
+          : await createFileAccessLink(attachment.fileId, 'attachment');
+        navigateAttachmentWindow(openedWindow, resolveFileAccessUrl(url));
         return;
       }
 
@@ -1922,6 +1936,7 @@ export function TaskEditorPopup({
       const { url } = await createFileAccessLink(attachment.fileId, disposition);
       window.open(resolveFileAccessUrl(url), '_blank');
     } catch {
+      closeAttachmentWindow(openedWindow);
       Toast.show({ icon: 'fail', content: '附件打开失败', position: 'center' });
     }
   };

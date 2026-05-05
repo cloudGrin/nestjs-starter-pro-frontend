@@ -20,6 +20,8 @@ export const familyService = {
   getPosts: (params: QueryFamilyPostsParams) =>
     request.get<FamilyPaginationResult<FamilyPost>>(`${BASE_URL}/posts`, { params }),
 
+  getPost: (id: number) => request.get<FamilyPost>(`${BASE_URL}/posts/${id}`),
+
   createPost: (data: CreateFamilyPostDto) =>
     request.post<FamilyPost>(`${BASE_URL}/posts`, data, {
       requestOptions: {

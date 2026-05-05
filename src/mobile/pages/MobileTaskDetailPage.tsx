@@ -23,6 +23,11 @@ import type {
   UpdateTaskDto,
 } from '@/features/task/types/task.types';
 import { taskService } from '@/features/task/services/task.service';
+import {
+  closeAttachmentWindow,
+  navigateAttachmentWindow,
+  openAttachmentWindow,
+} from '@/features/task/utils/attachmentWindow';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { SnoozeSheet, TaskEditorPopup, TaskQuadrantSheet } from './MobileTaskPage';
 import { formatTaskRecurrence } from '../utils/task';
@@ -53,13 +58,16 @@ async function openAttachment(
   attachment: TaskAttachment,
   disposition: 'inline' | 'attachment'
 ) {
+  let openedWindow: Window | null = null;
   try {
     if (disposition === 'attachment') {
-      window.open(
-        taskService.getAttachmentDownloadUrl(task.id, attachment.fileId),
-        '_blank',
-        'noopener,noreferrer'
+      openedWindow = openAttachmentWindow();
+      const { url } = await taskService.createAttachmentAccessLink(
+        task.id,
+        attachment.fileId,
+        'attachment'
       );
+      navigateAttachmentWindow(openedWindow, resolveFileAccessUrl(url));
       return;
     }
 
@@ -71,6 +79,7 @@ async function openAttachment(
     const { url } = await createFileAccessLink(attachment.fileId, 'inline');
     window.open(resolveFileAccessUrl(url), '_blank', 'noopener,noreferrer');
   } catch {
+    closeAttachmentWindow(openedWindow);
     Toast.show({ icon: 'fail', content: '附件访问失败', position: 'center' });
   }
 }

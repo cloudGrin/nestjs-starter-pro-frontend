@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { familyService } from '../services/family.service';
 import type {
   CreateFamilyChatMessageDto,
+  CreateFamilyPostCommentDto,
   CreateFamilyPostDto,
   QueryFamilyChatMessagesParams,
   QueryFamilyPostsParams,
@@ -11,6 +12,7 @@ export const familyQueryKeys = {
   all: ['family'] as const,
   posts: () => ['family', 'posts'] as const,
   postList: (params: QueryFamilyPostsParams) => ['family', 'posts', params] as const,
+  post: (id: number) => ['family', 'posts', id] as const,
   chatMessages: () => ['family', 'chat-messages'] as const,
   chatMessageList: (params: QueryFamilyChatMessagesParams) =>
     ['family', 'chat-messages', params] as const,
@@ -21,6 +23,15 @@ export function useFamilyPosts(params: QueryFamilyPostsParams) {
     queryKey: familyQueryKeys.postList(params),
     queryFn: () => familyService.getPosts(params),
     placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useFamilyPost(id: number) {
+  return useQuery({
+    queryKey: familyQueryKeys.post(id),
+    queryFn: () => familyService.getPost(id),
+    enabled: Number.isInteger(id) && id > 0,
     staleTime: 30 * 1000,
   });
 }
@@ -40,8 +51,8 @@ export function useCreateFamilyComment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ postId, content }: { postId: number; content: string }) =>
-      familyService.createComment(postId, { content }),
+    mutationFn: ({ postId, ...data }: { postId: number } & CreateFamilyPostCommentDto) =>
+      familyService.createComment(postId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: familyQueryKeys.posts() });
     },

@@ -36,6 +36,11 @@ import type {
   UpdateTaskDto,
 } from '../types/task.types';
 import { taskService } from '../services/task.service';
+import {
+  closeAttachmentWindow,
+  navigateAttachmentWindow,
+  openAttachmentWindow,
+} from '../utils/attachmentWindow';
 import { formatTaskListOptionLabel } from '../utils/taskList';
 
 interface TaskFormModalProps {
@@ -272,7 +277,8 @@ export function TaskFormModal({
         ]
       : remindOffsetOptions;
   const watchedTaskType = Form.useWatch('taskType', form);
-  const isAnniversaryForm = watchedTaskType === 'anniversary' || (!task && defaultTaskType === 'anniversary');
+  const isAnniversaryForm =
+    watchedTaskType === 'anniversary' || (!task && defaultTaskType === 'anniversary');
 
   useEffect(() => {
     if (!open) {
@@ -418,17 +424,24 @@ export function TaskFormModal({
   };
 
   const downloadAttachment = async (attachment: TaskAttachment) => {
-    if (task?.id) {
-      window.open(
-        taskService.getAttachmentDownloadUrl(task.id, attachment.fileId),
-        '_blank',
-        'noopener,noreferrer'
-      );
-      return;
-    }
+    const openedWindow = openAttachmentWindow();
+    try {
+      if (task?.id) {
+        const { url } = await taskService.createAttachmentAccessLink(
+          task.id,
+          attachment.fileId,
+          'attachment'
+        );
+        navigateAttachmentWindow(openedWindow, resolveFileAccessUrl(url));
+        return;
+      }
 
-    const { url } = await createFileAccessLink(attachment.fileId, 'attachment');
-    window.open(resolveFileAccessUrl(url), '_blank', 'noopener,noreferrer');
+      const { url } = await createFileAccessLink(attachment.fileId, 'attachment');
+      navigateAttachmentWindow(openedWindow, resolveFileAccessUrl(url));
+    } catch {
+      closeAttachmentWindow(openedWindow);
+      message.error('附件下载失败');
+    }
   };
 
   return (

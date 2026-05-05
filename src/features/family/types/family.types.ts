@@ -26,9 +26,12 @@ export interface FamilyMedia {
 export interface FamilyPostComment {
   id: number;
   postId: number;
+  parentCommentId?: number | null;
+  replyToUserId?: number | null;
   content: string;
   authorId: number;
   author?: FamilyUserSummary;
+  replyToUser?: FamilyUserSummary | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +89,7 @@ export interface CreateFamilyPostDto {
 
 export interface CreateFamilyPostCommentDto {
   content: string;
+  parentCommentId?: number;
 }
 
 export interface CreateFamilyChatMessageDto {

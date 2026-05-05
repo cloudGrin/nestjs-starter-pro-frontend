@@ -18,6 +18,35 @@ const moduleItems = [
   { path: '/profile', title: '我的', icon: <UserOutlined /> },
 ];
 
+export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
+
+  const handleNavigate = (path: string) => {
+    onClose();
+    navigate(path);
+  };
+
+  return (
+    <Popup
+      visible={open}
+      position="left"
+      onMaskClick={onClose}
+      bodyStyle={{ width: '78vw', maxWidth: 320 }}
+    >
+      <div className="mobile-module-menu">
+        <strong>家庭应用</strong>
+        <List className="mobile-form-list">
+          {moduleItems.map((item) => (
+            <List.Item key={item.path} prefix={item.icon} onClick={() => handleNavigate(item.path)}>
+              {item.title}
+            </List.Item>
+          ))}
+        </List>
+      </div>
+    </Popup>
+  );
+}
+
 export function MobileModuleHeader({
   title,
   subtitle,
@@ -29,16 +58,10 @@ export function MobileModuleHeader({
   actions?: ReactNode;
   taskMode?: boolean;
 }) {
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const headerClass = taskMode ? 'mobile-task-hero' : 'mobile-module-header';
   const headingClass = taskMode ? 'mobile-task-heading' : 'mobile-module-heading';
   const actionsClass = taskMode ? 'mobile-task-header-actions' : 'mobile-module-actions';
-
-  const handleNavigate = (path: string) => {
-    setOpen(false);
-    navigate(path);
-  };
 
   return (
     <>
@@ -52,23 +75,7 @@ export function MobileModuleHeader({
         </div>
         {actions ? <div className={actionsClass}>{actions}</div> : <div />}
       </div>
-      <Popup
-        visible={open}
-        position="left"
-        onMaskClick={() => setOpen(false)}
-        bodyStyle={{ width: '78vw', maxWidth: 320 }}
-      >
-        <div className="mobile-module-menu">
-          <strong>家庭应用</strong>
-          <List className="mobile-form-list">
-            {moduleItems.map((item) => (
-              <List.Item key={item.path} prefix={item.icon} onClick={() => handleNavigate(item.path)}>
-                {item.title}
-              </List.Item>
-            ))}
-          </List>
-        </div>
-      </Popup>
+      <MobileModuleMenu open={open} onClose={() => setOpen(false)} />
     </>
   );
 }

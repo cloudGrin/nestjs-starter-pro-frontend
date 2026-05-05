@@ -1,18 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, Empty, PullToRefresh, TextArea, Toast } from 'antd-mobile';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Button, Dialog, Empty, PullToRefresh, TextArea, Toast } from 'antd-mobile';
 import {
-  CameraOutlined,
   CloseCircleFilled,
+  DeleteOutlined,
   HeartFilled,
   HeartOutlined,
-  MessageOutlined,
-  PictureOutlined,
+  LeftOutlined,
+  MenuOutlined,
+  MessageFilled,
   PlayCircleFilled,
+  PlusOutlined,
+  RightOutlined,
   SendOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  familyQueryKeys,
   useCreateFamilyChatMessage,
   useCreateFamilyComment,
   useCreateFamilyPost,
@@ -27,39 +32,57 @@ import type {
   FamilyChatMessage,
   FamilyMedia,
   FamilyMediaTarget,
+  FamilyPostComment,
   FamilyPost,
   FamilyUserSummary,
 } from '@/features/family/types/family.types';
 import { useAuthStore } from '@/features/auth/stores/authStore';
-import { MobileModuleHeader } from '../components/MobileModuleHeader';
-
-type FamilyTab = 'circle' | 'chat';
+import { MobileModuleMenu } from '../components/MobileModuleHeader';
 
 interface DraftMediaItem {
-  fileId: number;
+  id: string;
+  file: File;
   name: string;
-  target: FamilyMediaTarget;
-  mediaType?: FamilyMedia['mediaType'];
+  mediaType: FamilyMedia['mediaType'];
   previewUrl?: string;
 }
 
-function parseFamilyTab(value: string | null): FamilyTab {
-  return value === 'chat' ? 'chat' : 'circle';
+interface PreviewMediaItem {
+  id: string;
+  url: string;
+  name?: string;
+  mediaType: FamilyMedia['mediaType'];
 }
 
-function displayName(user?: FamilyUserSummary) {
+type FamilyAvatarSize = 'regular' | 'small' | 'mini';
+
+interface CommentTarget {
+  postId: number;
+  parentCommentId?: number;
+  replyToName?: string;
+}
+
+function displayName(user?: FamilyUserSummary | null) {
   return user?.realName || user?.nickname || user?.username || '家人';
 }
 
-function avatarInitial(user?: FamilyUserSummary) {
+function avatarInitial(user?: FamilyUserSummary | null) {
   return displayName(user).slice(0, 1).toUpperCase();
 }
 
-function formatTime(value: string) {
-  return dayjs(value).format('MM-DD HH:mm');
+function formatFeedDate(value: string) {
+  return dayjs(value).format('YYYY-MM-DD');
 }
 
-function isVideo(media: FamilyMedia) {
+function formatChatTime(value: string) {
+  return dayjs(value).format('HH:mm');
+}
+
+function formatChatDivider(value: string) {
+  return dayjs(value).format('YYYY/M/D HH:mm');
+}
+
+function isVideo(media: Pick<FamilyMedia, 'mediaType' | 'mimeType'>) {
   return media.mediaType === 'video' || media.mimeType?.startsWith('video/');
 }
 
@@ -81,18 +104,181 @@ function revokeDraftPreview(item: DraftMediaItem) {
   }
 }
 
-function FamilyAvatar({ user, small = false }: { user?: FamilyUserSummary; small?: boolean }) {
-  const name = displayName(user);
-  const className = small ? 'mobile-family-avatar small' : 'mobile-family-avatar';
-
-  if (user?.avatar) {
-    return <img className={className} src={user.avatar} alt={name} />;
-  }
-
-  return <span className={className}>{avatarInitial(user)}</span>;
+function toPreviewItems(media: FamilyMedia[]): PreviewMediaItem[] {
+  return media.map((item) => ({
+    id: String(item.id),
+    url: item.displayUrl,
+    name: item.originalName,
+    mediaType: isVideo(item) ? 'video' : 'image',
+  }));
 }
 
-function MediaGrid({ media, compact = false }: { media: FamilyMedia[]; compact?: boolean }) {
+function useFamilyRealtime({
+  refetchPosts,
+  refetchChatMessages,
+}: {
+  refetchPosts?: () => void | Promise<unknown>;
+  refetchChatMessages?: () => void | Promise<unknown>;
+}) {
+  const token = useAuthStore((state) => state.token);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const refreshPosts = () => {
+      void queryClient.invalidateQueries({ queryKey: familyQueryKeys.posts() });
+      void refetchPosts?.();
+    };
+    const refreshChatMessages = () => {
+      void queryClient.invalidateQueries({ queryKey: familyQueryKeys.chatMessages() });
+      void refetchChatMessages?.();
+    };
+
+    return connectFamilySocket(token, {
+      onPostCreated: refreshPosts,
+      onPostCommentCreated: refreshPosts,
+      onPostLikeChanged: refreshPosts,
+      onChatMessageCreated: refreshChatMessages,
+      onNotificationCreated: () => undefined,
+    });
+  }, [queryClient, refetchChatMessages, refetchPosts, token]);
+}
+
+function useDraftMedia() {
+  const [items, setItems] = useState<DraftMediaItem[]>([]);
+  const itemsRef = useRef<DraftMediaItem[]>([]);
+  const sequenceRef = useRef(0);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    return () => {
+      itemsRef.current.forEach(revokeDraftPreview);
+    };
+  }, []);
+
+  const addFiles = useCallback((files: FileList | File[] | null | undefined) => {
+    setItems((current) => {
+      const remainingSlots = Math.max(0, 9 - current.length);
+      const selected = Array.from(files ?? []).slice(0, remainingSlots);
+      if (selected.length === 0) return current;
+
+      const nextItems = selected.map((file) => {
+        sequenceRef.current += 1;
+        return {
+          id: `${Date.now()}-${sequenceRef.current}-${file.name}`,
+          file,
+          name: file.name,
+          mediaType: file.type.startsWith('video/') ? 'video' : 'image',
+          previewUrl: getPreviewUrl(file),
+        } satisfies DraftMediaItem;
+      });
+
+      return [...current, ...nextItems];
+    });
+  }, []);
+
+  const removeItem = useCallback((id: string) => {
+    setItems((current) => {
+      current.filter((item) => item.id === id).forEach(revokeDraftPreview);
+      return current.filter((item) => item.id !== id);
+    });
+  }, []);
+
+  const clearItems = useCallback(() => {
+    setItems((current) => {
+      current.forEach(revokeDraftPreview);
+      return [];
+    });
+  }, []);
+
+  return { items, addFiles, removeItem, clearItems };
+}
+
+async function uploadDraftMedia(items: DraftMediaItem[], target: FamilyMediaTarget) {
+  const uploadedIds: number[] = [];
+  for (const item of items) {
+    const uploadedFile = await familyService.uploadFamilyMedia(item.file, target);
+    uploadedIds.push(uploadedFile.id);
+  }
+
+  return uploadedIds;
+}
+
+function FamilyAvatar({
+  user,
+  size = 'regular',
+}: {
+  user?: FamilyUserSummary | null;
+  size?: FamilyAvatarSize;
+}) {
+  const name = displayName(user);
+  const className = ['mobile-family-avatar', size === 'regular' ? '' : size]
+    .filter(Boolean)
+    .join(' ');
+
+  if (user?.avatar) {
+    return <img className={`${className} image`} src={user.avatar} alt={name} />;
+  }
+
+  return (
+    <span className={`${className} text`}>
+      <span className="mobile-family-avatar-letter">{avatarInitial(user)}</span>
+    </span>
+  );
+}
+
+function LikedUserStack({ users = [] }: { users?: FamilyUserSummary[] }) {
+  if (users.length === 0) {
+    return null;
+  }
+
+  const visibleUsers = users.slice(0, 6);
+  const remainingCount = users.length - visibleUsers.length;
+
+  return (
+    <div className="mobile-family-liked-users">
+      {visibleUsers.map((user) => (
+        <FamilyAvatar key={user.id} user={user} size="mini" />
+      ))}
+      {remainingCount > 0 ? <span>+{remainingCount}</span> : null}
+    </div>
+  );
+}
+
+function FamilyCommentLine({ comment }: { comment: FamilyPostComment }) {
+  const authorName = displayName(comment.author);
+  const replyToName = displayName(comment.replyToUser);
+
+  if (comment.parentCommentId) {
+    return (
+      <>
+        <strong>{authorName}</strong>
+        <span className="mobile-family-comment-reply-label">回复</span>
+        <strong>{replyToName}</strong>
+        <span>：{comment.content}</span>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <strong>{authorName}：</strong>
+      <span>{comment.content}</span>
+    </>
+  );
+}
+
+function MediaGrid({
+  media,
+  compact = false,
+  onPreview,
+}: {
+  media: FamilyMedia[];
+  compact?: boolean;
+  onPreview?: (index: number) => void;
+}) {
   if (!media?.length) {
     return null;
   }
@@ -110,7 +296,12 @@ function MediaGrid({ media, compact = false }: { media: FamilyMedia[]; compact?:
   return (
     <div className={className}>
       {visibleMedia.map((item, index) => (
-        <div className="mobile-family-media-item" key={item.id}>
+        <button
+          className="mobile-family-media-item"
+          key={item.id}
+          type="button"
+          onClick={() => onPreview?.(index)}
+        >
           {isVideo(item) ? (
             <>
               <video src={item.displayUrl} controls playsInline preload="metadata" />
@@ -124,7 +315,7 @@ function MediaGrid({ media, compact = false }: { media: FamilyMedia[]; compact?:
           {remainingCount > 0 && index === visibleMedia.length - 1 ? (
             <span className="mobile-family-media-more">+{remainingCount}</span>
           ) : null}
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -132,37 +323,38 @@ function MediaGrid({ media, compact = false }: { media: FamilyMedia[]; compact?:
 
 function DraftMediaGrid({
   items,
-  uploading,
   onAdd,
   onRemove,
+  onPreview,
 }: {
   items: DraftMediaItem[];
-  uploading: boolean;
   onAdd: () => void;
-  onRemove: (fileId: number) => void;
+  onRemove: (id: string) => void;
+  onPreview: (index: number) => void;
 }) {
   return (
     <div className="mobile-family-compose-grid">
-      {items.map((item) => (
-        <div className="mobile-family-draft-tile" key={`${item.target}-${item.fileId}`}>
-          {item.previewUrl && item.mediaType === 'video' ? (
-            <video src={item.previewUrl} muted playsInline preload="metadata" />
-          ) : item.previewUrl ? (
-            <img src={item.previewUrl} alt={item.name} />
-          ) : (
-            <span className="mobile-family-draft-file">{item.name}</span>
-          )}
-          <button type="button" onClick={() => onRemove(item.fileId)}>
+      {items.map((item, index) => (
+        <div className="mobile-family-draft-tile" key={item.id}>
+          <button type="button" onClick={() => onPreview(index)}>
+            {item.previewUrl && item.mediaType === 'video' ? (
+              <video src={item.previewUrl} muted playsInline preload="metadata" />
+            ) : item.previewUrl ? (
+              <img src={item.previewUrl} alt={item.name} />
+            ) : (
+              <span className="mobile-family-draft-file">{item.name}</span>
+            )}
+          </button>
+          <button type="button" onClick={() => onRemove(item.id)}>
             <CloseCircleFilled />
           </button>
-          <span>{item.name}</span>
+          {item.previewUrl ? <span>{item.name}</span> : null}
         </div>
       ))}
       {items.length < 9 ? (
-        <Button className="mobile-family-add-media-tile" loading={uploading} onClick={onAdd}>
-          <CameraOutlined />
-          <span>添加图片/视频</span>
-        </Button>
+        <button className="mobile-family-add-media-tile" type="button" onClick={onAdd}>
+          <PlusOutlined />
+        </button>
       ) : null}
     </div>
   );
@@ -174,393 +366,483 @@ function DraftMediaList({ items }: { items: DraftMediaItem[] }) {
   return (
     <div className="mobile-family-draft-media">
       {items.map((item) => (
-        <span key={`${item.target}-${item.fileId}`}>{item.name}</span>
+        <span key={item.id}>{item.name}</span>
       ))}
     </div>
   );
 }
 
-function LikedUserStack({ users = [] }: { users?: FamilyUserSummary[] }) {
-  if (users.length === 0) {
+function MediaPreviewOverlay({
+  items,
+  index,
+  onClose,
+  onDelete,
+}: {
+  items: PreviewMediaItem[];
+  index: number | null;
+  onClose: () => void;
+  onDelete?: (id: string) => void;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(index ?? 0);
+
+  useEffect(() => {
+    setCurrentIndex(index ?? 0);
+  }, [index]);
+
+  if (index === null || items.length === 0) {
     return null;
   }
 
-  const visibleUsers = users.slice(0, 6);
-  const remainingCount = users.length - visibleUsers.length;
+  const safeIndex = Math.min(currentIndex, items.length - 1);
+  const item = items[safeIndex];
+  const canGoPrevious = safeIndex > 0;
+  const canGoNext = safeIndex < items.length - 1;
 
-  return (
-    <div className="mobile-family-liked-users">
-      {visibleUsers.map((user) => (
-        <FamilyAvatar key={user.id} user={user} small />
-      ))}
-      {remainingCount > 0 ? <span>+{remainingCount}</span> : null}
-    </div>
-  );
-}
-
-export function MobileFamilyPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = parseFamilyTab(searchParams.get('tab'));
-  const [postText, setPostText] = useState('');
-  const [chatText, setChatText] = useState('');
-  const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
-  const [postMedia, setPostMedia] = useState<DraftMediaItem[]>([]);
-  const [chatMedia, setChatMedia] = useState<DraftMediaItem[]>([]);
-  const [uploadingTarget, setUploadingTarget] = useState<FamilyMediaTarget | null>(null);
-  const postInputRef = useRef<HTMLInputElement>(null);
-  const chatInputRef = useRef<HTMLInputElement>(null);
-  const token = useAuthStore((state) => state.token);
-  const currentUser = useAuthStore((state) => state.user);
-
-  const postsQuery = useFamilyPosts({ page: 1, limit: 30 });
-  const chatQuery = useFamilyChatMessages({ page: 1, limit: 100 });
-  const createPost = useCreateFamilyPost();
-  const createComment = useCreateFamilyComment();
-  const likePost = useLikeFamilyPost();
-  const unlikePost = useUnlikeFamilyPost();
-  const createChatMessage = useCreateFamilyChatMessage();
-  const { refetch: refetchPosts } = postsQuery;
-  const { refetch: refetchChatMessages } = chatQuery;
-  const posts = useMemo(() => postsQuery.data?.items ?? [], [postsQuery.data?.items]);
-  const messages = useMemo(() => chatQuery.data?.items ?? [], [chatQuery.data?.items]);
-  const heroUsers = useMemo(() => {
-    const users = [
-      currentUser,
-      ...posts.map((item) => item.author),
-      ...messages.map((item) => item.sender),
-    ];
-    const seen = new Set<number>();
-    return users
-      .filter((user): user is FamilyUserSummary => Boolean(user?.id))
-      .filter((user) => {
-        if (seen.has(user.id)) return false;
-        seen.add(user.id);
-        return true;
-      })
-      .slice(0, 4);
-  }, [currentUser, messages, posts]);
-
-  useEffect(() => {
-    return connectFamilySocket(token, {
-      onPostCreated: () => void refetchPosts(),
-      onPostCommentCreated: () => void refetchPosts(),
-      onPostLikeChanged: () => void refetchPosts(),
-      onChatMessageCreated: () => void refetchChatMessages(),
-      onNotificationCreated: () => undefined,
+  const handleDelete = () => {
+    void Dialog.confirm({
+      content: '确定要删除吗',
+      cancelText: '取消',
+      confirmText: '删除',
+      onConfirm: () => {
+        onDelete?.(item.id);
+        if (items.length <= 1) {
+          onClose();
+          return;
+        }
+        setCurrentIndex((current) => Math.max(0, Math.min(current, items.length - 2)));
+      },
     });
-  }, [refetchChatMessages, refetchPosts, token]);
-
-  const switchTab = (tab: FamilyTab) => {
-    setSearchParams(tab === 'chat' ? { tab } : {});
-  };
-
-  const removeDraftMedia = (target: FamilyMediaTarget, fileId: number) => {
-    const update = (current: DraftMediaItem[]) => {
-      current.filter((item) => item.fileId === fileId).forEach(revokeDraftPreview);
-      return current.filter((item) => item.fileId !== fileId);
-    };
-
-    if (target === 'circle') {
-      setPostMedia(update);
-    } else {
-      setChatMedia(update);
-    }
-  };
-
-  const uploadFiles = async (files: FileList | null | undefined, target: FamilyMediaTarget) => {
-    const currentCount = target === 'circle' ? postMedia.length : chatMedia.length;
-    const remainingSlots = Math.max(0, 9 - currentCount);
-    const selected = Array.from(files ?? []).slice(0, remainingSlots);
-    if (selected.length === 0) return;
-
-    setUploadingTarget(target);
-    try {
-      const draftItems: DraftMediaItem[] = [];
-      for (const file of selected) {
-        const uploadedFile = await familyService.uploadFamilyMedia(file, target);
-        draftItems.push({
-          fileId: uploadedFile.id,
-          name: uploadedFile.originalName || uploadedFile.filename || `文件 ${uploadedFile.id}`,
-          target,
-          mediaType: file.type.startsWith('video/') ? 'video' : 'image',
-          previewUrl: getPreviewUrl(file),
-        });
-      }
-      if (target === 'circle') {
-        setPostMedia((current) => [...current, ...draftItems].slice(0, 9));
-      } else {
-        setChatMedia((current) => [...current, ...draftItems].slice(0, 9));
-      }
-    } catch {
-      Toast.show({ icon: 'fail', content: '媒体上传失败', position: 'center' });
-    } finally {
-      setUploadingTarget(null);
-    }
-  };
-
-  const submitPost = async () => {
-    const content = postText.trim();
-    const mediaFileIds = postMedia.map((item) => item.fileId);
-    if (!content && mediaFileIds.length === 0) {
-      Toast.show({ content: '写点内容或添加图片/视频', position: 'center' });
-      return;
-    }
-
-    await createPost.mutateAsync({ content, mediaFileIds });
-    postMedia.forEach(revokeDraftPreview);
-    setPostText('');
-    setPostMedia([]);
-  };
-
-  const submitComment = async (postId: number) => {
-    const content = commentDrafts[postId]?.trim();
-    if (!content) return;
-
-    await createComment.mutateAsync({ postId, content });
-    setCommentDrafts((current) => ({ ...current, [postId]: '' }));
-  };
-
-  const submitChatMessage = async () => {
-    const content = chatText.trim();
-    const mediaFileIds = chatMedia.map((item) => item.fileId);
-    if (!content && mediaFileIds.length === 0) {
-      Toast.show({ content: '写点内容或添加图片/视频', position: 'center' });
-      return;
-    }
-
-    await createChatMessage.mutateAsync({ content, mediaFileIds });
-    chatMedia.forEach(revokeDraftPreview);
-    setChatText('');
-    setChatMedia([]);
   };
 
   return (
-    <div className="mobile-page mobile-family-page">
-      <section className="mobile-family-hero">
-        <MobileModuleHeader
-          title="家庭"
-          subtitle={activeTab === 'circle' ? '珍藏生活的每个瞬间' : '不错过每一条消息'}
-          actions={
-            <Button
-              className="mobile-family-view-switch"
-              fill="none"
-              size="small"
-              onClick={() => switchTab(activeTab === 'circle' ? 'chat' : 'circle')}
-            >
-              {activeTab === 'circle' ? <MessageOutlined /> : <PictureOutlined />}
-              {activeTab === 'circle' ? '群聊' : '家庭圈'}
-            </Button>
-          }
-        />
-        <div className="mobile-family-hero-panel">
-          <div>
-            <span>{dayjs().format('MM月DD日')}</span>
-            <strong>
-              {activeTab === 'circle' ? `${posts.length} 条动态` : `${messages.length} 条消息`}
-            </strong>
-          </div>
-          <div className="mobile-family-hero-avatars">
-            {heroUsers.length > 0 ? (
-              heroUsers.map((user) => <FamilyAvatar key={user.id} user={user} small />)
-            ) : (
-              <FamilyAvatar small />
-            )}
-          </div>
-        </div>
-      </section>
-
-      {activeTab === 'circle' ? (
-        <PullToRefresh onRefresh={async () => void (await postsQuery.refetch())}>
-          <section className="mobile-family-section">
-            <Card className="mobile-card mobile-family-composer">
-              <div className="mobile-family-composer-title">
-                <span>
-                  <CameraOutlined />
-                </span>
-                <strong>今天想分享什么</strong>
-              </div>
-              <input
-                ref={postInputRef}
-                type="file"
-                hidden
-                multiple
-                accept="image/*,video/*"
-                onChange={(event) => {
-                  void uploadFiles(event.currentTarget.files, 'circle');
-                  event.currentTarget.value = '';
-                }}
-              />
-              <DraftMediaGrid
-                items={postMedia}
-                uploading={uploadingTarget === 'circle'}
-                onAdd={() => postInputRef.current?.click()}
-                onRemove={(fileId) => removeDraftMedia('circle', fileId)}
-              />
-              <TextArea
-                value={postText}
-                placeholder="这一刻的想法..."
-                rows={1}
-                autoSize={{ minRows: 1, maxRows: 4 }}
-                maxLength={5000}
-                onChange={setPostText}
-              />
-              <div className="mobile-family-composer-actions">
-                <span>最多 9 张图片/视频</span>
-                <Button
-                  className="mobile-family-primary-button"
-                  color="primary"
-                  size="small"
-                  loading={createPost.isPending}
-                  onClick={submitPost}
-                >
-                  发布
-                </Button>
-              </div>
-            </Card>
-
-            {posts.length === 0 ? (
-              <Empty description={postsQuery.isLoading ? '加载中...' : '还没有家庭动态'} />
-            ) : (
-              posts.map((item) => (
-                <FamilyPostCard
-                  key={item.id}
-                  post={item}
-                  commentDraft={commentDrafts[item.id] ?? ''}
-                  onCommentDraftChange={(value) =>
-                    setCommentDrafts((current) => ({ ...current, [item.id]: value }))
-                  }
-                  onSubmitComment={() => void submitComment(item.id)}
-                  onToggleLike={() =>
-                    item.likedByMe ? unlikePost.mutate(item.id) : likePost.mutate(item.id)
-                  }
-                />
-              ))
-            )}
-          </section>
-        </PullToRefresh>
-      ) : (
-        <section className="mobile-family-chat-panel">
-          <PullToRefresh onRefresh={async () => void (await chatQuery.refetch())}>
-            <div className="mobile-family-chat-list">
-              {messages.length === 0 ? (
-                <Empty description={chatQuery.isLoading ? '加载中...' : '还没有群聊消息'} />
-              ) : (
-                messages.map((message) => (
-                  <ChatMessageBubble
-                    key={message.id}
-                    message={message}
-                    mine={message.senderId === currentUser?.id}
-                  />
-                ))
-              )}
-            </div>
-          </PullToRefresh>
-
-          <div className="mobile-family-chat-input">
-            <input
-              ref={chatInputRef}
-              type="file"
-              hidden
-              multiple
-              accept="image/*,video/*"
-              onChange={(event) => {
-                void uploadFiles(event.currentTarget.files, 'chat');
-                event.currentTarget.value = '';
-              }}
-            />
-            <Button
-              className="mobile-family-icon-button"
-              fill="none"
-              onClick={() => chatInputRef.current?.click()}
-              loading={uploadingTarget === 'chat'}
-            >
-              <PictureOutlined />
-            </Button>
-            <div className="mobile-family-chat-text">
-              <TextArea
-                value={chatText}
-                placeholder="给家里人发消息"
-                rows={1}
-                autoSize={{ minRows: 1, maxRows: 4 }}
-                onChange={setChatText}
-              />
-              <DraftMediaList items={chatMedia} />
-            </div>
-            <Button
-              className="mobile-family-primary-button"
-              color="primary"
-              loading={createChatMessage.isPending}
-              onClick={submitChatMessage}
-            >
-              <SendOutlined /> 发送
-            </Button>
-          </div>
-        </section>
-      )}
+    <div className="mobile-family-preview">
+      <div className="mobile-family-preview-header">
+        <button type="button" onClick={onClose}>
+          <LeftOutlined />
+        </button>
+        <strong>
+          {safeIndex + 1}/{items.length}
+        </strong>
+        {onDelete ? (
+          <button type="button" onClick={handleDelete}>
+            <DeleteOutlined />
+          </button>
+        ) : (
+          <span />
+        )}
+      </div>
+      <div className="mobile-family-preview-media">
+        {item.mediaType === 'video' ? (
+          <video src={item.url} controls playsInline />
+        ) : (
+          <img src={item.url} alt={item.name || '家庭图片'} />
+        )}
+      </div>
+      {canGoPrevious ? (
+        <button
+          className="mobile-family-preview-arrow previous"
+          type="button"
+          onClick={() => setCurrentIndex((current) => current - 1)}
+        >
+          <LeftOutlined />
+        </button>
+      ) : null}
+      {canGoNext ? (
+        <button
+          className="mobile-family-preview-arrow next"
+          type="button"
+          onClick={() => setCurrentIndex((current) => current + 1)}
+        >
+          <LeftOutlined />
+        </button>
+      ) : null}
     </div>
   );
 }
 
 function FamilyPostCard({
   post,
-  commentDraft,
-  onCommentDraftChange,
-  onSubmitComment,
+  onPreview,
   onToggleLike,
+  commentDraft,
+  commentOpen,
+  commentPlaceholder,
+  commentSubmitting,
+  commentInputRef,
+  onCommentDraftChange,
+  onReplyComment,
+  onSubmitComment,
+  onToggleComment,
 }: {
   post: FamilyPost;
-  commentDraft: string;
-  onCommentDraftChange: (value: string) => void;
-  onSubmitComment: () => void;
+  onPreview: (index: number) => void;
   onToggleLike: () => void;
+  commentDraft: string;
+  commentOpen: boolean;
+  commentPlaceholder: string;
+  commentSubmitting: boolean;
+  commentInputRef?: RefObject<HTMLDivElement>;
+  onCommentDraftChange: (value: string) => void;
+  onReplyComment: (comment: FamilyPostComment) => void;
+  onSubmitComment: () => void;
+  onToggleComment: () => void;
 }) {
-  return (
-    <Card className="mobile-card mobile-family-post-card">
-      <div className="mobile-family-author">
-        <div className="mobile-family-author-main">
-          <FamilyAvatar user={post.author} />
-          <div>
-            <strong>{displayName(post.author)}</strong>
-            <span>{formatTime(post.createdAt)}</span>
-          </div>
-        </div>
-        <span className="mobile-family-post-mark">家庭圈</span>
-      </div>
-      {post.content ? <p className="mobile-family-content">{post.content}</p> : null}
-      <MediaGrid media={post.media} />
+  const hasMedia = post.media.length > 0;
+  const comments = post.comments ?? [];
+  const reactions = (
+    <div className="mobile-family-feed-reactions">
       <LikedUserStack users={post.likedUsers} />
-      <div className="mobile-family-post-actions">
-        <Button size="small" fill="none" onClick={onToggleLike}>
-          {post.likedByMe ? <HeartFilled /> : <HeartOutlined />}{' '}
-          {post.likedByMe ? '已喜欢' : '喜欢'}
-        </Button>
-        <span>
-          <MessageOutlined /> {post.comments.length}
-        </span>
+      <div className="mobile-family-feed-action-group">
+        <button
+          className={
+            post.likedByMe ? 'mobile-family-like-action active' : 'mobile-family-like-action'
+          }
+          type="button"
+          onClick={onToggleLike}
+        >
+          {post.likedByMe ? <HeartFilled /> : <HeartOutlined />}
+          <span className="mobile-family-sr">点赞</span>
+        </button>
+        <button className="mobile-family-comment-action" type="button" onClick={onToggleComment}>
+          <MessageFilled />
+          <span className="mobile-family-action-label">评论</span>
+        </button>
       </div>
-      {post.comments.length > 0 ? (
-        <div className="mobile-family-comments">
-          {post.comments.map((comment) => (
-            <div key={comment.id}>
-              <strong>{displayName(comment.author)}</strong>
-              <span>{comment.content}</span>
-            </div>
+    </div>
+  );
+
+  return (
+    <article
+      className={
+        hasMedia ? 'mobile-family-feed-card has-media' : 'mobile-family-feed-card text-only'
+      }
+    >
+      <div className="mobile-family-feed-author">
+        <FamilyAvatar user={post.author} size={hasMedia ? 'regular' : 'small'} />
+        <div className="mobile-family-feed-author-main">
+          <strong>{displayName(post.author)}</strong>
+          <span>{formatFeedDate(post.createdAt)}</span>
+        </div>
+      </div>
+      <MediaGrid media={post.media} onPreview={onPreview} />
+      {hasMedia ? reactions : null}
+      {post.content ? <div className="mobile-family-feed-content">{post.content}</div> : null}
+      {!hasMedia ? reactions : null}
+      {comments.length ? (
+        <div className="mobile-family-comment-list">
+          {comments.map((comment) => (
+            <button
+              key={comment.id}
+              className={
+                comment.parentCommentId
+                  ? 'mobile-family-feed-comment reply'
+                  : 'mobile-family-feed-comment'
+              }
+              type="button"
+              onClick={() => onReplyComment(comment)}
+            >
+              <FamilyCommentLine comment={comment} />
+            </button>
           ))}
         </div>
       ) : null}
-      <div className="mobile-family-comment-input">
-        <TextArea
-          value={commentDraft}
-          placeholder="写评论"
-          rows={1}
-          autoSize={{ minRows: 1, maxRows: 3 }}
-          onChange={onCommentDraftChange}
-        />
-        <Button size="small" onClick={onSubmitComment}>
-          评论
+      {commentOpen ? (
+        <div className="mobile-family-inline-comment" ref={commentInputRef}>
+          <TextArea
+            value={commentDraft}
+            placeholder={commentPlaceholder}
+            rows={1}
+            autoSize={{ minRows: 1, maxRows: 3 }}
+            onChange={onCommentDraftChange}
+          />
+          <Button size="small" loading={commentSubmitting} onClick={onSubmitComment}>
+            发送
+          </Button>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+export function MobileFamilyPage() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const postsQuery = useFamilyPosts({ page: 1, limit: 30 });
+  const createComment = useCreateFamilyComment();
+  const likePost = useLikeFamilyPost();
+  const unlikePost = useUnlikeFamilyPost();
+  const currentUser = useAuthStore((state) => state.user);
+  const posts = useMemo(() => postsQuery.data?.items ?? [], [postsQuery.data?.items]);
+  const [previewPost, setPreviewPost] = useState<FamilyPost | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [moduleMenuOpen, setModuleMenuOpen] = useState(false);
+  const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [optimisticLikes, setOptimisticLikes] = useState<Record<number, boolean>>({});
+  const commentInputRef = useRef<HTMLDivElement>(null);
+
+  useFamilyRealtime({ refetchPosts: postsQuery.refetch });
+
+  useEffect(() => {
+    if (!commentTarget || typeof window === 'undefined') return undefined;
+
+    const focusInput = () => {
+      commentInputRef.current?.querySelector('textarea')?.focus();
+    };
+    if (typeof window.requestAnimationFrame !== 'function') {
+      focusInput();
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(focusInput);
+    return () => window.cancelAnimationFrame(frame);
+  }, [commentTarget]);
+
+  if (searchParams.get('tab') === 'chat') {
+    return <Navigate to="/family/chat" replace />;
+  }
+
+  const openPreview = (post: FamilyPost, index: number) => {
+    setPreviewPost(post);
+    setPreviewIndex(index);
+  };
+
+  const currentFamilyUser = currentUser
+    ? ({
+        id: currentUser.id,
+        username: currentUser.username,
+        nickname: currentUser.nickname,
+        realName: currentUser.realName,
+        avatar: currentUser.avatar,
+      } satisfies FamilyUserSummary)
+    : null;
+
+  const getDisplayPost = (post: FamilyPost): FamilyPost => {
+    const optimisticLikedByMe = optimisticLikes[post.id];
+    if (optimisticLikedByMe === undefined) return post;
+
+    const likedUsers = post.likedUsers ?? [];
+    const withoutMe = currentUser
+      ? likedUsers.filter((user) => user.id !== currentUser.id)
+      : likedUsers;
+
+    return {
+      ...post,
+      likedByMe: optimisticLikedByMe,
+      likedUsers:
+        optimisticLikedByMe && currentFamilyUser ? [currentFamilyUser, ...withoutMe] : withoutMe,
+    };
+  };
+
+  const toggleComment = (postId: number) => {
+    setCommentTarget((current) => {
+      if (current?.postId === postId && !current.parentCommentId) {
+        setCommentDraft('');
+        return null;
+      }
+      setCommentDraft('');
+      return { postId };
+    });
+  };
+
+  const replyToComment = (postId: number, comment: FamilyPostComment) => {
+    setCommentDraft('');
+    setCommentTarget({
+      postId,
+      parentCommentId: comment.id,
+      replyToName: displayName(comment.author),
+    });
+  };
+
+  const submitComment = async (postId: number) => {
+    const content = commentDraft.trim();
+    if (!content) return;
+    const target = commentTarget?.postId === postId ? commentTarget : null;
+
+    try {
+      await createComment.mutateAsync({
+        postId,
+        content,
+        ...(target?.parentCommentId ? { parentCommentId: target.parentCommentId } : {}),
+      });
+      setCommentDraft('');
+      setCommentTarget(null);
+      void postsQuery.refetch();
+    } catch {
+      Toast.show({ icon: 'fail', content: '评论失败', position: 'center' });
+    }
+  };
+
+  const toggleLike = (post: FamilyPost) => {
+    const displayPost = getDisplayPost(post);
+    const nextLikedByMe = !displayPost.likedByMe;
+
+    setOptimisticLikes((current) => ({
+      ...current,
+      [post.id]: nextLikedByMe,
+    }));
+
+    const mutation = nextLikedByMe ? likePost : unlikePost;
+    mutation.mutate(post.id, {
+      onError: () => {
+        setOptimisticLikes((current) => {
+          const next = { ...current };
+          delete next[post.id];
+          return next;
+        });
+      },
+    });
+  };
+
+  return (
+    <div className="mobile-family-page warm">
+      <header className="mobile-family-home-header">
+        <button
+          className="mobile-round-button mobile-family-menu-button"
+          type="button"
+          onClick={() => setModuleMenuOpen(true)}
+        >
+          <MenuOutlined />
+          <span className="mobile-family-sr">菜单</span>
+        </button>
+        <h1 className="mobile-family-home-title">家庭圈</h1>
+        <button
+          className="mobile-family-logo-button"
+          type="button"
+          onClick={() => navigate('/family/chat')}
+        >
+          <MessageFilled />
+          <span className="mobile-family-sr">家庭群聊</span>
+        </button>
+      </header>
+
+      <PullToRefresh onRefresh={async () => void (await postsQuery.refetch())}>
+        <section className="mobile-family-feed">
+          {posts.length === 0 ? (
+            <Empty description={postsQuery.isLoading ? '加载中...' : '还没有家庭动态'} />
+          ) : (
+            posts.map((item) => (
+              <FamilyPostCard
+                key={item.id}
+                post={getDisplayPost(item)}
+                onPreview={(index) => openPreview(item, index)}
+                onToggleLike={() => toggleLike(item)}
+                commentDraft={commentTarget?.postId === item.id ? commentDraft : ''}
+                commentOpen={commentTarget?.postId === item.id}
+                commentPlaceholder={
+                  commentTarget?.postId === item.id && commentTarget.replyToName
+                    ? `回复 ${commentTarget.replyToName}`
+                    : '说点什么吧...'
+                }
+                commentSubmitting={createComment.isPending && commentTarget?.postId === item.id}
+                commentInputRef={commentTarget?.postId === item.id ? commentInputRef : undefined}
+                onCommentDraftChange={setCommentDraft}
+                onReplyComment={(comment) => replyToComment(item.id, comment)}
+                onSubmitComment={() => void submitComment(item.id)}
+                onToggleComment={() => toggleComment(item.id)}
+              />
+            ))
+          )}
+        </section>
+      </PullToRefresh>
+
+      <MobileModuleMenu open={moduleMenuOpen} onClose={() => setModuleMenuOpen(false)} />
+      <button
+        className="mobile-family-compose-fab"
+        type="button"
+        onClick={() => navigate('/family/compose')}
+      >
+        <PlusOutlined />
+        <span className="mobile-family-sr">发布家庭圈</span>
+      </button>
+      <MediaPreviewOverlay
+        items={previewPost ? toPreviewItems(previewPost.media) : []}
+        index={previewIndex}
+        onClose={() => setPreviewIndex(null)}
+      />
+    </div>
+  );
+}
+
+export function MobileFamilyComposePage() {
+  const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const createPost = useCreateFamilyPost();
+  const draft = useDraftMedia();
+  const [content, setContent] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
+  const submitPost = async () => {
+    const trimmedContent = content.trim();
+    if (!trimmedContent && draft.items.length === 0) {
+      Toast.show({ content: '写点内容或添加图片/视频', position: 'center' });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const mediaFileIds = await uploadDraftMedia(draft.items, 'circle');
+      await createPost.mutateAsync({ content: trimmedContent, mediaFileIds });
+      draft.clearItems();
+      setContent('');
+      navigate('/family');
+    } catch {
+      Toast.show({ icon: 'fail', content: '发布失败', position: 'center' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const previewItems = draft.items.map((item) => ({
+    id: item.id,
+    url: item.previewUrl || '',
+    name: item.name,
+    mediaType: item.mediaType,
+  }));
+
+  return (
+    <div className="mobile-family-compose-page">
+      <header className="mobile-family-compose-header">
+        <button type="button" onClick={() => navigate('/family')}>
+          取消
+        </button>
+        <Button color="primary" loading={uploading || createPost.isPending} onClick={submitPost}>
+          发布
         </Button>
-      </div>
-    </Card>
+      </header>
+      <input
+        ref={inputRef}
+        type="file"
+        hidden
+        multiple
+        accept="image/*,video/*"
+        onChange={(event) => {
+          draft.addFiles(event.currentTarget.files);
+          event.currentTarget.value = '';
+        }}
+      />
+      <DraftMediaGrid
+        items={draft.items}
+        onAdd={() => inputRef.current?.click()}
+        onRemove={draft.removeItem}
+        onPreview={setPreviewIndex}
+      />
+      <TextArea
+        value={content}
+        placeholder="这一刻的想法..."
+        rows={2}
+        autoSize={{ minRows: 2, maxRows: 6 }}
+        maxLength={5000}
+        onChange={setContent}
+      />
+      <MediaPreviewOverlay
+        items={previewItems}
+        index={previewIndex}
+        onClose={() => setPreviewIndex(null)}
+        onDelete={draft.removeItem}
+      />
+    </div>
   );
 }
 
@@ -571,20 +853,157 @@ function ChatMessageBubble({
   message: FamilyChatMessage;
   mine?: boolean;
 }) {
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
   return (
     <div className={mine ? 'mobile-family-chat-message mine' : 'mobile-family-chat-message'}>
-      {!mine ? <FamilyAvatar user={message.sender} small /> : null}
+      {!mine ? <FamilyAvatar user={message.sender} size="small" /> : null}
       <div className="mobile-family-chat-body">
-        <div className="mobile-family-chat-meta">
-          <strong>{displayName(message.sender)}</strong>
-          <span>{formatTime(message.createdAt)}</span>
-        </div>
         <div className="mobile-family-chat-bubble">
           {message.content ? <p>{message.content}</p> : null}
-          <MediaGrid media={message.media} compact />
+          <MediaGrid media={message.media} compact onPreview={setPreviewIndex} />
         </div>
       </div>
-      {mine ? <FamilyAvatar user={message.sender} small /> : null}
+      {mine ? <FamilyAvatar user={message.sender} size="small" /> : null}
+      <MediaPreviewOverlay
+        items={toPreviewItems(message.media)}
+        index={previewIndex}
+        onClose={() => setPreviewIndex(null)}
+      />
+    </div>
+  );
+}
+
+function FamilyChatHeader({ onBack }: { onBack: () => void }) {
+  return (
+    <header className="mobile-family-chat-header">
+      <span />
+      <span className="mobile-family-chat-logo">
+        <MessageFilled />
+      </span>
+      <button type="button" onClick={onBack}>
+        <RightOutlined />
+        <span className="mobile-family-sr">返回家庭圈</span>
+      </button>
+    </header>
+  );
+}
+
+export function MobileFamilyChatPage() {
+  const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const currentUser = useAuthStore((state) => state.user);
+  const chatQuery = useFamilyChatMessages({ page: 1, limit: 100 });
+  const createChatMessage = useCreateFamilyChatMessage();
+  const draft = useDraftMedia();
+  const [messageText, setMessageText] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  useFamilyRealtime({
+    refetchChatMessages: chatQuery.refetch,
+  });
+
+  const messages = useMemo(
+    () =>
+      [...(chatQuery.data?.items ?? [])].sort(
+        (left, right) => dayjs(left.createdAt).valueOf() - dayjs(right.createdAt).valueOf()
+      ),
+    [chatQuery.data?.items]
+  );
+  const latestMessageTime = messages.at(-1)?.createdAt;
+  const messageDay = latestMessageTime ? formatChatDivider(latestMessageTime) : null;
+
+  const shouldShowTime = (message: FamilyChatMessage, index: number) => {
+    if (index === 0) return false;
+    const previous = messages[index - 1];
+    return dayjs(message.createdAt).diff(previous.createdAt, 'minute') >= 5;
+  };
+
+  const submitMessage = async () => {
+    const content = messageText.trim();
+    if (!content && draft.items.length === 0) {
+      Toast.show({ content: '写点内容或添加图片/视频', position: 'center' });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const mediaFileIds = await uploadDraftMedia(draft.items, 'chat');
+      await createChatMessage.mutateAsync({ content, mediaFileIds });
+      draft.clearItems();
+      setMessageText('');
+    } catch {
+      Toast.show({ icon: 'fail', content: '消息发送失败', position: 'center' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="mobile-family-chat-page">
+      <FamilyChatHeader onBack={() => navigate('/family')} />
+      <PullToRefresh
+        onRefresh={async () => {
+          await chatQuery.refetch();
+        }}
+      >
+        <section className="mobile-family-chat-list warm">
+          {messages.length === 0 ? (
+            <Empty description={chatQuery.isLoading ? '加载中...' : '还没有家庭消息'} />
+          ) : (
+            <>
+              {messageDay ? (
+                <div className="mobile-family-chat-date-divider">{messageDay}</div>
+              ) : null}
+              {messages.map((item, index) => (
+                <div className="mobile-family-chat-message-group" key={item.id}>
+                  {shouldShowTime(item, index) ? (
+                    <div className="mobile-family-chat-time-divider">
+                      {formatChatTime(item.createdAt)}
+                    </div>
+                  ) : null}
+                  <ChatMessageBubble message={item} mine={item.senderId === currentUser?.id} />
+                </div>
+              ))}
+            </>
+          )}
+        </section>
+      </PullToRefresh>
+      <div className="mobile-family-chat-input warm">
+        <input
+          ref={inputRef}
+          type="file"
+          hidden
+          multiple
+          accept="image/*,video/*"
+          onChange={(event) => {
+            draft.addFiles(event.currentTarget.files);
+            event.currentTarget.value = '';
+          }}
+        />
+        <div className="mobile-family-chat-text">
+          <TextArea
+            value={messageText}
+            placeholder="给家里人发消息"
+            rows={1}
+            autoSize={{ minRows: 1, maxRows: 4 }}
+            onChange={setMessageText}
+          />
+          <DraftMediaList items={draft.items} />
+        </div>
+        <button type="button" onClick={() => inputRef.current?.click()}>
+          <PlusOutlined />
+          <span className="mobile-family-sr">添加图片或视频</span>
+        </button>
+        <Button
+          className="mobile-family-chat-send"
+          loading={uploading || createChatMessage.isPending}
+          onClick={submitMessage}
+        >
+          <SendOutlined />
+          <span className="mobile-family-sr">发送</span>
+        </Button>
+      </div>
     </div>
   );
 }

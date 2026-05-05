@@ -1,7 +1,12 @@
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MobileFamilyPage } from './MobileFamilyPage';
+import {
+  MobileFamilyChatPage,
+  MobileFamilyComposePage,
+  MobileFamilyPage,
+} from './MobileFamilyPage';
+import { useAuthStore } from '@/features/auth/stores/authStore';
 import type { FamilyChatMessage, FamilyPost } from '@/features/family/types/family.types';
 
 const familyHooks = vi.hoisted(() => ({
@@ -23,12 +28,23 @@ const socketMocks = vi.hoisted(() => ({
   connectFamilySocket: vi.fn(() => () => undefined),
 }));
 
+const queryClientMocks = vi.hoisted(() => ({
+  invalidateQueries: vi.fn(),
+}));
+
 const familyServiceMocks = vi.hoisted(() => ({
   familyService: {
     uploadFamilyMedia: vi.fn(),
   },
 }));
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>();
+  return {
+    ...actual,
+    useQueryClient: () => queryClientMocks,
+  };
+});
 vi.mock('@/features/family/hooks/useFamily', () => familyHooks);
 vi.mock('@/features/family/realtime/familySocket', () => socketMocks);
 vi.mock('@/features/family/services/family.service', () => familyServiceMocks);
@@ -44,7 +60,7 @@ const post: FamilyPost = {
   id: 1,
   content: '宝宝今天会走路了',
   authorId: 2,
-  author: { id: 2, username: 'dad', nickname: '爸爸' },
+  author: { id: 2, username: 'dad', nickname: '爸爸', avatar: 'https://example.com/dad.png' },
   media: [
     {
       id: 7,
@@ -60,11 +76,25 @@ const post: FamilyPost = {
     {
       id: 3,
       postId: 1,
+      parentCommentId: null,
+      replyToUserId: null,
       content: '太棒了',
       authorId: 4,
       author: { id: 4, username: 'mom', nickname: '妈妈' },
       createdAt: '2026-05-04T08:00:00.000Z',
       updatedAt: '2026-05-04T08:00:00.000Z',
+    },
+    {
+      id: 4,
+      postId: 1,
+      parentCommentId: 3,
+      replyToUserId: 4,
+      content: '我也觉得',
+      authorId: 5,
+      author: { id: 5, username: 'grandpa', nickname: '爷爷' },
+      replyToUser: { id: 4, username: 'mom', nickname: '妈妈' },
+      createdAt: '2026-05-04T08:05:00.000Z',
+      updatedAt: '2026-05-04T08:05:00.000Z',
     },
   ],
   likeCount: 2,
@@ -100,7 +130,12 @@ const message: FamilyChatMessage = {
 function renderPage(path = '/family') {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <MobileFamilyPage />
+      <Routes>
+        <Route path="/family" element={<MobileFamilyPage />} />
+        <Route path="/family/compose" element={<MobileFamilyComposePage />} />
+        <Route path="/family/posts/:id" element={<MobileFamilyPage />} />
+        <Route path="/family/chat" element={<MobileFamilyChatPage />} />
+      </Routes>
     </MemoryRouter>
   );
 }
@@ -140,14 +175,31 @@ describe('MobileFamilyPage', () => {
       mimeType: file.type,
       size: file.size,
     }));
+    useAuthStore.setState({
+      token: 'token',
+      user: {
+        id: 2,
+        username: 'dad',
+        nickname: '爸爸',
+        email: 'dad@example.com',
+      } as never,
+    });
   });
 
-  it('shows the family circle with WebP image media and comments', () => {
+  it('shows the warmflow-style family circle home', () => {
     renderPage();
 
-    expect(screen.getByRole('heading', { name: '家庭' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /菜单/ })).toBeInTheDocument();
+    expect(screen.getByText('家庭圈')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /发布家庭圈/ })).toBeInTheDocument();
+    expect(screen.queryByText('首页')).not.toBeInTheDocument();
+    expect(screen.queryByText('我的')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /家庭群聊/ })).toBeInTheDocument();
     expect(screen.getByText('宝宝今天会走路了')).toBeInTheDocument();
     expect(screen.getByText('太棒了')).toBeInTheDocument();
+    expect(
+      screen.getAllByText((_, element) => element?.textContent?.includes('我也觉得') ?? false)
+    ).not.toHaveLength(0);
     expect(screen.getByAltText('家庭图片')).toHaveAttribute(
       'src',
       '/api/v1/files/17/access?token=webp'
@@ -156,31 +208,111 @@ describe('MobileFamilyPage', () => {
     expect(screen.queryByText('2 人喜欢')).not.toBeInTheDocument();
   });
 
-  it('publishes text posts and comments', async () => {
+  it('updates the feed like button immediately', () => {
     renderPage();
+
+    const likeButton = screen.getByRole('button', { name: /点赞/ });
+    fireEvent.click(likeButton);
+
+    expect(likePost).toHaveBeenCalledWith(1, expect.any(Object));
+    expect(likeButton).toHaveClass('active');
+  });
+
+  it('invalidates inactive family caches on realtime events', () => {
+    renderPage('/family');
+
+    const callbacks = socketMocks.connectFamilySocket.mock.calls[0]?.[1] as {
+      onPostCreated: () => void;
+      onPostCommentCreated: () => void;
+      onPostLikeChanged: () => void;
+      onChatMessageCreated: () => void;
+    };
+
+    callbacks.onPostCreated();
+    callbacks.onPostCommentCreated();
+    callbacks.onPostLikeChanged();
+    callbacks.onChatMessageCreated();
+
+    expect(queryClientMocks.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: familyHooks.familyQueryKeys.posts(),
+    });
+    expect(queryClientMocks.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: familyHooks.familyQueryKeys.chatMessages(),
+    });
+  });
+
+  it('keeps selected compose media local until publishing', async () => {
+    const { container } = renderPage('/family/compose');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
 
     fireEvent.change(screen.getByPlaceholderText('这一刻的想法...'), {
       target: { value: '今天一起做饭' },
     });
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(['x'], 'meal-0.jpg', { type: 'image/jpeg' }),
+          new File(['x'], 'meal-1.jpg', { type: 'image/jpeg' }),
+        ],
+      },
+    });
+
+    expect(await screen.findByText('meal-0.jpg')).toBeInTheDocument();
+    expect(familyServiceMocks.familyService.uploadFamilyMedia).not.toHaveBeenCalled();
+
     fireEvent.click(screen.getByRole('button', { name: '发布' }));
 
     await waitFor(() =>
-      expect(createPost).toHaveBeenCalledWith({ content: '今天一起做饭', mediaFileIds: [] })
+      expect(familyServiceMocks.familyService.uploadFamilyMedia).toHaveBeenCalledTimes(2)
     );
+    await waitFor(() =>
+      expect(createPost).toHaveBeenCalledWith({ content: '今天一起做饭', mediaFileIds: [100, 101] })
+    );
+  });
 
-    fireEvent.change(screen.getByPlaceholderText('写评论'), {
+  it('submits comments from the family feed', async () => {
+    renderPage('/family');
+
+    fireEvent.click(screen.getByRole('button', { name: /评论/ }));
+    fireEvent.change(screen.getByPlaceholderText('说点什么吧...'), {
       target: { value: '我也想吃' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '评论' }));
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
 
     await waitFor(() =>
       expect(createComment).toHaveBeenCalledWith({ postId: 1, content: '我也想吃' })
     );
   });
 
-  it('switches to family chat and sends text messages with video playback', async () => {
-    renderPage('/family?tab=chat');
+  it('opens reply input from an existing comment', async () => {
+    renderPage('/family');
 
+    const commentButton = screen.getByText('太棒了').closest('button');
+    expect(commentButton).toBeTruthy();
+    fireEvent.click(commentButton!);
+
+    await waitFor(() => expect(screen.getByPlaceholderText('回复 妈妈')).toHaveFocus());
+    fireEvent.change(screen.getByPlaceholderText('回复 妈妈'), {
+      target: { value: '我们周末再拍' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+
+    await waitFor(() =>
+      expect(createComment).toHaveBeenCalledWith({
+        postId: 1,
+        content: '我们周末再拍',
+        parentCommentId: 3,
+      })
+    );
+  });
+
+  it('shows the family chat route as a clean message thread and sends text messages', async () => {
+    renderPage('/family/chat');
+
+    expect(screen.getByRole('button', { name: /返回家庭圈/ })).toBeInTheDocument();
+    expect(screen.getByText('2026/5/4 17:00')).toBeInTheDocument();
+    expect(screen.queryByText('发布了一条动态')).not.toBeInTheDocument();
+    expect(screen.queryByText('留下了心情')).not.toBeInTheDocument();
     expect(screen.getByText('看这个视频')).toBeInTheDocument();
     expect(document.querySelector('video')).toHaveAttribute(
       'src',
@@ -197,8 +329,8 @@ describe('MobileFamilyPage', () => {
     );
   });
 
-  it('uploads only the remaining family media slots', async () => {
-    const { container } = renderPage();
+  it('uploads only the remaining chat media slots', async () => {
+    const { container } = renderPage('/family/chat');
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     const makeFiles = (count: number, prefix: string) =>
       Array.from(
@@ -207,17 +339,11 @@ describe('MobileFamilyPage', () => {
       );
 
     fireEvent.change(input, { target: { files: makeFiles(8, 'existing') } });
-    await waitFor(() =>
-      expect(familyServiceMocks.familyService.uploadFamilyMedia).toHaveBeenCalledTimes(8)
-    );
     expect((await screen.findAllByText('existing-7.jpg')).length).toBeGreaterThan(0);
+    expect(familyServiceMocks.familyService.uploadFamilyMedia).not.toHaveBeenCalled();
 
     fireEvent.change(input, { target: { files: makeFiles(9, 'extra') } });
     expect((await screen.findAllByText('extra-0.jpg')).length).toBeGreaterThan(0);
-
-    await waitFor(() =>
-      expect(familyServiceMocks.familyService.uploadFamilyMedia).toHaveBeenCalledTimes(9)
-    );
     expect(screen.queryByText('extra-1.jpg')).not.toBeInTheDocument();
   });
 });

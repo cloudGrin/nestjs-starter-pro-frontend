@@ -11,6 +11,7 @@ const fileServiceMocks = vi.hoisted(() => ({
 }));
 const taskServiceMocks = vi.hoisted(() => ({
   getAttachmentDownloadUrl: vi.fn(),
+  createAttachmentAccessLink: vi.fn(),
 }));
 const taskHooks = vi.hoisted(() => ({
   useTaskLists: vi.fn(),
@@ -39,6 +40,14 @@ vi.mock('@/features/task/hooks/useTasks', () => taskHooks);
 
 const mutate = vi.fn();
 const updateMutate = vi.fn();
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+  return { promise, resolve };
+}
 
 const baseTask: Task = {
   id: 42,
@@ -98,6 +107,7 @@ describe('MobileTaskDetailPage', () => {
     setMobilePermissions(['task:read', 'task:update', 'task:delete', 'task:complete']);
     fileServiceMocks.createFileAccessLink.mockResolvedValue({ url: '/inline-preview' });
     taskServiceMocks.getAttachmentDownloadUrl.mockReturnValue('/task-download');
+    taskServiceMocks.createAttachmentAccessLink.mockResolvedValue({ url: '/task-download' });
     taskHooks.useTask.mockReturnValue({ data: baseTask, isLoading: false });
     taskHooks.useTaskLists.mockReturnValue({
       data: [{ id: 1, name: '收集箱', scope: 'family', sort: 1, isArchived: false }],
@@ -143,5 +153,55 @@ describe('MobileTaskDetailPage', () => {
     expect(screen.queryByRole('button', { name: /删除/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /移动象限/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /完成/ })).not.toBeInTheDocument();
+  });
+
+  it('preopens a window before awaiting private attachment download links', async () => {
+    const openedWindow = {
+      close: vi.fn(),
+      location: { href: '' },
+      opener: {},
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => openedWindow);
+    const accessLink = deferred<{ url: string }>();
+    taskServiceMocks.createAttachmentAccessLink.mockReturnValueOnce(accessLink.promise);
+    taskHooks.useTask.mockReturnValue({
+      data: {
+        ...baseTask,
+        attachments: [
+          {
+            id: 7,
+            taskId: baseTask.id,
+            fileId: 71,
+            sort: 0,
+            file: {
+              id: 71,
+              originalName: '理赔材料.pdf',
+              mimeType: 'application/pdf',
+              size: 1024,
+              module: 'task-attachment',
+              createdAt: '2026-05-01T00:00:00.000Z',
+              updatedAt: '2026-05-01T00:00:00.000Z',
+            },
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: '下载' }));
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank');
+    expect(openedWindow.location.href).toBe('');
+
+    accessLink.resolve({ url: '/task-download' });
+    await waitFor(() =>
+      expect(taskServiceMocks.createAttachmentAccessLink).toHaveBeenCalledWith(
+        baseTask.id,
+        71,
+        'attachment'
+      )
+    );
+    await waitFor(() => expect(openedWindow.location.href).toBe('/task-download'));
   });
 });

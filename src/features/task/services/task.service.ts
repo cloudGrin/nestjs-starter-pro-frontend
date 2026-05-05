@@ -1,6 +1,10 @@
 import { appConfig } from '@/shared/config/app.config';
 import { request } from '@/shared/utils/request';
 import type {
+  FileAccessDisposition,
+  FileAccessLinkResponse,
+} from '@/features/file/types/file.types';
+import type {
   CreateTaskDto,
   CreateTaskListDto,
   PaginatedResult,
@@ -129,4 +133,16 @@ export const taskService = {
       : appConfig.apiBaseUrl;
     return `${base}${BASE_URL}/${taskId}/attachments/${fileId}/download`;
   },
+
+  createAttachmentAccessLink: (
+    taskId: number,
+    fileId: number,
+    disposition: FileAccessDisposition = 'attachment'
+  ) =>
+    request.post<FileAccessLinkResponse>(
+      `${BASE_URL}/${taskId}/attachments/${fileId}/access-link`,
+      {
+        disposition,
+      }
+    ),
 };

@@ -11,6 +11,7 @@ const fileServiceMocks = vi.hoisted(() => ({
 }));
 const taskServiceMocks = vi.hoisted(() => ({
   getAttachmentDownloadUrl: vi.fn(),
+  createAttachmentAccessLink: vi.fn(),
 }));
 const taskHooks = vi.hoisted(() => ({
   useTaskLists: vi.fn(),
@@ -39,6 +40,14 @@ vi.mock('@/features/task/hooks/useTasks', () => taskHooks);
 
 const mutate = vi.fn();
 const updateMutate = vi.fn();
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+  return { promise, resolve };
+}
 
 function setMobilePermissions(permissions: string[]) {
   useAuthStore.setState({
@@ -103,6 +112,7 @@ describe('MobileTaskPage', () => {
     ]);
     fileServiceMocks.createFileAccessLink.mockResolvedValue({ url: '/inline-preview' });
     taskServiceMocks.getAttachmentDownloadUrl.mockReturnValue('/task-download');
+    taskServiceMocks.createAttachmentAccessLink.mockResolvedValue({ url: '/task-download' });
     window.localStorage.removeItem('home-task-last-list-id');
     taskHooks.useTaskLists.mockReturnValue({
       data: [{ id: 1, name: '收集箱', scope: 'family', sort: 1, isArchived: false }],
@@ -256,7 +266,14 @@ describe('MobileTaskPage', () => {
   });
 
   it('previews and downloads existing attachments from the mobile editor', async () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const openedWindow = {
+      close: vi.fn(),
+      location: { href: '' },
+      opener: {},
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => openedWindow);
+    const accessLink = deferred<{ url: string }>();
+    taskServiceMocks.createAttachmentAccessLink.mockReturnValueOnce(accessLink.promise);
 
     render(
       <TaskEditorPopup
@@ -296,8 +313,18 @@ describe('MobileTaskPage', () => {
     expect(openSpy).toHaveBeenCalledWith('/inline-preview', '_blank');
 
     fireEvent.click(screen.getByRole('button', { name: '下载' }));
-    expect(taskServiceMocks.getAttachmentDownloadUrl).toHaveBeenCalledWith(baseTask.id, 71);
-    expect(openSpy).toHaveBeenCalledWith('/task-download', '_blank');
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank');
+    expect(openedWindow.location.href).toBe('');
+
+    accessLink.resolve({ url: '/task-download' });
+    await waitFor(() =>
+      expect(taskServiceMocks.createAttachmentAccessLink).toHaveBeenCalledWith(
+        baseTask.id,
+        71,
+        'attachment'
+      )
+    );
+    await waitFor(() => expect(openedWindow.location.href).toBe('/task-download'));
   });
 
   it('uses the shared recent task list when creating on mobile', async () => {
