@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -110,8 +111,8 @@ const post: FamilyPost = {
 const message: FamilyChatMessage = {
   id: 9,
   content: '看这个视频',
-  senderId: 2,
-  sender: { id: 2, username: 'dad', nickname: '爸爸' },
+  senderId: 4,
+  sender: { id: 4, username: 'mom', nickname: '妈妈', avatar: 'https://example.com/mom.png' },
   media: [
     {
       id: 10,
@@ -218,6 +219,58 @@ describe('MobileFamilyPage', () => {
     expect(likeButton).toHaveClass('active');
   });
 
+  it('keeps family avatars visually consistent across feed likes and chat messages', () => {
+    const { unmount } = renderPage('/family');
+
+    expect(screen.getByAltText('妈妈')).toHaveClass('mobile-family-avatar small image');
+    unmount();
+
+    familyHooks.useFamilyChatMessages.mockReturnValue({
+      data: {
+        items: [
+          {
+            ...message,
+            senderId: 4,
+            sender: {
+              id: 4,
+              username: 'mom',
+              nickname: '妈妈',
+              avatar: 'https://example.com/mom.png',
+            },
+          },
+        ],
+        meta: { totalItems: 1 },
+      },
+      isLoading: false,
+      refetch,
+    });
+    renderPage('/family/chat');
+    expect(screen.getByAltText('妈妈')).toHaveClass('mobile-family-avatar small image');
+
+    const css = readFileSync('src/mobile/styles.css', 'utf8');
+    expect(css).not.toContain('.mobile-family-liked-users .mobile-family-avatar');
+    expect(css).not.toContain('.mobile-family-feed-author span');
+    expect(css).not.toContain('.mobile-family-author-main span');
+    expect(css).not.toContain('.mobile-family-chat-meta span');
+    expect(css).not.toContain('.mobile-family-hero-avatars .mobile-family-avatar');
+    expect(css).not.toContain('.mobile-family-post-card');
+    expect(css).not.toContain('.mobile-family-comments');
+    expect(css).toContain('.mobile-family-avatar-letter');
+    expect(css).toContain('color: #ffffff');
+
+    const source = readFileSync('src/mobile/pages/MobileFamilyPage.tsx', 'utf8');
+    const cssClasses = new Set(
+      Array.from(css.matchAll(/\.([A-Za-z0-9_-]*mobile-family[A-Za-z0-9_-]*)/g)).map(
+        (match) => match[1]
+      )
+    );
+    const usedClasses = new Set(
+      Array.from(source.matchAll(/mobile-family[-a-z0-9]+/g)).map((match) => match[0])
+    );
+    expect(Array.from(cssClasses).filter((className) => !usedClasses.has(className))).toEqual([]);
+    expect(Array.from(usedClasses).filter((className) => !cssClasses.has(className))).toEqual([]);
+  });
+
   it('invalidates inactive family caches on realtime events', () => {
     renderPage('/family');
 
@@ -310,6 +363,10 @@ describe('MobileFamilyPage', () => {
     renderPage('/family/chat');
 
     expect(screen.getByRole('button', { name: /返回家庭圈/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '家庭群聊' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /更多/ })).toBeInTheDocument();
+    expect(document.querySelector('.mobile-family-chat-page')).toHaveClass('wechat-warm');
+    expect(document.querySelector('.mobile-family-chat-logo')).not.toBeInTheDocument();
     expect(screen.getByText('2026/5/4 17:00')).toBeInTheDocument();
     expect(screen.queryByText('发布了一条动态')).not.toBeInTheDocument();
     expect(screen.queryByText('留下了心情')).not.toBeInTheDocument();
@@ -329,6 +386,14 @@ describe('MobileFamilyPage', () => {
     );
   });
 
+  it('opens the chat attachment panel and keeps media local until sending', async () => {
+    renderPage('/family/chat');
+
+    expect(screen.queryByRole('button', { name: /照片\/视频/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /添加图片或视频/ }));
+    expect(screen.getByRole('button', { name: /照片\/视频/ })).toBeInTheDocument();
+  });
+
   it('uploads only the remaining chat media slots', async () => {
     const { container } = renderPage('/family/chat');
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
@@ -339,11 +404,11 @@ describe('MobileFamilyPage', () => {
       );
 
     fireEvent.change(input, { target: { files: makeFiles(8, 'existing') } });
-    expect((await screen.findAllByText('existing-7.jpg')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByLabelText(/移除 existing-7.jpg/)).length).toBeGreaterThan(0);
     expect(familyServiceMocks.familyService.uploadFamilyMedia).not.toHaveBeenCalled();
 
     fireEvent.change(input, { target: { files: makeFiles(9, 'extra') } });
-    expect((await screen.findAllByText('extra-0.jpg')).length).toBeGreaterThan(0);
-    expect(screen.queryByText('extra-1.jpg')).not.toBeInTheDocument();
+    expect((await screen.findAllByLabelText(/移除 extra-0.jpg/)).length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText(/移除 extra-1.jpg/)).not.toBeInTheDocument();
   });
 });

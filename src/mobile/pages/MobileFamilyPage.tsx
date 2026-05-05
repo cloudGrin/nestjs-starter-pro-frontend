@@ -4,6 +4,7 @@ import { Button, Dialog, Empty, PullToRefresh, TextArea, Toast } from 'antd-mobi
 import {
   CloseCircleFilled,
   DeleteOutlined,
+  EllipsisOutlined,
   HeartFilled,
   HeartOutlined,
   LeftOutlined,
@@ -11,7 +12,6 @@ import {
   MessageFilled,
   PlayCircleFilled,
   PlusOutlined,
-  RightOutlined,
   SendOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -240,9 +240,13 @@ function LikedUserStack({ users = [] }: { users?: FamilyUserSummary[] }) {
   return (
     <div className="mobile-family-liked-users">
       {visibleUsers.map((user) => (
-        <FamilyAvatar key={user.id} user={user} size="mini" />
+        <FamilyAvatar key={user.id} user={user} size="small" />
       ))}
-      {remainingCount > 0 ? <span>+{remainingCount}</span> : null}
+      {remainingCount > 0 ? (
+        <span className="mobile-family-avatar small text">
+          <span className="mobile-family-avatar-letter">+{remainingCount}</span>
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -360,13 +364,44 @@ function DraftMediaGrid({
   );
 }
 
-function DraftMediaList({ items }: { items: DraftMediaItem[] }) {
+function ChatDraftMediaStrip({
+  items,
+  onPreview,
+  onRemove,
+}: {
+  items: DraftMediaItem[];
+  onPreview: (index: number) => void;
+  onRemove: (id: string) => void;
+}) {
   if (items.length === 0) return null;
 
   return (
-    <div className="mobile-family-draft-media">
-      {items.map((item) => (
-        <span key={item.id}>{item.name}</span>
+    <div className="mobile-family-chat-draft-strip">
+      {items.map((item, index) => (
+        <div className="mobile-family-chat-draft-item" key={item.id}>
+          <button
+            className="mobile-family-chat-draft-preview"
+            type="button"
+            onClick={() => onPreview(index)}
+          >
+            {item.previewUrl && item.mediaType === 'video' ? (
+              <video src={item.previewUrl} muted playsInline preload="metadata" />
+            ) : item.previewUrl ? (
+              <img src={item.previewUrl} alt={item.name} />
+            ) : (
+              <span className="mobile-family-chat-draft-file">{item.name}</span>
+            )}
+          </button>
+          <button
+            className="mobile-family-chat-draft-remove"
+            type="button"
+            aria-label={`移除 ${item.name}`}
+            onClick={() => onRemove(item.id)}
+          >
+            <CloseCircleFilled />
+            <span className="mobile-family-sr">移除 {item.name}</span>
+          </button>
+        </div>
       ))}
     </div>
   );
@@ -877,13 +912,14 @@ function ChatMessageBubble({
 function FamilyChatHeader({ onBack }: { onBack: () => void }) {
   return (
     <header className="mobile-family-chat-header">
-      <span />
-      <span className="mobile-family-chat-logo">
-        <MessageFilled />
-      </span>
-      <button type="button" onClick={onBack}>
-        <RightOutlined />
+      <button className="mobile-family-chat-back" type="button" onClick={onBack}>
+        <LeftOutlined />
         <span className="mobile-family-sr">返回家庭圈</span>
+      </button>
+      <h1>家庭群聊</h1>
+      <button className="mobile-family-chat-more" type="button">
+        <EllipsisOutlined />
+        <span className="mobile-family-sr">更多</span>
       </button>
     </header>
   );
@@ -892,12 +928,15 @@ function FamilyChatHeader({ onBack }: { onBack: () => void }) {
 export function MobileFamilyChatPage() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const chatListRef = useRef<HTMLElement>(null);
   const currentUser = useAuthStore((state) => state.user);
   const chatQuery = useFamilyChatMessages({ page: 1, limit: 100 });
   const createChatMessage = useCreateFamilyChatMessage();
   const draft = useDraftMedia();
   const [messageText, setMessageText] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [attachmentPanelOpen, setAttachmentPanelOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   useFamilyRealtime({
     refetchChatMessages: chatQuery.refetch,
@@ -912,6 +951,19 @@ export function MobileFamilyChatPage() {
   );
   const latestMessageTime = messages.at(-1)?.createdAt;
   const messageDay = latestMessageTime ? formatChatDivider(latestMessageTime) : null;
+  const canSend = messageText.trim().length > 0 || draft.items.length > 0;
+  const previewItems = draft.items.map((item) => ({
+    id: item.id,
+    url: item.previewUrl || '',
+    name: item.name,
+    mediaType: item.mediaType,
+  }));
+
+  useEffect(() => {
+    const list = chatListRef.current;
+    if (!list || typeof list.scrollTo !== 'function') return;
+    list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+  }, [latestMessageTime]);
 
   const shouldShowTime = (message: FamilyChatMessage, index: number) => {
     if (index === 0) return false;
@@ -932,6 +984,8 @@ export function MobileFamilyChatPage() {
       await createChatMessage.mutateAsync({ content, mediaFileIds });
       draft.clearItems();
       setMessageText('');
+      setAttachmentPanelOpen(false);
+      setPreviewIndex(null);
     } catch {
       Toast.show({ icon: 'fail', content: '消息发送失败', position: 'center' });
     } finally {
@@ -940,14 +994,14 @@ export function MobileFamilyChatPage() {
   };
 
   return (
-    <div className="mobile-family-chat-page">
+    <div className="mobile-family-chat-page wechat-warm">
       <FamilyChatHeader onBack={() => navigate('/family')} />
       <PullToRefresh
         onRefresh={async () => {
           await chatQuery.refetch();
         }}
       >
-        <section className="mobile-family-chat-list warm">
+        <section className="mobile-family-chat-list warm" ref={chatListRef}>
           {messages.length === 0 ? (
             <Empty description={chatQuery.isLoading ? '加载中...' : '还没有家庭消息'} />
           ) : (
@@ -981,29 +1035,60 @@ export function MobileFamilyChatPage() {
             event.currentTarget.value = '';
           }}
         />
-        <div className="mobile-family-chat-text">
-          <TextArea
-            value={messageText}
-            placeholder="给家里人发消息"
-            rows={1}
-            autoSize={{ minRows: 1, maxRows: 4 }}
-            onChange={setMessageText}
-          />
-          <DraftMediaList items={draft.items} />
+        <div className="mobile-family-chat-input-row">
+          <div className="mobile-family-chat-text">
+            <TextArea
+              value={messageText}
+              placeholder="给家里人发消息"
+              rows={1}
+              autoSize={{ minRows: 1, maxRows: 4 }}
+              onChange={setMessageText}
+            />
+          </div>
+          <button
+            className={
+              attachmentPanelOpen ? 'mobile-family-chat-tool active' : 'mobile-family-chat-tool'
+            }
+            type="button"
+            onClick={() => setAttachmentPanelOpen((open) => !open)}
+          >
+            <PlusOutlined />
+            <span className="mobile-family-sr">添加图片或视频</span>
+          </button>
+          <Button
+            className={canSend ? 'mobile-family-chat-send active' : 'mobile-family-chat-send'}
+            loading={uploading || createChatMessage.isPending}
+            disabled={!canSend}
+            onClick={submitMessage}
+          >
+            <SendOutlined />
+            <span className="mobile-family-sr">发送</span>
+          </Button>
         </div>
-        <button type="button" onClick={() => inputRef.current?.click()}>
-          <PlusOutlined />
-          <span className="mobile-family-sr">添加图片或视频</span>
-        </button>
-        <Button
-          className="mobile-family-chat-send"
-          loading={uploading || createChatMessage.isPending}
-          onClick={submitMessage}
-        >
-          <SendOutlined />
-          <span className="mobile-family-sr">发送</span>
-        </Button>
+        <ChatDraftMediaStrip
+          items={draft.items}
+          onPreview={setPreviewIndex}
+          onRemove={draft.removeItem}
+        />
+        {attachmentPanelOpen ? (
+          <div className="mobile-family-chat-attachment-panel">
+            <button
+              className="mobile-family-chat-attachment-action"
+              type="button"
+              onClick={() => inputRef.current?.click()}
+            >
+              <PlusOutlined />
+              <span>照片/视频</span>
+            </button>
+          </div>
+        ) : null}
       </div>
+      <MediaPreviewOverlay
+        items={previewItems}
+        index={previewIndex}
+        onClose={() => setPreviewIndex(null)}
+        onDelete={draft.removeItem}
+      />
     </div>
   );
 }

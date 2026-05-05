@@ -1,47 +1,67 @@
 import { useState, type ReactNode } from 'react';
 import {
+  AppstoreOutlined,
   BellOutlined,
   CheckSquareOutlined,
   HomeOutlined,
   MenuOutlined,
+  RightOutlined,
   SafetyCertificateOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, List, Popup } from 'antd-mobile';
-import { useNavigate } from 'react-router-dom';
+import { Button, Popup } from 'antd-mobile';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const moduleItems = [
-  { path: '/family', title: '家庭', icon: <HomeOutlined /> },
-  { path: '/tasks', title: '任务中心', icon: <CheckSquareOutlined /> },
-  { path: '/insurance', title: '家庭保险', icon: <SafetyCertificateOutlined /> },
-  { path: '/notifications', title: '通知', icon: <BellOutlined /> },
-  { path: '/profile', title: '我的', icon: <UserOutlined /> },
+  { path: '/family', title: '家庭', icon: <HomeOutlined />, tone: 'family' },
+  { path: '/tasks', title: '任务中心', icon: <CheckSquareOutlined />, tone: 'task' },
+  { path: '/insurance', title: '家庭保险', icon: <SafetyCertificateOutlined />, tone: 'insurance' },
+  { path: '/notifications', title: '通知', icon: <BellOutlined />, tone: 'notice' },
+  { path: '/profile', title: '我的', icon: <UserOutlined />, tone: 'profile' },
 ];
 
 export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleNavigate = (path: string) => {
     onClose();
     navigate(path);
   };
 
+  const isActiveModule = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`);
+
   return (
     <Popup
       visible={open}
       position="left"
       onMaskClick={onClose}
-      bodyStyle={{ width: '78vw', maxWidth: 320 }}
+      bodyStyle={{ width: '84vw', maxWidth: 360 }}
     >
       <div className="mobile-module-menu">
-        <strong>家庭应用</strong>
-        <List className="mobile-form-list">
+        <div className="mobile-module-menu-hero">
+          <span>
+            <AppstoreOutlined />
+          </span>
+          <strong>家庭应用</strong>
+        </div>
+        <div className="mobile-module-menu-grid">
           {moduleItems.map((item) => (
-            <List.Item key={item.path} prefix={item.icon} onClick={() => handleNavigate(item.path)}>
-              {item.title}
-            </List.Item>
+            <button
+              key={item.path}
+              className={`mobile-module-menu-card ${item.tone}${
+                isActiveModule(item.path) ? ' active' : ''
+              }`}
+              type="button"
+              onClick={() => handleNavigate(item.path)}
+            >
+              <span className="mobile-module-menu-icon">{item.icon}</span>
+              <strong>{item.title}</strong>
+              <RightOutlined className="mobile-module-menu-arrow" />
+            </button>
           ))}
-        </List>
+        </div>
       </div>
     </Popup>
   );
