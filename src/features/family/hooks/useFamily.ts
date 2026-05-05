@@ -4,6 +4,8 @@ import type {
   CreateFamilyChatMessageDto,
   CreateFamilyPostCommentDto,
   CreateFamilyPostDto,
+  FamilyPaginationResult,
+  FamilyPost,
   QueryFamilyChatMessagesParams,
   QueryFamilyPostsParams,
 } from '../types/family.types';
@@ -18,10 +20,62 @@ export const familyQueryKeys = {
     ['family', 'chat-messages', params] as const,
 };
 
+const FAMILY_MEDIA_LINK_REFRESH_BUFFER_MS = 60 * 1000;
+
+function isReusableFamilyMediaLink(expiresAt: string, now: number) {
+  const expiresAtTime = Date.parse(expiresAt);
+  return Number.isFinite(expiresAtTime) && expiresAtTime - now > FAMILY_MEDIA_LINK_REFRESH_BUFFER_MS;
+}
+
+export function mergeStableFamilyPostMediaUrls(
+  previous: FamilyPaginationResult<FamilyPost> | undefined,
+  next: FamilyPaginationResult<FamilyPost>,
+  now = Date.now()
+): FamilyPaginationResult<FamilyPost> {
+  if (!previous?.items.length) {
+    return next;
+  }
+
+  const previousMediaByKey = new Map(
+    previous.items.flatMap((post) =>
+      post.media.map((media) => [`${media.id}:${media.fileId}`, media] as const)
+    )
+  );
+
+  return {
+    ...next,
+    items: next.items.map((post) => ({
+      ...post,
+      media: post.media.map((media) => {
+        const previousMedia = previousMediaByKey.get(`${media.id}:${media.fileId}`);
+        if (
+          !previousMedia ||
+          !isReusableFamilyMediaLink(previousMedia.expiresAt, now)
+        ) {
+          return media;
+        }
+
+        return {
+          ...media,
+          displayUrl: previousMedia.displayUrl,
+          expiresAt: previousMedia.expiresAt,
+        };
+      }),
+    })),
+  };
+}
+
 export function useFamilyPosts(params: QueryFamilyPostsParams) {
+  const queryClient = useQueryClient();
+  const queryKey = familyQueryKeys.postList(params);
+
   return useQuery({
-    queryKey: familyQueryKeys.postList(params),
-    queryFn: () => familyService.getPosts(params),
+    queryKey,
+    queryFn: async () => {
+      const next = await familyService.getPosts(params);
+      const previous = queryClient.getQueryData<FamilyPaginationResult<FamilyPost>>(queryKey);
+      return mergeStableFamilyPostMediaUrls(previous, next);
+    },
     placeholderData: keepPreviousData,
     staleTime: 30 * 1000,
   });

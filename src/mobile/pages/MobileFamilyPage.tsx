@@ -7,6 +7,7 @@ import {
   type ReactNode,
   type RefObject,
   type TouchEvent,
+  type FocusEvent,
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Dialog, Empty, PullToRefresh, TextArea, Toast } from 'antd-mobile';
@@ -68,6 +69,15 @@ interface CommentTarget {
   postId: number;
   parentCommentId?: number;
   replyToName?: string;
+}
+
+function sameCommentTarget(left?: CommentTarget | null, right?: CommentTarget | null) {
+  return (
+    Boolean(left && right) &&
+    left?.postId === right?.postId &&
+    left?.parentCommentId === right?.parentCommentId &&
+    left?.replyToName === right?.replyToName
+  );
 }
 
 function displayName(user?: FamilyUserSummary | null) {
@@ -683,6 +693,7 @@ function FamilyPostCard({
   commentPlaceholder,
   commentSubmitting,
   commentInputRef,
+  onCommentBlur,
   onCommentDraftChange,
   onReplyComment,
   onSubmitComment,
@@ -696,6 +707,7 @@ function FamilyPostCard({
   commentPlaceholder: string;
   commentSubmitting: boolean;
   commentInputRef?: RefObject<HTMLDivElement>;
+  onCommentBlur: (event: FocusEvent<HTMLDivElement>) => void;
   onCommentDraftChange: (value: string) => void;
   onReplyComment: (comment: FamilyPostComment) => void;
   onSubmitComment: () => void;
@@ -760,7 +772,7 @@ function FamilyPostCard({
         </div>
       ) : null}
       {commentOpen ? (
-        <div className="mobile-family-inline-comment" ref={commentInputRef}>
+        <div className="mobile-family-inline-comment" ref={commentInputRef} onBlur={onCommentBlur}>
           <TextArea
             value={commentDraft}
             placeholder={commentPlaceholder}
@@ -790,6 +802,7 @@ export function MobileFamilyPage() {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [moduleMenuOpen, setModuleMenuOpen] = useState(false);
   const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
+  const [commentDraftTarget, setCommentDraftTarget] = useState<CommentTarget | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [optimisticLikes, setOptimisticLikes] = useState<Record<number, boolean>>({});
   const commentInputRef = useRef<HTMLDivElement>(null);
@@ -848,23 +861,43 @@ export function MobileFamilyPage() {
   };
 
   const toggleComment = (postId: number) => {
+    const nextTarget = { postId };
     setCommentTarget((current) => {
-      if (current?.postId === postId && !current.parentCommentId) {
-        setCommentDraft('');
+      if (sameCommentTarget(current, nextTarget)) {
         return null;
       }
-      setCommentDraft('');
-      return { postId };
+      if (!sameCommentTarget(commentDraftTarget, nextTarget)) {
+        setCommentDraft('');
+      }
+      setCommentDraftTarget(nextTarget);
+      return nextTarget;
     });
   };
 
   const replyToComment = (postId: number, comment: FamilyPostComment) => {
-    setCommentDraft('');
-    setCommentTarget({
+    const nextTarget = {
       postId,
       parentCommentId: comment.id,
       replyToName: displayName(comment.author),
-    });
+    };
+    if (!sameCommentTarget(commentDraftTarget, nextTarget)) {
+      setCommentDraft('');
+    }
+    setCommentDraftTarget(nextTarget);
+    setCommentTarget(nextTarget);
+  };
+
+  const handleCommentDraftChange = (value: string) => {
+    if (commentTarget) {
+      setCommentDraftTarget(commentTarget);
+    }
+    setCommentDraft(value);
+  };
+
+  const closeCommentOnBlur = (event: FocusEvent<HTMLDivElement>) => {
+    const nextFocused = event.relatedTarget;
+    if (nextFocused && event.currentTarget.contains(nextFocused as Node)) return;
+    setCommentTarget(null);
   };
 
   const submitComment = async (postId: number) => {
@@ -879,8 +912,8 @@ export function MobileFamilyPage() {
         ...(target?.parentCommentId ? { parentCommentId: target.parentCommentId } : {}),
       });
       setCommentDraft('');
+      setCommentDraftTarget(null);
       setCommentTarget(null);
-      void postsQuery.refetch();
     } catch {
       Toast.show({ icon: 'fail', content: '评论失败', position: 'center' });
     }
@@ -952,7 +985,8 @@ export function MobileFamilyPage() {
                 }
                 commentSubmitting={createComment.isPending && commentTarget?.postId === item.id}
                 commentInputRef={commentTarget?.postId === item.id ? commentInputRef : undefined}
-                onCommentDraftChange={setCommentDraft}
+                onCommentBlur={closeCommentOnBlur}
+                onCommentDraftChange={handleCommentDraftChange}
                 onReplyComment={(comment) => replyToComment(item.id, comment)}
                 onSubmitComment={() => void submitComment(item.id)}
                 onToggleComment={() => toggleComment(item.id)}

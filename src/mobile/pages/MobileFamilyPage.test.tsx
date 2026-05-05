@@ -515,6 +515,26 @@ describe('MobileFamilyPage', () => {
     );
   });
 
+  it('closes the comment input on blur and keeps the draft for reopening', async () => {
+    renderPage('/family');
+
+    fireEvent.click(screen.getByRole('button', { name: /评论/ }));
+    const input = screen.getByPlaceholderText('说点什么吧...') as HTMLTextAreaElement;
+    fireEvent.change(input, {
+      target: { value: '晚点继续写' },
+    });
+
+    fireEvent.blur(input);
+
+    await waitFor(() =>
+      expect(screen.queryByPlaceholderText('说点什么吧...')).not.toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /评论/ }));
+
+    expect(screen.getByPlaceholderText('说点什么吧...')).toHaveValue('晚点继续写');
+  });
+
   it('opens reply input from an existing comment', async () => {
     renderPage('/family');
 
