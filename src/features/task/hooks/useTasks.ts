@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePermission } from '@/shared/hooks/usePermission';
 import { taskService } from '../services/task.service';
 import type {
   CreateTaskDto,
@@ -18,9 +19,13 @@ export const taskQueryKeys = {
 };
 
 export function useTaskLists() {
+  const { hasPermission } = usePermission();
+  const canManageLists = hasPermission(['task-list:manage']);
+
   return useQuery({
     queryKey: taskQueryKeys.lists(),
-    queryFn: () => taskService.getTaskLists(),
+    queryFn: () =>
+      canManageLists ? taskService.ensureDefaultTaskLists() : taskService.getTaskLists(),
     staleTime: 5 * 60 * 1000,
   });
 }

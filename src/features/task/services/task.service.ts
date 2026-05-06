@@ -29,6 +29,8 @@ const BASE_URL = '/tasks';
 export const taskService = {
   getTaskLists: () => request.get<TaskList[]>('/task-lists'),
 
+  ensureDefaultTaskLists: () => request.post<TaskList[]>('/task-lists/defaults'),
+
   createTaskList: (data: CreateTaskListDto) =>
     request.post<TaskList>('/task-lists', data, {
       requestOptions: {

@@ -256,6 +256,32 @@ describe('MobileFamilyPage', () => {
     expect(screen.queryByText('2 人喜欢')).not.toBeInTheDocument();
   });
 
+  it('prefers nicknames over real names in family user display', () => {
+    familyHooks.useFamilyPosts.mockReturnValue({
+      data: {
+        items: [
+          {
+            ...post,
+            author: {
+              ...post.author!,
+              realName: '王文瀚',
+            },
+          },
+        ],
+        meta: { totalItems: 1 },
+      },
+      isLoading: false,
+      refetch,
+    });
+
+    renderPage();
+
+    expect(document.querySelector('.mobile-family-feed-author-main strong')).toHaveTextContent(
+      '爸爸'
+    );
+    expect(screen.queryByText('王文瀚')).not.toBeInTheDocument();
+  });
+
   it('updates the feed like button immediately', () => {
     renderPage();
 

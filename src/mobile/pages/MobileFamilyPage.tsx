@@ -89,7 +89,7 @@ function sameCommentTarget(left?: CommentTarget | null, right?: CommentTarget | 
 }
 
 function displayName(user?: FamilyUserSummary | null) {
-  return user?.realName || user?.nickname || user?.username || '家人';
+  return user?.nickname || user?.realName || user?.username || '家人';
 }
 
 function avatarInitial(user?: FamilyUserSummary | null) {

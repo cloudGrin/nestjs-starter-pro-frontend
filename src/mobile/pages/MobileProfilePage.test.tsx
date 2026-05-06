@@ -117,6 +117,10 @@ describe('MobileProfilePage', () => {
       nickname: '妈咪',
     });
 
+    expect(screen.queryByLabelText('姓名')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '更换头像' })).not.toBeInTheDocument();
+    expect(document.querySelector('.mobile-profile-name')).toHaveTextContent('爸爸');
+    await event.click(screen.getByRole('button', { name: /编辑资料/ }));
     await event.clear(screen.getByLabelText('姓名'));
     await event.type(screen.getByLabelText('姓名'), '妈妈');
     await event.clear(screen.getByLabelText('昵称'));
@@ -129,13 +133,14 @@ describe('MobileProfilePage', () => {
         nickname: '妈咪',
       });
     });
-    expect(await screen.findByText('妈妈')).toBeInTheDocument();
+    expect(await screen.findByText('妈咪')).toBeInTheDocument();
   });
 
   it('submits null when optional profile names are cleared', async () => {
     const event = userEvent.setup();
     renderPage();
 
+    await event.click(screen.getByRole('button', { name: /编辑资料/ }));
     await event.clear(screen.getByLabelText('姓名'));
     await event.clear(screen.getByLabelText('昵称'));
     await event.click(screen.getByRole('button', { name: '保存资料' }));
@@ -158,6 +163,28 @@ describe('MobileProfilePage', () => {
 
     expect(await screen.findByText('裁剪头像')).toBeInTheDocument();
     expect(uploadFile).not.toHaveBeenCalled();
+  });
+
+  it('keeps unsaved profile edits when avatar cropping is cancelled from the edit sheet', async () => {
+    const event = userEvent.setup();
+    const { container } = renderPage();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    await event.click(screen.getByRole('button', { name: /编辑资料/ }));
+    await event.clear(screen.getByLabelText('姓名'));
+    await event.type(screen.getByLabelText('姓名'), '还没保存的姓名');
+
+    fireEvent.change(input, {
+      target: { files: [new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })] },
+    });
+    await screen.findByText('裁剪头像');
+    const cancelButtons = screen.getAllByRole('button', { name: '取消' });
+    fireEvent.click(cancelButtons[cancelButtons.length - 1]);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: '保存头像' })).not.toBeInTheDocument()
+    );
+    expect(screen.getByLabelText('姓名')).toHaveValue('还没保存的姓名');
   });
 
   it('uploads the cropped avatar and updates the current profile', async () => {
@@ -185,7 +212,7 @@ describe('MobileProfilePage', () => {
     expect(authService.updateProfile).toHaveBeenCalledWith({
       avatar: 'https://example.com/new.png',
     });
-    expect(await screen.findByAltText('老爸')).toHaveAttribute(
+    expect(await screen.findByAltText('爸爸')).toHaveAttribute(
       'src',
       'https://example.com/new.png'
     );

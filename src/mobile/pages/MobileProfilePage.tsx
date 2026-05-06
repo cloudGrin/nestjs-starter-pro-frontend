@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { CameraOutlined } from '@ant-design/icons';
+import { CameraOutlined, EditOutlined } from '@ant-design/icons';
 import { Button, Card, Input, List, Popup, Switch, Toast } from 'antd-mobile';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '@/features/auth/services/auth.service';
@@ -19,7 +19,7 @@ import {
 import { MobileModuleHeader } from '../components/MobileModuleHeader';
 
 function displayName(user: User) {
-  return user.realName || user.nickname || user.username;
+  return user.nickname || user.realName || user.username;
 }
 
 function normalizeOptionalName(value: string) {
@@ -61,6 +61,7 @@ export function MobileProfilePage() {
     realName: '',
     nickname: '',
   });
+  const [profilePopupOpen, setProfilePopupOpen] = useState(false);
   const [cropDraft, setCropDraft] = useState<AvatarCropDraft | null>(null);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -95,12 +96,21 @@ export function MobileProfilePage() {
     try {
       const updatedUser = await authService.updateProfile(values);
       setUser(mergeAuthUser(user, updatedUser));
+      setProfilePopupOpen(false);
       Toast.show({ icon: 'success', content: '资料已更新', position: 'center' });
     } catch {
       Toast.show({ icon: 'fail', content: '资料保存失败', position: 'center' });
     } finally {
       setProfileSaving(false);
     }
+  };
+
+  const openProfilePopup = () => {
+    setProfileValues({
+      realName: user?.realName || '',
+      nickname: user?.nickname || '',
+    });
+    setProfilePopupOpen(true);
   };
 
   const handleAvatarChange = async (files: FileList | null) => {
@@ -239,12 +249,15 @@ export function MobileProfilePage() {
         transform: `translate(calc(-50% + ${cropDraft.offsetX}px), calc(-50% + ${cropDraft.offsetY}px))`,
       }
     : undefined;
+  const currentDisplayName = user ? displayName(user) : '-';
+  // const nicknameLabel = user?.nickname ? `昵称 ${user.nickname}` : '昵称未设置';
+  const realNameLabel = user?.realName ? `${user.realName}` : '姓名未设置';
 
   return (
     <div className="mobile-page">
       <MobileModuleHeader title="我的" />
 
-      <Card className="mobile-card">
+      <Card className="mobile-card mobile-profile-hero-card">
         <div className="mobile-profile-card">
           <input
             ref={avatarInputRef}
@@ -262,56 +275,26 @@ export function MobileProfilePage() {
             onClick={() => avatarInputRef.current?.click()}
           >
             {user?.avatar ? (
-              <img src={user.avatar} alt={displayName(user)} />
+              <img src={user.avatar} alt={currentDisplayName} />
             ) : (
-              <span>{user ? displayName(user).slice(0, 1) : '-'}</span>
+              <span>{currentDisplayName.slice(0, 1)}</span>
             )}
             <i>
               <CameraOutlined />
             </i>
           </button>
           <div className="mobile-profile-main">
-            <div className="text-lg font-semibold">{user ? displayName(user) : '-'}</div>
-            <div className="mobile-subtitle">{user?.email || user?.username}</div>
-            <Button
-              size="mini"
-              className="mobile-profile-avatar-button"
-              loading={avatarUploading}
-              onClick={() => avatarInputRef.current?.click()}
-            >
-              更换头像
-            </Button>
+            {/* <div className="mobile-profile-kicker">家庭账号</div> */}
+            <div className="mobile-profile-name">{currentDisplayName}</div>
+            {/* <div className="mobile-profile-subtitle">{profileContact}</div> */}
+            <div className="mobile-profile-meta">
+              <span>{realNameLabel}</span>
+              {/* {user?.username ? <span>@{user.username}</span> : null} */}
+            </div>
           </div>
-        </div>
-      </Card>
-
-      <Card className="mobile-card mt-3">
-        <div className="mobile-profile-form">
-          <label className="mobile-profile-field">
-            <span>姓名</span>
-            <Input
-              value={profileValues.realName}
-              maxLength={50}
-              placeholder="请输入姓名"
-              onChange={(realName) => setProfileValues((values) => ({ ...values, realName }))}
-            />
-          </label>
-          <label className="mobile-profile-field">
-            <span>昵称</span>
-            <Input
-              value={profileValues.nickname}
-              maxLength={50}
-              placeholder="请输入昵称"
-              onChange={(nickname) => setProfileValues((values) => ({ ...values, nickname }))}
-            />
-          </label>
-          <Button
-            block
-            color="primary"
-            loading={profileSaving}
-            onClick={() => void handleProfileSave()}
-          >
-            保存资料
+          <Button className="mobile-profile-edit-button" size="mini" onClick={openProfilePopup}>
+            <EditOutlined />
+            <span>编辑资料</span>
           </Button>
         </div>
       </Card>
@@ -339,15 +322,91 @@ export function MobileProfilePage() {
         退出登录
       </Button>
 
+      {profilePopupOpen ? (
+        <Popup
+          visible
+          onMaskClick={() => setProfilePopupOpen(false)}
+          bodyStyle={{ borderRadius: '18px 18px 0 0' }}
+        >
+          <div className="mobile-profile-edit-sheet">
+            <div className="mobile-profile-edit-header">
+              <div>
+                <strong>编辑资料</strong>
+                <span>更新显示名称和昵称</span>
+              </div>
+              <Button size="mini" fill="none" onClick={() => setProfilePopupOpen(false)}>
+                关闭
+              </Button>
+            </div>
+
+            <div className="mobile-profile-edit-avatar-row">
+              <button
+                className="mobile-profile-edit-avatar"
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={currentDisplayName} />
+                ) : (
+                  <span>{currentDisplayName.slice(0, 1)}</span>
+                )}
+                <i>
+                  <CameraOutlined />
+                </i>
+              </button>
+              <div>
+                <strong>{currentDisplayName}</strong>
+                <span>点击头像更新照片</span>
+              </div>
+            </div>
+
+            <div className="mobile-profile-form">
+              <label className="mobile-profile-field">
+                <span>姓名</span>
+                <Input
+                  value={profileValues.realName}
+                  maxLength={50}
+                  placeholder="请输入姓名"
+                  onChange={(realName) => setProfileValues((values) => ({ ...values, realName }))}
+                />
+              </label>
+              <label className="mobile-profile-field">
+                <span>昵称</span>
+                <Input
+                  value={profileValues.nickname}
+                  maxLength={50}
+                  placeholder="请输入昵称"
+                  onChange={(nickname) => setProfileValues((values) => ({ ...values, nickname }))}
+                />
+              </label>
+            </div>
+
+            <div className="mobile-profile-edit-actions">
+              <Button size="small" fill="outline" onClick={() => setProfilePopupOpen(false)}>
+                取消
+              </Button>
+              <Button
+                size="small"
+                color="primary"
+                loading={profileSaving}
+                onClick={() => void handleProfileSave()}
+              >
+                保存资料
+              </Button>
+            </div>
+          </div>
+        </Popup>
+      ) : null}
+
       <Popup
         visible={!!cropDraft}
-        onMaskClick={closeCropSheet}
+        onMaskClick={() => closeCropSheet()}
         bodyStyle={{ borderRadius: '18px 18px 0 0' }}
       >
         <div className="mobile-popup-body mobile-avatar-crop-sheet">
           <div className="mobile-popup-header">
             <strong>裁剪头像</strong>
-            <Button size="mini" fill="none" onClick={closeCropSheet}>
+            <Button size="mini" fill="none" onClick={() => closeCropSheet()}>
               关闭
             </Button>
           </div>
@@ -384,7 +443,7 @@ export function MobileProfilePage() {
                   重置
                 </Button>
                 <div>
-                  <Button size="small" fill="outline" onClick={closeCropSheet}>
+                  <Button size="small" fill="outline" onClick={() => closeCropSheet()}>
                     取消
                   </Button>
                   <Button

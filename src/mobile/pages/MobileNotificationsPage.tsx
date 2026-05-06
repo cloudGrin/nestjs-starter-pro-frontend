@@ -1,4 +1,10 @@
 import { useState } from 'react';
+import {
+  BellOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  MessageOutlined,
+} from '@ant-design/icons';
 import { Button, Card, Empty, PullToRefresh, Selector, SwipeAction, Tag } from 'antd-mobile';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +23,13 @@ import { getMobileNotificationLink } from '@/features/notification/utils/notific
 import { MobileModuleHeader } from '../components/MobileModuleHeader';
 
 type NotificationFilter = 'all' | 'unread';
+
+interface NotificationGroup {
+  key: string;
+  primary: Notification;
+  notifications: Notification[];
+  unreadCount: number;
+}
 
 function formatTime(value: string) {
   return dayjs(value).format('MM-DD HH:mm');
@@ -53,6 +66,48 @@ function typeLabel(type: Notification['type']) {
   return labels[type] ?? type;
 }
 
+function typeIcon(type: Notification['type']) {
+  if (type === NotificationType.REMINDER) return <ClockCircleOutlined />;
+  if (type === NotificationType.MESSAGE) return <MessageOutlined />;
+  return <BellOutlined />;
+}
+
+function getTaskReminderGroupKey(notification: Notification) {
+  if (notification.type !== NotificationType.REMINDER) return null;
+
+  const metadata = notification.metadata ?? {};
+  const taskId = metadata.taskId;
+  if (metadata.module !== 'task') return null;
+  if (typeof taskId === 'number') return `task-reminder:${taskId}`;
+  if (typeof taskId === 'string' && taskId.trim()) return `task-reminder:${taskId.trim()}`;
+  return null;
+}
+
+function groupNotifications(notifications: Notification[]): NotificationGroup[] {
+  const groups = new Map<string, NotificationGroup>();
+
+  notifications.forEach((notification) => {
+    const repeatedReminderKey = getTaskReminderGroupKey(notification);
+    const key = repeatedReminderKey ?? `notification:${notification.id}`;
+    const group = groups.get(key);
+
+    if (group) {
+      group.notifications.push(notification);
+      group.unreadCount += notification.status === NotificationStatus.UNREAD ? 1 : 0;
+      return;
+    }
+
+    groups.set(key, {
+      key,
+      primary: notification,
+      notifications: [notification],
+      unreadCount: notification.status === NotificationStatus.UNREAD ? 1 : 0,
+    });
+  });
+
+  return Array.from(groups.values());
+}
+
 export function MobileNotificationsPage() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<NotificationFilter>('all');
@@ -64,33 +119,57 @@ export function MobileNotificationsPage() {
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
   const notifications = notificationsQuery.data?.items ?? [];
+  const notificationGroups = groupNotifications(notifications);
+  const unreadCount = notifications.filter(
+    (notification) => notification.status === NotificationStatus.UNREAD
+  ).length;
+  const mergedCount = notifications.length - notificationGroups.length;
 
-  const openNotification = (notification: Notification) => {
-    if (notification.status === NotificationStatus.UNREAD) {
+  const markGroupAsRead = (group: NotificationGroup) => {
+    group.notifications.forEach((notification) => {
+      if (notification.status !== NotificationStatus.UNREAD) return;
       markAsRead.mutate(notification.id);
-    }
-    const link = getMobileNotificationLink(notification);
+    });
+  };
+
+  const openNotification = (group: NotificationGroup) => {
+    markGroupAsRead(group);
+    const link = getMobileNotificationLink(group.primary);
     if (link?.startsWith('/m/')) {
       navigate(link.replace(/^\/m/, ''));
     }
   };
 
   return (
-    <div className="mobile-page">
+    <div className="mobile-page mobile-notification-page">
       <MobileModuleHeader
         title="通知"
         actions={
           <Button
             size="small"
+            className="mobile-notification-read-all"
             loading={markAllAsRead.isPending}
             onClick={() => markAllAsRead.mutate()}
           >
-            全部已读
+            <CheckCircleOutlined />
+            <span>全部已读</span>
           </Button>
         }
       />
 
+      <section className="mobile-notification-hero">
+        <div>
+          <span>通知中心</span>
+          <strong>{unreadCount > 0 ? `${unreadCount} 条未读` : '都已处理'}</strong>
+        </div>
+        <div className="mobile-notification-hero-stats">
+          <span>{notificationGroups.length} 组</span>
+          <span>{mergedCount > 0 ? `已合并 ${mergedCount} 条` : '无重复提醒'}</span>
+        </div>
+      </section>
+
       <Selector
+        className="mobile-notification-filter"
         options={[
           { label: '全部', value: 'all' },
           { label: '未读', value: 'unread' },
@@ -102,40 +181,58 @@ export function MobileNotificationsPage() {
       />
 
       <PullToRefresh onRefresh={async () => void (await notificationsQuery.refetch())}>
-        <div className="mobile-section mt-3">
+        <div className="mobile-notification-list">
           {notifications.length === 0 ? (
-            <Empty description={notificationsQuery.isLoading ? '加载中...' : '暂无通知'} />
+            <Empty
+              className="mobile-notification-empty"
+              description={notificationsQuery.isLoading ? '加载中...' : '暂无通知'}
+            />
           ) : (
-            notifications.map((notification) => (
+            notificationGroups.map((group) => (
               <SwipeAction
-                key={notification.id}
+                key={group.key}
                 rightActions={[
                   {
                     key: 'read',
                     text: '已读',
                     color: 'primary',
-                    onClick: () => markAsRead.mutate(notification.id),
+                    onClick: () => markGroupAsRead(group),
                   },
                 ]}
               >
-                <Card className="mobile-card" onClick={() => openNotification(notification)}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-semibold">{notification.title}</div>
-                      <div className="mobile-subtitle">{formatTime(notification.createdAt)}</div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Tag color={typeColor(notification.type)}>{typeLabel(notification.type)}</Tag>
-                      <Tag color={priorityColor(notification.priority)}>
-                        {priorityLabel(notification.priority)}
-                      </Tag>
-                      {notification.status === NotificationStatus.UNREAD ? (
-                        <Tag color="warning">未读</Tag>
+                <Card
+                  className={`mobile-notification-card${group.unreadCount > 0 ? ' unread' : ''}`}
+                  onClick={() => openNotification(group)}
+                >
+                  <div className={`mobile-notification-icon ${group.primary.type}`}>
+                    {typeIcon(group.primary.type)}
+                  </div>
+                  <div className="mobile-notification-main">
+                    <div className="mobile-notification-title-row">
+                      <strong>{group.primary.title}</strong>
+                      {group.notifications.length > 1 ? (
+                        <span className="mobile-notification-repeat-badge">
+                          {group.notifications.length}次
+                        </span>
                       ) : null}
                     </div>
-                  </div>
-                  <div className="mt-2 whitespace-pre-wrap mobile-muted">
-                    {notification.content}
+
+                    <div className="mobile-notification-content">{group.primary.content}</div>
+
+                    <div className="mobile-notification-meta">
+                      <span>{formatTime(group.primary.createdAt)}</span>
+                      <Tag color={typeColor(group.primary.type)}>
+                        {typeLabel(group.primary.type)}
+                      </Tag>
+                      <Tag color={priorityColor(group.primary.priority)}>
+                        {priorityLabel(group.primary.priority)}
+                      </Tag>
+                      {group.unreadCount > 0 ? (
+                        <Tag color="warning">
+                          {group.unreadCount > 1 ? `${group.unreadCount} 未读` : '未读'}
+                        </Tag>
+                      ) : null}
+                    </div>
                   </div>
                 </Card>
               </SwipeAction>

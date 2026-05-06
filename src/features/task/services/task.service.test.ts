@@ -61,11 +61,13 @@ describe('taskService', () => {
 
   it('maps task list CRUD endpoints to backend routes', () => {
     taskService.getTaskLists();
+    taskService.ensureDefaultTaskLists();
     taskService.createTaskList({ name: 'Home', scope: 'family' });
     taskService.updateTaskList(3, { name: 'Personal', sort: 10 });
     taskService.deleteTaskList(3);
 
     expect(request.get).toHaveBeenCalledWith('/task-lists');
+    expect(request.post).toHaveBeenCalledWith('/task-lists/defaults');
     expect(request.post).toHaveBeenCalledWith(
       '/task-lists',
       { name: 'Home', scope: 'family' },
