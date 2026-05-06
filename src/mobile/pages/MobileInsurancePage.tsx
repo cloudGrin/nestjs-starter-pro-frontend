@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Button, Card, Empty, ImageViewer, Popup, PullToRefresh, SearchBar, Selector, Tag, Toast } from 'antd-mobile';
+import {
+  Button,
+  Card,
+  Empty,
+  ImageViewer,
+  Popup,
+  PullToRefresh,
+  SearchBar,
+  Selector,
+  Tag,
+  Toast,
+} from 'antd-mobile';
 import {
   BellOutlined,
   CalendarOutlined,
@@ -13,6 +24,7 @@ import dayjs from 'dayjs';
 import { useSearchParams } from 'react-router-dom';
 import { createFileAccessLink } from '@/features/file/services/file.service';
 import { resolveFileAccessUrl } from '@/features/file/utils/file-url';
+import { useUnreadNotifications } from '@/features/notification/hooks/useNotifications';
 import {
   useInsuranceFamilyView,
   useInsuranceMembers,
@@ -35,6 +47,10 @@ import {
   mobilePolicyTypeLabels,
   mobilePolicyTypeOptions,
 } from '../utils/insurance';
+import {
+  formatInsurancePaymentFrequency,
+  formatInsurancePaymentReminder,
+} from '@/features/insurance/utils/payment';
 import { MobileModuleHeader } from '../components/MobileModuleHeader';
 
 type InsuranceView = 'policies' | 'family' | 'reminders';
@@ -95,6 +111,11 @@ function formatMoney(value?: string | number | null) {
   return `¥${Number(value).toFixed(2)}`;
 }
 
+function formatBadge(count: number) {
+  if (count <= 0) return null;
+  return count > 99 ? '99+' : String(count);
+}
+
 function matchesQuickFilter(policy: InsurancePolicy, filter: InsuranceQuickFilter) {
   if (filter === 'all') return true;
   const today = dayjs().startOf('day');
@@ -138,7 +159,7 @@ function buildReminderItems(policies: InsurancePolicy[]): InsuranceReminderItem[
       }
 
       const generated: InsuranceReminderItem[] = [];
-      if (policy.nextPaymentDate) {
+      if (policy.paymentReminderEnabled !== false && policy.nextPaymentDate) {
         generated.push({
           key: `payment-${policy.id}`,
           policy,
@@ -186,6 +207,7 @@ export function MobileInsurancePage() {
     includeReminders: view === 'reminders' ? true : undefined,
   });
   const selectedPolicyQuery = useInsurancePolicy(selectedPolicyId);
+  const unreadNotificationsQuery = useUnreadNotifications();
   const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
   const rawPolicies = useMemo(() => policiesQuery.data?.items ?? [], [policiesQuery.data?.items]);
   const policies = useMemo(
@@ -195,6 +217,13 @@ export function MobileInsurancePage() {
   const selectedPolicy =
     selectedPolicyQuery.data ?? policies.find((policy) => policy.id === selectedPolicyId) ?? null;
   const reminderItems = useMemo(() => buildReminderItems(policies), [policies]);
+  const insuranceUnreadCount = useMemo(
+    () =>
+      (unreadNotificationsQuery.data ?? []).filter(
+        (notification) => notification.metadata?.module === 'insurance'
+      ).length,
+    [unreadNotificationsQuery.data]
+  );
   const activeFilterChips = useMemo(
     () =>
       [
@@ -209,14 +238,20 @@ export function MobileInsurancePage() {
 
   useEffect(() => {
     if (searchParams.get('view')) return;
-    setSearchParams((previous) => {
-      const next = new URLSearchParams(previous);
-      next.set('view', 'policies');
-      return next;
-    }, { replace: true });
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        next.set('view', 'policies');
+        return next;
+      },
+      { replace: true }
+    );
   }, [searchParams, setSearchParams]);
 
-  const updateQuery = (updater: (next: URLSearchParams) => void, options?: { replace?: boolean }) => {
+  const updateQuery = (
+    updater: (next: URLSearchParams) => void,
+    options?: { replace?: boolean }
+  ) => {
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
       updater(next);
@@ -238,9 +273,12 @@ export function MobileInsurancePage() {
   };
 
   const closePolicyDetail = () => {
-    updateQuery((next) => {
-      next.delete('policyId');
-    }, { replace: true });
+    updateQuery(
+      (next) => {
+        next.delete('policyId');
+      },
+      { replace: true }
+    );
   };
 
   const openMemberPolicies = (nextMemberId: number) => {
@@ -334,7 +372,11 @@ export function MobileInsurancePage() {
         </div>
       </PullToRefresh>
 
-      <InsuranceDock view={view} onChange={setView} />
+      <InsuranceDock
+        view={view}
+        reminderBadge={formatBadge(insuranceUnreadCount)}
+        onChange={setView}
+      />
 
       <PolicyDetailSheet
         open={Boolean(selectedPolicyId)}
@@ -373,9 +415,11 @@ export function MobileInsurancePage() {
 
 function InsuranceDock({
   view,
+  reminderBadge,
   onChange,
 }: {
   view: InsuranceView;
+  reminderBadge?: string | null;
   onChange: (view: InsuranceView) => void;
 }) {
   return (
@@ -389,6 +433,9 @@ function InsuranceDock({
         >
           {item.icon}
           <span>{item.label}</span>
+          {item.value === 'reminders' && reminderBadge ? (
+            <i className="mobile-task-dock-badge">{reminderBadge}</i>
+          ) : null}
         </button>
       ))}
     </nav>
@@ -436,6 +483,12 @@ function PolicyRow({ policy, onOpen }: { policy: InsurancePolicy; onOpen: () => 
         <div className="mobile-task-meta-line">
           <span className="primary">到期 {formatDate(policy.endDate)}</span>
           <span>缴费 {formatDate(policy.nextPaymentDate)}</span>
+          <span>{formatInsurancePaymentFrequency(policy.paymentFrequency)}</span>
+        </div>
+        <div className="mobile-task-meta-line">
+          {policy.paymentChannel ? <span>{policy.paymentChannel}</span> : null}
+          {policy.purchaseChannel ? <span>{policy.purchaseChannel}</span> : null}
+          {policy.paymentReminderEnabled === false ? <span>不提醒</span> : null}
         </div>
       </div>
       <Tag color={status.color}>{status.label}</Tag>
@@ -588,6 +641,16 @@ function PolicyDetailSheet({
               <DetailLine label="到期" value={formatDate(policy.endDate)} />
               <DetailLine label="缴费" value={formatDate(policy.nextPaymentDate)} />
               <DetailLine label="金额" value={formatMoney(policy.paymentAmount)} />
+              <DetailLine
+                label="周期"
+                value={formatInsurancePaymentFrequency(policy.paymentFrequency)}
+              />
+              <DetailLine label="支付" value={policy.paymentChannel || '-'} />
+              <DetailLine label="购买" value={policy.purchaseChannel || '-'} />
+              <DetailLine
+                label="提醒"
+                value={formatInsurancePaymentReminder(policy.paymentReminderEnabled)}
+              />
             </div>
 
             {policy.remark ? <div className="mobile-task-detail-note">{policy.remark}</div> : null}

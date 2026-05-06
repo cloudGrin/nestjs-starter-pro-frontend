@@ -6,6 +6,108 @@ import { useAuthStore } from '@/features/auth/stores/authStore';
  */
 export type NonEmptyArray<T> = [T, ...T[]];
 
+function getRoleCodes(user?: { roles?: unknown[] } | null): string[] {
+  return (user?.roles ?? [])
+    .map((role) => {
+      if (typeof role === 'string') {
+        return role;
+      }
+
+      if (role && typeof role === 'object') {
+        const roleLike = role as { code?: unknown; isActive?: boolean };
+        if (roleLike.isActive === false) {
+          return '';
+        }
+        return typeof roleLike.code === 'string' ? roleLike.code : '';
+      }
+
+      return '';
+    })
+    .filter(Boolean);
+}
+
+function isSuperAdminUser(
+  user?: {
+    isSuperAdmin?: boolean;
+    roleCode?: string | null;
+    roles?: unknown[];
+  } | null
+): boolean {
+  return (
+    user?.isSuperAdmin === true ||
+    user?.roleCode === 'super_admin' ||
+    getRoleCodes(user).includes('super_admin')
+  );
+}
+
+function normalizePermissionCodes(permissions?: unknown[]): string[] {
+  return (permissions ?? [])
+    .map((permission) => {
+      if (typeof permission === 'string') {
+        return permission;
+      }
+
+      if (permission && typeof permission === 'object') {
+        const permissionLike = permission as { code?: unknown; isActive?: boolean };
+        if (permissionLike.isActive === false) {
+          return '';
+        }
+        return typeof permissionLike.code === 'string' ? permissionLike.code : '';
+      }
+
+      return '';
+    })
+    .filter(Boolean);
+}
+
+function getPermissionCodes(user?: { permissions?: unknown[]; roles?: unknown[] } | null) {
+  if (Array.isArray(user?.permissions)) {
+    return normalizePermissionCodes(user.permissions);
+  }
+
+  const rolePermissions = (user?.roles ?? []).flatMap((role) => {
+    if (!role || typeof role !== 'object') {
+      return [];
+    }
+
+    return normalizePermissionCodes((role as { permissions?: unknown[] }).permissions);
+  });
+
+  return rolePermissions.length > 0 ? Array.from(new Set(rolePermissions)) : undefined;
+}
+
+function permissionMatches(required: string, granted: string): boolean {
+  if (granted === '*' || granted === '*:*:*') {
+    return true;
+  }
+
+  if (granted === required) {
+    return true;
+  }
+
+  const requiredParts = required.split(':');
+  const grantedParts = granted.split(':');
+
+  for (let index = 0; index < Math.max(requiredParts.length, grantedParts.length); index += 1) {
+    const requiredPart = requiredParts[index];
+    const grantedPart = grantedParts[index];
+
+    if (grantedPart === '*') {
+      continue;
+    }
+
+    if (requiredPart !== grantedPart) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function hasGrantedPermission(required: string, grantedPermissions: string[]): boolean {
+  return grantedPermissions.some((permission) => permissionMatches(required, permission));
+}
+
 /**
  * 权限判断Hook
  *
@@ -69,17 +171,17 @@ export function usePermission() {
     if (!user) return false;
 
     // ✅ 超级管理员自动拥有所有权限（与后端 PermissionsGuard 逻辑一致）
-    if (user.isSuperAdmin || user.roleCode === 'super_admin') {
+    if (isSuperAdminUser(user)) {
       return true;
     }
 
+    const userPermissions = getPermissionCodes(user);
+
     // 权限清单缺失时不能默认放行，避免低权限账号看到不可执行的操作。
     // 页面访问由后端菜单接口过滤，按钮/局部入口必须等权限清单明确后再展示。
-    if (user.permissions === undefined) {
+    if (userPermissions === undefined) {
       return false;
     }
-
-    const userPermissions = user.permissions;
 
     // 普通用户检查权限数组
     if (userPermissions.length === 0) {
@@ -87,7 +189,7 @@ export function usePermission() {
     }
 
     // OR逻辑：只要拥有任一所需权限即可
-    return permissions.some((p) => userPermissions.includes(p));
+    return permissions.some((permission) => hasGrantedPermission(permission, userPermissions));
   };
 
   /**
@@ -120,22 +222,22 @@ export function usePermission() {
     if (!user) return false;
 
     // ✅ 超级管理员自动拥有所有权限
-    if (user.isSuperAdmin || user.roleCode === 'super_admin') {
+    if (isSuperAdminUser(user)) {
       return true;
     }
 
-    if (user.permissions === undefined) {
+    const userPermissions = getPermissionCodes(user);
+
+    if (userPermissions === undefined) {
       return false;
     }
-
-    const userPermissions = user.permissions;
 
     if (userPermissions.length === 0) {
       return false;
     }
 
     // AND逻辑：必须拥有所有所需权限
-    return permissions.every((p) => userPermissions.includes(p));
+    return permissions.every((permission) => hasGrantedPermission(permission, userPermissions));
   };
 
   /**
@@ -156,7 +258,7 @@ export function usePermission() {
     if (!user) return false;
 
     // 超级管理员自动拥有所有角色
-    if (user.isSuperAdmin || user.roleCode === 'super_admin') {
+    if (isSuperAdminUser(user)) {
       return true;
     }
 
@@ -166,7 +268,7 @@ export function usePermission() {
     }
 
     // OR逻辑：只要拥有任一所需角色即可
-    const userRoleCodes = user.roles.map((role) => role.code);
+    const userRoleCodes = getRoleCodes(user);
     return roles.some((r) => userRoleCodes.includes(r));
   };
 
@@ -176,7 +278,15 @@ export function usePermission() {
    * @returns 权限代码数组
    */
   const getUserPermissions = (): string[] => {
-    return user?.permissions || [];
+    if (!user) {
+      return [];
+    }
+
+    if (isSuperAdminUser(user)) {
+      return ['*'];
+    }
+
+    return getPermissionCodes(user) ?? [];
   };
 
   return {

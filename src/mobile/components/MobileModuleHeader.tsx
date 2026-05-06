@@ -10,9 +10,10 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { Button, Popup } from 'antd-mobile';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { familyService } from '@/features/family/services/family.service';
+import { useUnreadNotifications } from '@/features/notification/hooks/useNotifications';
 
 const moduleItems = [
   { path: '/family', title: '家庭', icon: <HomeOutlined />, tone: 'family' },
@@ -29,10 +30,11 @@ function formatMenuBadge(count: number) {
 
 export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
-  const location = useLocation();
   const token = useAuthStore((state) => state.token);
   const [familyUnreadCount, setFamilyUnreadCount] = useState(0);
+  const unreadNotificationsQuery = useUnreadNotifications();
   const familyBadge = formatMenuBadge(familyUnreadCount);
+  const notificationBadge = formatMenuBadge(unreadNotificationsQuery.data?.length ?? 0);
 
   useEffect(() => {
     if (!open || !token) {
@@ -63,9 +65,6 @@ export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: ()
     navigate(path);
   };
 
-  const isActiveModule = (path: string) =>
-    location.pathname === path || location.pathname.startsWith(`${path}/`);
-
   return (
     <Popup
       visible={open}
@@ -84,9 +83,7 @@ export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: ()
           {moduleItems.map((item) => (
             <button
               key={item.path}
-              className={`mobile-module-menu-card ${item.tone}${
-                isActiveModule(item.path) ? ' active' : ''
-              }`}
+              className={`mobile-module-menu-card ${item.tone}`}
               type="button"
               onClick={() => handleNavigate(item.path)}
             >
@@ -94,6 +91,9 @@ export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: ()
               <strong>{item.title}</strong>
               {item.tone === 'family' && familyBadge ? (
                 <span className="mobile-module-menu-badge">{familyBadge}</span>
+              ) : null}
+              {item.tone === 'notice' && notificationBadge ? (
+                <span className="mobile-module-menu-badge">{notificationBadge}</span>
               ) : null}
               <RightOutlined className="mobile-module-menu-arrow" />
             </button>

@@ -152,6 +152,41 @@ describe('InsurancePage', () => {
 
     await screen.findByRole('tab', { name: '家庭视图' });
     expect(screen.getByText('1 份保单')).toBeInTheDocument();
+    expect(screen.queryByText('暂无数据')).not.toBeInTheDocument();
+  });
+
+  it('shows write actions when the user has wildcard permissions', () => {
+    setMockUser(
+      createMockUser({
+        permissions: ['*'],
+        isSuperAdmin: false,
+        roleCode: 'user',
+      })
+    );
+
+    renderInsurancePage();
+
+    expect(screen.getByRole('button', { name: /新建保单/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /管理成员/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /编辑/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /删除/ })).toBeInTheDocument();
+  });
+
+  it('shows write actions for a cached super admin role without permission flags', () => {
+    setMockUser(
+      createMockUser({
+        permissions: undefined,
+        isSuperAdmin: undefined,
+        roleCode: undefined,
+        roles: [{ id: 1, code: 'super_admin', name: '超级管理员', isActive: true }],
+      })
+    );
+
+    renderInsurancePage();
+
+    expect(screen.getByRole('button', { name: /新建保单/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /编辑/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /删除/ })).toBeInTheDocument();
   });
 
   it('hides create actions without write permissions', () => {
@@ -178,14 +213,22 @@ describe('InsurancePage', () => {
         company: '太平洋保险',
         endDate: '2027-01-01',
         nextPaymentDate: '2026-09-01',
+        paymentFrequency: 'monthly',
+        paymentChannel: '银行卡自动扣费',
+        purchaseChannel: '保险经纪人',
+        paymentReminderEnabled: false,
         createdAt: '2026-05-01T00:00:00.000Z',
         updatedAt: '2026-05-01T00:00:00.000Z',
-      },
+      } as any,
       isLoading: false,
     });
 
     renderInsurancePage('/insurance?policyId=99');
 
     expect(await screen.findByText('异地重疾险')).toBeInTheDocument();
+    expect(screen.getByText('月缴')).toBeInTheDocument();
+    expect(screen.getByText('银行卡自动扣费')).toBeInTheDocument();
+    expect(screen.getByText('保险经纪人')).toBeInTheDocument();
+    expect(screen.getByText('关闭')).toBeInTheDocument();
   });
 });

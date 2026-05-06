@@ -10,6 +10,14 @@ export type InsurancePolicyType =
   | 'travel'
   | 'other';
 
+export type InsurancePaymentFrequency =
+  | 'monthly'
+  | 'quarterly'
+  | 'semi_annual'
+  | 'annual'
+  | 'single'
+  | 'other';
+
 export type InsurancePolicySortField =
   | 'createdAt'
   | 'updatedAt'
@@ -61,6 +69,10 @@ export interface InsurancePolicy {
   endDate?: string | null;
   nextPaymentDate?: string | null;
   paymentAmount?: string | number | null;
+  paymentFrequency?: InsurancePaymentFrequency | null;
+  paymentChannel?: string | null;
+  purchaseChannel?: string | null;
+  paymentReminderEnabled?: boolean;
   ownerUserId?: number;
   ownerUser?: {
     id: number;
@@ -114,6 +126,10 @@ export interface CreateInsurancePolicyDto {
   endDate?: string | null;
   nextPaymentDate?: string | null;
   paymentAmount?: number | null;
+  paymentFrequency?: InsurancePaymentFrequency | null;
+  paymentChannel?: string | null;
+  purchaseChannel?: string | null;
+  paymentReminderEnabled?: boolean;
   ownerUserId?: number;
   remark?: string | null;
   attachmentFileIds?: number[];

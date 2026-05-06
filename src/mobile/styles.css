@@ -269,6 +269,7 @@ body {
 }
 
 .mobile-task-dock-item {
+  position: relative;
   display: flex;
   height: 48px;
   min-width: 0;
@@ -281,6 +282,26 @@ body {
   background: transparent;
   color: #2f3440;
   font-size: 11px;
+  line-height: 1;
+}
+
+.mobile-task-dock-badge {
+  position: absolute;
+  top: 5px;
+  right: 24%;
+  display: inline-flex;
+  min-width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #ff3f45;
+  color: #ffffff;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 900;
   line-height: 1;
 }
 
@@ -1341,12 +1362,6 @@ body {
   color: #111111;
   font: inherit;
   text-align: left;
-}
-
-.mobile-module-menu-card.active {
-  border-color: #ffd9d2;
-  background: #fff4f1;
-  box-shadow: 0 12px 26px rgba(255, 90, 31, 0.13);
 }
 
 .mobile-module-menu-card.family {
@@ -2578,12 +2593,6 @@ body {
 .dark .mobile-module-menu-card {
   border-color: rgba(255, 255, 255, 0.1);
   color: var(--mobile-text);
-}
-
-.dark .mobile-module-menu-card.active {
-  border-color: rgba(255, 90, 31, 0.42);
-  background: rgba(255, 90, 31, 0.13);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
 }
 
 .mobile-family-sr {

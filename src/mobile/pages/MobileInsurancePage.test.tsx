@@ -6,6 +6,11 @@ import type {
   InsuranceFamilyViewItem,
   InsurancePolicy,
 } from '@/features/insurance/types/insurance.types';
+import {
+  NotificationPriority,
+  NotificationStatus,
+  NotificationType,
+} from '@/features/notification/types/notification.types';
 
 const insuranceHooks = vi.hoisted(() => ({
   useInsuranceMembers: vi.fn(),
@@ -16,9 +21,15 @@ const insuranceHooks = vi.hoisted(() => ({
 
 vi.mock('@/features/insurance/hooks/useInsurance', () => insuranceHooks);
 
+const notificationHooks = vi.hoisted(() => ({
+  useUnreadNotifications: vi.fn(),
+}));
+
+vi.mock('@/features/notification/hooks/useNotifications', () => notificationHooks);
+
 const refetch = vi.fn().mockResolvedValue(undefined);
 
-const basePolicy: InsurancePolicy = {
+const basePolicy = {
   id: 11,
   name: '家庭百万医疗',
   company: '平安保险',
@@ -30,6 +41,10 @@ const basePolicy: InsurancePolicy = {
   endDate: '2026-12-31',
   nextPaymentDate: '2026-08-15',
   paymentAmount: '2999',
+  paymentFrequency: 'monthly',
+  paymentChannel: '银行卡自动扣费',
+  purchaseChannel: '保险经纪人',
+  paymentReminderEnabled: false,
   ownerUserId: 7,
   ownerUser: { id: 7, username: 'admin', realName: '管理员' },
   remark: '门诊和住院材料放在附件里',
@@ -45,7 +60,7 @@ const basePolicy: InsurancePolicy = {
   ],
   createdAt: '2026-05-01T00:00:00.000Z',
   updatedAt: '2026-05-01T00:00:00.000Z',
-};
+} as InsurancePolicy;
 
 const childPolicy: InsurancePolicy = {
   ...basePolicy,
@@ -56,6 +71,7 @@ const childPolicy: InsurancePolicy = {
   type: 'critical_illness',
   endDate: '2026-05-20',
   nextPaymentDate: '2026-05-10',
+  paymentReminderEnabled: true,
   reminders: [],
 };
 
@@ -119,6 +135,32 @@ describe('MobileInsurancePage', () => {
       isFetching: false,
       refetch,
     });
+    notificationHooks.useUnreadNotifications.mockReturnValue({
+      data: [
+        {
+          id: 301,
+          title: '保险缴费提醒',
+          content: '家庭百万医疗',
+          type: NotificationType.REMINDER,
+          status: NotificationStatus.UNREAD,
+          priority: NotificationPriority.NORMAL,
+          metadata: { module: 'insurance', policyId: 11 },
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+        {
+          id: 302,
+          title: '任务提醒',
+          content: '倒垃圾',
+          type: NotificationType.REMINDER,
+          status: NotificationStatus.UNREAD,
+          priority: NotificationPriority.NORMAL,
+          metadata: { module: 'task', taskId: 2 },
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+    });
   });
 
   it('defaults to the policy view with insurance dock items', async () => {
@@ -128,7 +170,9 @@ describe('MobileInsurancePage', () => {
     expect(screen.getByText('家庭百万医疗')).toBeInTheDocument();
     expect(getDockButton('保单')).toBeInTheDocument();
     expect(getDockButton('家庭')).toBeInTheDocument();
-    expect(getDockButton('提醒')).toBeInTheDocument();
+    expect(getDockButton('提醒')).toHaveTextContent('1');
+    expect(screen.getAllByText('月缴').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('银行卡自动扣费').length).toBeGreaterThan(0);
     await waitFor(() =>
       expect(insuranceHooks.useInsurancePolicies).toHaveBeenCalledWith(
         expect.objectContaining({ sort: 'endDate', order: 'ASC' })
@@ -190,6 +234,10 @@ describe('MobileInsurancePage', () => {
 
     expect(await screen.findByText('保单详情')).toBeInTheDocument();
     expect(screen.getByText('异地重疾险')).toBeInTheDocument();
+    expect(screen.getAllByText('月缴').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('银行卡自动扣费').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('保险经纪人').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('关闭').length).toBeGreaterThan(0);
     expect(insuranceHooks.useInsurancePolicy).toHaveBeenCalledWith(99);
   });
 
@@ -286,5 +334,35 @@ describe('MobileInsurancePage', () => {
     expect(screen.getByText('待缴费')).toBeInTheDocument();
     expect(screen.getByText('2026-12-01')).toBeInTheDocument();
     expect(screen.getByText('到期前30天')).toBeInTheDocument();
+  });
+
+  it('does not generate payment reminders when renewal reminders are disabled', () => {
+    insuranceHooks.useInsurancePolicies.mockReturnValue({
+      data: {
+        items: [
+          {
+            ...basePolicy,
+            id: 31,
+            name: '不提醒续费保单',
+            endDate: null,
+            nextPaymentDate: '2026-06-01',
+            paymentReminderEnabled: false,
+            reminders: undefined,
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 100,
+      },
+      isLoading: false,
+      isFetching: false,
+      refetch,
+    });
+
+    renderPage('/insurance?view=reminders');
+
+    expect(screen.queryByText('待缴费')).not.toBeInTheDocument();
+    expect(screen.queryByText('2026-06-01')).not.toBeInTheDocument();
+    expect(screen.getByText('暂无保险提醒')).toBeInTheDocument();
   });
 });

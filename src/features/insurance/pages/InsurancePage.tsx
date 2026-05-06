@@ -11,8 +11,10 @@ import {
   InputNumber,
   message,
   Modal,
+  Pagination,
   Select,
   Space,
+  Switch,
   Table,
   Tabs,
   Tag,
@@ -56,6 +58,7 @@ import type {
   CreateInsurancePolicyDto,
   InsuranceFamilyViewItem,
   InsuranceMember,
+  InsurancePaymentFrequency,
   InsurancePolicy,
   InsurancePolicyAttachment,
   InsurancePolicySortField,
@@ -63,6 +66,11 @@ import type {
   QueryInsurancePoliciesParams,
   UpdateInsurancePolicyDto,
 } from '../types/insurance.types';
+import {
+  formatInsurancePaymentFrequency,
+  formatInsurancePaymentReminder,
+  insurancePaymentFrequencyOptions,
+} from '../utils/payment';
 
 interface InsuranceSearchValues {
   keyword?: string;
@@ -80,6 +88,10 @@ interface PolicyFormValues {
   endDate?: Dayjs;
   nextPaymentDate?: Dayjs;
   paymentAmount?: number;
+  paymentFrequency?: InsurancePaymentFrequency;
+  paymentChannel?: string;
+  purchaseChannel?: string;
+  paymentReminderEnabled?: boolean;
   ownerUserId?: number;
   remark?: string;
   attachmentFileIds?: number[];
@@ -178,6 +190,10 @@ function toPolicyPayload(
     endDate: toDatePayload(values.endDate),
     nextPaymentDate: toDatePayload(values.nextPaymentDate),
     paymentAmount: values.paymentAmount ?? null,
+    paymentFrequency: values.paymentFrequency ?? null,
+    paymentChannel: values.paymentChannel || null,
+    purchaseChannel: values.purchaseChannel || null,
+    paymentReminderEnabled: values.paymentReminderEnabled ?? true,
     ownerUserId: values.ownerUserId,
     remark: values.remark || null,
     attachmentFileIds: values.attachmentFileIds ?? [],
@@ -281,6 +297,7 @@ export function InsurancePage() {
     resetPolicyForm();
     policyForm.setFieldsValue({
       type: 'medical',
+      paymentReminderEnabled: true,
       attachmentFileIds: [],
     });
     setPolicyModalOpen(true);
@@ -299,6 +316,10 @@ export function InsurancePage() {
       endDate: toDateValue(policy.endDate),
       nextPaymentDate: toDateValue(policy.nextPaymentDate),
       paymentAmount: policy.paymentAmount ? Number(policy.paymentAmount) : undefined,
+      paymentFrequency: policy.paymentFrequency ?? undefined,
+      paymentChannel: policy.paymentChannel ?? undefined,
+      purchaseChannel: policy.purchaseChannel ?? undefined,
+      paymentReminderEnabled: policy.paymentReminderEnabled ?? true,
       ownerUserId: policy.ownerUserId,
       remark: policy.remark ?? undefined,
       attachmentFileIds: attachmentIds(policy),
@@ -498,12 +519,20 @@ export function InsurancePage() {
       render: formatDate.date,
     },
     {
-      title: '缴费日',
+      title: '缴费信息',
       dataIndex: 'nextPaymentDate',
       key: 'nextPaymentDate',
-      width: 130,
+      width: 180,
       sorter: true,
-      render: formatDate.date,
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <span>{formatDate.date(record.nextPaymentDate)}</span>
+          <span className="text-xs text-slate-500">
+            {formatInsurancePaymentFrequency(record.paymentFrequency)}
+            {record.paymentReminderEnabled === false ? ' · 不提醒' : ''}
+          </span>
+        </Space>
+      ),
     },
     {
       title: '负责人',
@@ -687,19 +716,15 @@ export function InsurancePage() {
                   ))
                 )}
                 <div className="flex justify-end">
-                  <Table<InsurancePolicy>
-                    columns={[]}
-                    dataSource={[]}
-                    showHeader={false}
-                    pagination={{
-                      current: policiesQuery.data?.page ?? queryParams.page ?? 1,
-                      pageSize: policiesQuery.data?.pageSize ?? queryParams.limit ?? 10,
-                      total: policiesQuery.data?.total ?? 0,
-                      showSizeChanger: true,
-                      showTotal: (total) => `共 ${total} 条`,
-                      onChange: (page, limit) =>
-                        setQueryParams((previous) => ({ ...previous, page, limit })),
-                    }}
+                  <Pagination
+                    current={policiesQuery.data?.page ?? queryParams.page ?? 1}
+                    pageSize={policiesQuery.data?.pageSize ?? queryParams.limit ?? 10}
+                    total={policiesQuery.data?.total ?? 0}
+                    showSizeChanger
+                    showTotal={(total) => `共 ${total} 条`}
+                    onChange={(page, limit) =>
+                      setQueryParams((previous) => ({ ...previous, page, limit }))
+                    }
                   />
                 </div>
               </Space>
@@ -777,9 +802,29 @@ export function InsurancePage() {
             <Form.Item name="paymentAmount" label="缴费金额">
               <InputNumber className="w-full" min={0} precision={2} />
             </Form.Item>
+            <Form.Item name="paymentFrequency" label="缴费周期">
+              <Select allowClear options={insurancePaymentFrequencyOptions} />
+            </Form.Item>
+            <Form.Item name="paymentChannel" label="支付渠道">
+              <Input placeholder="例如：银行卡自动扣费、微信、支付宝" />
+            </Form.Item>
+            <Form.Item name="purchaseChannel" label="购买渠道">
+              <Input placeholder="例如：保险经纪人、官网、银行" />
+            </Form.Item>
+            <Form.Item
+              name="paymentReminderEnabled"
+              label="续费提醒"
+              valuePropName="checked"
+              tooltip="自动扣费可关闭"
+            >
+              <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+            </Form.Item>
           </div>
           <Form.Item name="remark" label="备注">
-            <Input.TextArea rows={3} placeholder="简单备注" />
+            <Input.TextArea
+              rows={3}
+              placeholder="例如：经纪人张三，电话/微信 xxx，续保注意事项..."
+            />
           </Form.Item>
           <Form.Item name="attachmentFileIds" hidden>
             <Select mode="multiple" />
@@ -987,6 +1032,14 @@ function PolicyDetail({
         </Descriptions.Item>
         <Descriptions.Item label="缴费金额">
           {policy.paymentAmount ? `¥${Number(policy.paymentAmount).toFixed(2)}` : '-'}
+        </Descriptions.Item>
+        <Descriptions.Item label="缴费周期">
+          {formatInsurancePaymentFrequency(policy.paymentFrequency)}
+        </Descriptions.Item>
+        <Descriptions.Item label="支付渠道">{policy.paymentChannel || '-'}</Descriptions.Item>
+        <Descriptions.Item label="购买渠道">{policy.purchaseChannel || '-'}</Descriptions.Item>
+        <Descriptions.Item label="续费提醒">
+          {formatInsurancePaymentReminder(policy.paymentReminderEnabled)}
         </Descriptions.Item>
         <Descriptions.Item label="备注">{policy.remark || '-'}</Descriptions.Item>
       </Descriptions>

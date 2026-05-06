@@ -64,6 +64,44 @@ describe('usePermission', () => {
       expect(result.current.hasPermission(['user:delete', 'role:delete'])).toBe(true);
     });
 
+    it('应该将本地缓存里的 super_admin 角色识别为超级管理员', () => {
+      setMockUser({
+        ...mockUsers.user,
+        roleCode: undefined,
+        isSuperAdmin: undefined,
+        permissions: undefined,
+        roles: [{ id: 1, code: 'super_admin', name: '超级管理员', isActive: true }],
+      });
+
+      const { result } = renderHook(() => usePermission());
+
+      expect(result.current.hasPermission(['insurance:create'])).toBe(true);
+    });
+
+    it('应该支持后端下发的通配符权限', () => {
+      setMockUser({
+        ...mockUsers.user,
+        permissions: ['*'],
+      });
+
+      const { result } = renderHook(() => usePermission());
+
+      expect(result.current.hasPermission(['insurance:create'])).toBe(true);
+      expect(result.current.hasPermission(['insurance:update', 'insurance:delete'])).toBe(true);
+    });
+
+    it('应该支持模块级通配符权限', () => {
+      setMockUser({
+        ...mockUsers.user,
+        permissions: ['insurance:*'],
+      });
+
+      const { result } = renderHook(() => usePermission());
+
+      expect(result.current.hasPermission(['insurance:create'])).toBe(true);
+      expect(result.current.hasPermission(['task:create'])).toBe(false);
+    });
+
     it('未登录用户应该被拒绝', () => {
       // 不设置用户（未登录）
 
@@ -118,6 +156,17 @@ describe('usePermission', () => {
       expect(result.current.hasAllPermissions(['user:create', 'user:delete', 'role:create'])).toBe(
         true
       );
+    });
+
+    it('应该在全部权限检查中支持通配符权限', () => {
+      setMockUser({
+        ...mockUsers.user,
+        permissions: ['*'],
+      });
+
+      const { result } = renderHook(() => usePermission());
+
+      expect(result.current.hasAllPermissions(['insurance:create', 'insurance:update'])).toBe(true);
     });
 
     it('未登录用户应该被拒绝', () => {
