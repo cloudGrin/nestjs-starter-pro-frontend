@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/features/auth/stores/authStore';
 import { familyService } from '../services/family.service';
 import type {
   CreateFamilyChatMessageDto,
@@ -18,13 +19,16 @@ export const familyQueryKeys = {
   chatMessages: () => ['family', 'chat-messages'] as const,
   chatMessageList: (params: QueryFamilyChatMessagesParams) =>
     ['family', 'chat-messages', params] as const,
+  state: () => ['family', 'state'] as const,
 };
 
 const FAMILY_MEDIA_LINK_REFRESH_BUFFER_MS = 60 * 1000;
 
 function isReusableFamilyMediaLink(expiresAt: string, now: number) {
   const expiresAtTime = Date.parse(expiresAt);
-  return Number.isFinite(expiresAtTime) && expiresAtTime - now > FAMILY_MEDIA_LINK_REFRESH_BUFFER_MS;
+  return (
+    Number.isFinite(expiresAtTime) && expiresAtTime - now > FAMILY_MEDIA_LINK_REFRESH_BUFFER_MS
+  );
 }
 
 export function mergeStableFamilyPostMediaUrls(
@@ -48,10 +52,7 @@ export function mergeStableFamilyPostMediaUrls(
       ...post,
       media: post.media.map((media) => {
         const previousMedia = previousMediaByKey.get(`${media.id}:${media.fileId}`);
-        if (
-          !previousMedia ||
-          !isReusableFamilyMediaLink(previousMedia.expiresAt, now)
-        ) {
+        if (!previousMedia || !isReusableFamilyMediaLink(previousMedia.expiresAt, now)) {
           return media;
         }
 
@@ -97,6 +98,7 @@ export function useCreateFamilyPost() {
     mutationFn: (data: CreateFamilyPostDto) => familyService.createPost(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: familyQueryKeys.posts() });
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.state() });
     },
   });
 }
@@ -151,6 +153,40 @@ export function useCreateFamilyChatMessage() {
     mutationFn: (data: CreateFamilyChatMessageDto) => familyService.createChatMessage(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: familyQueryKeys.chatMessages() });
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.state() });
     },
   });
+}
+
+export function useFamilyState() {
+  const queryClient = useQueryClient();
+  const token = useAuthStore((state) => state.token);
+  const stateQuery = useQuery({
+    queryKey: familyQueryKeys.state(),
+    queryFn: () => familyService.getState(),
+    enabled: Boolean(token),
+    staleTime: 15 * 1000,
+  });
+  const markPostsRead = useMutation({
+    mutationFn: (postId?: number) => familyService.markPostsRead(postId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.state() });
+    },
+  });
+  const markChatRead = useMutation({
+    mutationFn: (messageId?: number) => familyService.markChatRead(messageId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.state() });
+    },
+  });
+
+  return {
+    ...stateQuery,
+    markPostsRead: markPostsRead.mutate,
+    markPostsReadAsync: markPostsRead.mutateAsync,
+    markChatRead: markChatRead.mutate,
+    markChatReadAsync: markChatRead.mutateAsync,
+    isMarkingPostsRead: markPostsRead.isPending,
+    isMarkingChatRead: markChatRead.isPending,
+  };
 }

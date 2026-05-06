@@ -1,4 +1,5 @@
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MobileModuleHeader } from './MobileModuleHeader';
@@ -10,20 +11,26 @@ function LocationProbe() {
 
 describe('MobileModuleHeader', () => {
   it('opens the module menu and navigates to another H5 module', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
     render(
-      <MemoryRouter initialEntries={['/tasks']}>
-        <Routes>
-          <Route
-            path="*"
-            element={
-              <>
-                <MobileModuleHeader title="今天" subtitle="家庭任务" />
-                <LocationProbe />
-              </>
-            }
-          />
-        </Routes>
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/tasks']}>
+          <Routes>
+            <Route
+              path="*"
+              element={
+                <>
+                  <MobileModuleHeader title="今天" subtitle="家庭任务" />
+                  <LocationProbe />
+                </>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
     );
 
     fireEvent.click(screen.getByRole('button', { name: /menu/ }));

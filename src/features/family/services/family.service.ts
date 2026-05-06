@@ -10,6 +10,7 @@ import type {
   FamilyMediaTarget,
   FamilyPaginationResult,
   FamilyPost,
+  FamilyReadState,
   FamilyUploadedMedia,
   QueryFamilyChatMessagesParams,
   QueryFamilyPostsParams,
@@ -44,9 +45,7 @@ function inferFamilyMediaMimeType(file: File) {
   }
 
   return (
-    FAMILY_MEDIA_MIME_TYPES[getFileExtension(file.name)] ||
-    file.type ||
-    'application/octet-stream'
+    FAMILY_MEDIA_MIME_TYPES[getFileExtension(file.name)] || file.type || 'application/octet-stream'
   );
 }
 
@@ -99,6 +98,22 @@ export const familyService = {
   getChatMessages: (params: QueryFamilyChatMessagesParams) =>
     request.get<FamilyPaginationResult<FamilyChatMessage>>(`${BASE_URL}/chat/messages`, {
       params,
+    }),
+
+  getState: () => request.get<FamilyReadState>(`${BASE_URL}/state`),
+
+  markPostsRead: (postId?: number) =>
+    request.post<FamilyReadState>(`${BASE_URL}/state/read-posts`, postId ? { postId } : {}, {
+      requestOptions: {
+        messageConfig: { successMessage: false },
+      },
+    }),
+
+  markChatRead: (messageId?: number) =>
+    request.post<FamilyReadState>(`${BASE_URL}/state/read-chat`, messageId ? { messageId } : {}, {
+      requestOptions: {
+        messageConfig: { successMessage: false },
+      },
     }),
 
   createChatMessage: (data: CreateFamilyChatMessageDto) =>

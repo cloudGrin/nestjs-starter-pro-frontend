@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   AppstoreOutlined,
   BellOutlined,
@@ -11,6 +11,8 @@ import {
 } from '@ant-design/icons';
 import { Button, Popup } from 'antd-mobile';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/features/auth/stores/authStore';
+import { familyService } from '@/features/family/services/family.service';
 
 const moduleItems = [
   { path: '/family', title: '家庭', icon: <HomeOutlined />, tone: 'family' },
@@ -20,9 +22,41 @@ const moduleItems = [
   { path: '/profile', title: '我的', icon: <UserOutlined />, tone: 'profile' },
 ];
 
+function formatMenuBadge(count: number) {
+  if (count <= 0) return null;
+  return count > 99 ? '99+' : String(count);
+}
+
 export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const token = useAuthStore((state) => state.token);
+  const [familyUnreadCount, setFamilyUnreadCount] = useState(0);
+  const familyBadge = formatMenuBadge(familyUnreadCount);
+
+  useEffect(() => {
+    if (!open || !token) {
+      setFamilyUnreadCount(0);
+      return undefined;
+    }
+
+    let cancelled = false;
+    void familyService
+      .getState()
+      .then((state) => {
+        if (cancelled) return;
+        setFamilyUnreadCount(state.unreadPosts + state.unreadChatMessages);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFamilyUnreadCount(0);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, token]);
 
   const handleNavigate = (path: string) => {
     onClose();
@@ -58,6 +92,9 @@ export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: ()
             >
               <span className="mobile-module-menu-icon">{item.icon}</span>
               <strong>{item.title}</strong>
+              {item.tone === 'family' && familyBadge ? (
+                <span className="mobile-module-menu-badge">{familyBadge}</span>
+              ) : null}
               <RightOutlined className="mobile-module-menu-arrow" />
             </button>
           ))}

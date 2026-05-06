@@ -74,6 +74,7 @@ export interface FamilyPaginationResult<T> {
 export interface QueryFamilyPostsParams {
   page?: number;
   limit?: number;
+  afterId?: number;
 }
 
 export interface QueryFamilyChatMessagesParams {
@@ -95,6 +96,29 @@ export interface CreateFamilyPostCommentDto {
 export interface CreateFamilyChatMessageDto {
   content?: string | null;
   mediaFileIds?: number[];
+}
+
+export interface FamilyReadState {
+  unreadPosts: number;
+  unreadChatMessages: number;
+  latestPostId: number | null;
+  latestChatMessageId: number | null;
+  lastReadPostId: number | null;
+  lastReadChatMessageId: number | null;
+}
+
+export interface FamilyPostCreatedEvent {
+  postId: number;
+  authorId: number;
+  author?: FamilyUserSummary;
+  createdAt: string;
+}
+
+export interface FamilyChatMessageCreatedEvent {
+  messageId: number;
+  senderId: number;
+  sender?: FamilyUserSummary;
+  createdAt: string;
 }
 
 export interface FamilyMediaDirectUploadInitResponse {

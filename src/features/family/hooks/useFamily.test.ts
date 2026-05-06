@@ -76,10 +76,7 @@ describe('mergeStableFamilyPostMediaUrls', () => {
       '/api/v1/files/20/access?token=old',
       '2026-05-06T10:00:20.000Z'
     );
-    const nextPost = createPost(
-      '/api/v1/files/20/access?token=new',
-      '2026-05-06T11:00:00.000Z'
-    );
+    const nextPost = createPost('/api/v1/files/20/access?token=new', '2026-05-06T11:00:00.000Z');
 
     const result = mergeStableFamilyPostMediaUrls(
       createResult(previousPost),

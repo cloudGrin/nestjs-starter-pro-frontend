@@ -1,11 +1,12 @@
 import { io, type Socket } from 'socket.io-client';
 import { appConfig } from '@/shared/config/app.config';
+import type { FamilyChatMessageCreatedEvent, FamilyPostCreatedEvent } from '../types/family.types';
 
 export interface FamilySocketHandlers {
-  onPostCreated?: () => void;
-  onPostCommentCreated?: () => void;
-  onPostLikeChanged?: () => void;
-  onChatMessageCreated?: () => void;
+  onPostCreated?: (event: FamilyPostCreatedEvent) => void;
+  onPostCommentCreated?: (event: unknown) => void;
+  onPostLikeChanged?: (event: unknown) => void;
+  onChatMessageCreated?: (event: FamilyChatMessageCreatedEvent) => void;
   onNotificationCreated?: () => void;
 }
 
@@ -31,10 +32,10 @@ export function connectFamilySocket(token: string | null, handlers: FamilySocket
     transports: ['websocket', 'polling'],
   });
 
-  socket.on('family:post-created', () => handlers.onPostCreated?.());
-  socket.on('family:post-comment-created', () => handlers.onPostCommentCreated?.());
-  socket.on('family:post-like-changed', () => handlers.onPostLikeChanged?.());
-  socket.on('family:chat-message-created', () => handlers.onChatMessageCreated?.());
+  socket.on('family:post-created', (event) => handlers.onPostCreated?.(event));
+  socket.on('family:post-comment-created', (event) => handlers.onPostCommentCreated?.(event));
+  socket.on('family:post-like-changed', (event) => handlers.onPostLikeChanged?.(event));
+  socket.on('family:chat-message-created', (event) => handlers.onChatMessageCreated?.(event));
   socket.on('family:notification-created', () => handlers.onNotificationCreated?.());
 
   return () => {

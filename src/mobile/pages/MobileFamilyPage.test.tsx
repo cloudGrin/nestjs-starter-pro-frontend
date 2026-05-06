@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MobileFamilyChatPage,
@@ -14,9 +14,13 @@ const familyHooks = vi.hoisted(() => ({
   familyQueryKeys: {
     all: ['family'],
     posts: () => ['family', 'posts'],
+    postList: (params: unknown) => ['family', 'posts', params],
     chatMessages: () => ['family', 'chat-messages'],
+    chatMessageList: (params: unknown) => ['family', 'chat-messages', params],
+    state: () => ['family', 'state'],
   },
   useFamilyPosts: vi.fn(),
+  useFamilyState: vi.fn(),
   useCreateFamilyPost: vi.fn(),
   useCreateFamilyComment: vi.fn(),
   useLikeFamilyPost: vi.fn(),
@@ -31,10 +35,13 @@ const socketMocks = vi.hoisted(() => ({
 
 const queryClientMocks = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
+  setQueryData: vi.fn(),
 }));
 
 const familyServiceMocks = vi.hoisted(() => ({
   familyService: {
+    getPosts: vi.fn(),
+    getChatMessages: vi.fn(),
     uploadFamilyMedia: vi.fn(),
   },
 }));
@@ -56,6 +63,8 @@ const createComment = vi.fn().mockResolvedValue(undefined);
 const likePost = vi.fn();
 const unlikePost = vi.fn();
 const createMessage = vi.fn().mockResolvedValue(undefined);
+const markPostsReadAsync = vi.fn().mockResolvedValue(undefined);
+const markChatReadAsync = vi.fn().mockResolvedValue(undefined);
 
 const post: FamilyPost = {
   id: 1,
@@ -158,6 +167,18 @@ describe('MobileFamilyPage', () => {
       isLoading: false,
       refetch,
     });
+    familyHooks.useFamilyState.mockReturnValue({
+      data: {
+        unreadPosts: 0,
+        unreadChatMessages: 0,
+        latestPostId: 1,
+        latestChatMessageId: 9,
+        lastReadPostId: 1,
+        lastReadChatMessageId: 9,
+      },
+      markPostsReadAsync,
+      markChatReadAsync,
+    });
     familyHooks.useCreateFamilyPost.mockReturnValue({
       mutateAsync: createPost,
       isPending: false,
@@ -176,6 +197,20 @@ describe('MobileFamilyPage', () => {
     familyHooks.useCreateFamilyChatMessage.mockReturnValue({
       mutateAsync: createMessage,
       isPending: false,
+    });
+    queryClientMocks.setQueryData.mockImplementation((_key, updater) => {
+      if (typeof updater === 'function') {
+        return updater({ items: [post], meta: { totalItems: 1 } });
+      }
+      return updater;
+    });
+    familyServiceMocks.familyService.getPosts.mockResolvedValue({
+      items: [{ ...post, id: 2, content: '新动态' }],
+      meta: { totalItems: 1 },
+    });
+    familyServiceMocks.familyService.getChatMessages.mockResolvedValue({
+      items: [{ ...message, id: 10, content: '新消息' }],
+      meta: { totalItems: 1 },
     });
     let uploadId = 100;
     familyServiceMocks.familyService.uploadFamilyMedia.mockImplementation(async (file: File) => ({
@@ -437,23 +472,83 @@ describe('MobileFamilyPage', () => {
     renderPage('/family');
 
     const callbacks = socketMocks.connectFamilySocket.mock.calls[0]?.[1] as {
-      onPostCreated: () => void;
+      onPostCreated: (event: unknown) => void;
       onPostCommentCreated: () => void;
       onPostLikeChanged: () => void;
-      onChatMessageCreated: () => void;
+      onChatMessageCreated: (event: unknown) => void;
     };
 
-    callbacks.onPostCreated();
-    callbacks.onPostCommentCreated();
-    callbacks.onPostLikeChanged();
-    callbacks.onChatMessageCreated();
+    act(() => {
+      callbacks.onPostCreated({
+        postId: 2,
+        authorId: 4,
+        author: { id: 4, username: 'mom', nickname: '妈妈' },
+        createdAt: '2026-05-04T10:00:00.000Z',
+      });
+      callbacks.onPostCommentCreated();
+      callbacks.onPostLikeChanged();
+      callbacks.onChatMessageCreated({
+        messageId: 10,
+        senderId: 4,
+        sender: { id: 4, username: 'mom', nickname: '妈妈' },
+        createdAt: '2026-05-04T10:00:00.000Z',
+      });
+    });
 
     expect(queryClientMocks.invalidateQueries).toHaveBeenCalledWith({
       queryKey: familyHooks.familyQueryKeys.posts(),
+      refetchType: 'inactive',
     });
     expect(queryClientMocks.invalidateQueries).toHaveBeenCalledWith({
       queryKey: familyHooks.familyQueryKeys.chatMessages(),
+      refetchType: 'inactive',
     });
+  });
+
+  it('shows a weak prompt for new family posts and loads them on tap', async () => {
+    renderPage('/family');
+
+    const callbacks = socketMocks.connectFamilySocket.mock.calls[0]?.[1] as {
+      onPostCreated: (event: unknown) => void;
+    };
+    act(() => {
+      callbacks.onPostCreated({
+        postId: 2,
+        authorId: 4,
+        author: { id: 4, username: 'mom', nickname: '妈妈' },
+        createdAt: '2026-05-04T10:00:00.000Z',
+      });
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: '妈妈有新的动态' }));
+
+    await waitFor(() =>
+      expect(familyServiceMocks.familyService.getPosts).toHaveBeenCalledWith({
+        page: 1,
+        limit: 30,
+        afterId: 1,
+      })
+    );
+    await waitFor(() => expect(markPostsReadAsync).toHaveBeenCalledWith(2));
+  });
+
+  it('shows the family chat unread badge on the family circle entry', () => {
+    familyHooks.useFamilyState.mockReturnValue({
+      data: {
+        unreadPosts: 0,
+        unreadChatMessages: 5,
+        latestPostId: 1,
+        latestChatMessageId: 9,
+        lastReadPostId: 1,
+        lastReadChatMessageId: 4,
+      },
+      markPostsReadAsync,
+      markChatReadAsync,
+    });
+
+    renderPage('/family');
+
+    expect(document.querySelector('.mobile-family-icon-badge')).toHaveTextContent('5');
   });
 
   it('keeps selected compose media local until publishing', async () => {
@@ -588,6 +683,38 @@ describe('MobileFamilyPage', () => {
     await waitFor(() =>
       expect(createMessage).toHaveBeenCalledWith({ content: '收到', mediaFileIds: [] })
     );
+  });
+
+  it('keeps new chat messages as a bottom prompt when the user is reading older messages', async () => {
+    renderPage('/family/chat');
+
+    markChatReadAsync.mockClear();
+    const list = document.querySelector('.mobile-family-chat-list') as HTMLElement;
+    Object.defineProperties(list, {
+      scrollHeight: { value: 1000, configurable: true },
+      clientHeight: { value: 300, configurable: true },
+      scrollTop: { value: 0, configurable: true },
+    });
+
+    const callbacks = socketMocks.connectFamilySocket.mock.calls[0]?.[1] as {
+      onChatMessageCreated: (event: unknown) => void;
+    };
+    act(() => {
+      callbacks.onChatMessageCreated({
+        messageId: 10,
+        senderId: 4,
+        sender: { id: 4, username: 'mom', nickname: '妈妈' },
+        createdAt: '2026-05-04T10:00:00.000Z',
+      });
+    });
+
+    expect(await screen.findByRole('button', { name: '1 条新消息' })).toBeInTheDocument();
+    expect(familyServiceMocks.familyService.getChatMessages).toHaveBeenCalledWith({
+      page: 1,
+      limit: 100,
+      afterId: 9,
+    });
+    expect(markChatReadAsync).not.toHaveBeenCalledWith(10);
   });
 
   it('opens the chat attachment panel and keeps media local until sending', async () => {

@@ -32,6 +32,7 @@ import {
   useCreateFamilyPost,
   useFamilyChatMessages,
   useFamilyPosts,
+  useFamilyState,
   useLikeFamilyPost,
   useUnlikeFamilyPost,
 } from '@/features/family/hooks/useFamily';
@@ -39,9 +40,12 @@ import { connectFamilySocket } from '@/features/family/realtime/familySocket';
 import { familyService } from '@/features/family/services/family.service';
 import type {
   FamilyChatMessage,
+  FamilyChatMessageCreatedEvent,
+  FamilyPaginationResult,
   FamilyMedia,
   FamilyMediaTarget,
   FamilyPostComment,
+  FamilyPostCreatedEvent,
   FamilyPost,
   FamilyUserSummary,
 } from '@/features/family/types/family.types';
@@ -62,6 +66,10 @@ interface PreviewMediaItem {
   name?: string;
   mediaType: FamilyMedia['mediaType'];
 }
+
+const FAMILY_POST_LIST_PARAMS = { page: 1, limit: 30 };
+const FAMILY_CHAT_LIST_PARAMS = { page: 1, limit: 100 };
+const CHAT_BOTTOM_THRESHOLD_PX = 80;
 
 type FamilyAvatarSize = 'regular' | 'small' | 'mini';
 
@@ -104,6 +112,85 @@ function joinClassNames(...classNames: Array<string | undefined>) {
   return classNames.filter(Boolean).join(' ');
 }
 
+function formatUnreadBadge(count?: number | null) {
+  if (!count || count <= 0) return null;
+  return count > 99 ? '99+' : String(count);
+}
+
+function getLatestPostId(posts: FamilyPost[]) {
+  return posts.reduce<number | null>((latest, item) => Math.max(latest ?? 0, item.id), null);
+}
+
+function getLatestMessageId(messages: FamilyChatMessage[]) {
+  return messages.reduce<number | null>((latest, item) => Math.max(latest ?? 0, item.id), null);
+}
+
+function mergeFamilyPostResults(
+  current: FamilyPaginationResult<FamilyPost> | undefined,
+  incoming: FamilyPaginationResult<FamilyPost>
+): FamilyPaginationResult<FamilyPost> {
+  if (!current) return incoming;
+
+  const seen = new Set<number>();
+  const items = [...incoming.items, ...current.items].filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+
+  return {
+    ...current,
+    items,
+    meta: {
+      ...current.meta,
+      totalItems: Math.max(current.meta.totalItems, items.length),
+      itemCount: items.length,
+    },
+  };
+}
+
+function mergeFamilyChatMessageResults(
+  current: FamilyPaginationResult<FamilyChatMessage> | undefined,
+  incoming: FamilyPaginationResult<FamilyChatMessage>
+): FamilyPaginationResult<FamilyChatMessage> {
+  if (!current) return incoming;
+
+  const messagesById = new Map<number, FamilyChatMessage>();
+  [...current.items, ...incoming.items].forEach((item) => {
+    messagesById.set(item.id, item);
+  });
+  const items = Array.from(messagesById.values()).sort((left, right) => left.id - right.id);
+
+  return {
+    ...current,
+    items,
+    meta: {
+      ...current.meta,
+      totalItems: Math.max(current.meta.totalItems, items.length),
+      itemCount: items.length,
+    },
+  };
+}
+
+function formatNewPostPrompt(events: FamilyPostCreatedEvent[]) {
+  if (events.length === 0) return '';
+  if (events.length === 1) {
+    return `${displayName(events[0].author)}有新的动态`;
+  }
+
+  const names = Array.from(new Set(events.map((event) => displayName(event.author)))).slice(0, 2);
+  return `${names.join('、')}${events.length > names.length ? '等' : ''}有 ${
+    events.length
+  } 条新动态`;
+}
+
+function isNearScrollBottom(element: HTMLElement | null) {
+  if (!element) return true;
+  return (
+    element.scrollHeight - element.scrollTop - element.clientHeight <= CHAT_BOTTOM_THRESHOLD_PX
+  );
+}
+
 function isVideo(media: Pick<FamilyMedia, 'mediaType' | 'mimeType'>) {
   return media.mediaType === 'video' || media.mimeType?.startsWith('video/');
 }
@@ -142,9 +229,13 @@ function toPreviewItems(media: FamilyMedia[]): PreviewMediaItem[] {
 function useFamilyRealtime({
   refetchPosts,
   refetchChatMessages,
+  onPostCreated,
+  onChatMessageCreated,
 }: {
   refetchPosts?: () => void | Promise<unknown>;
   refetchChatMessages?: () => void | Promise<unknown>;
+  onPostCreated?: (event: FamilyPostCreatedEvent) => void;
+  onChatMessageCreated?: (event: FamilyChatMessageCreatedEvent) => void;
 }) {
   const token = useAuthStore((state) => state.token);
   const queryClient = useQueryClient();
@@ -154,19 +245,33 @@ function useFamilyRealtime({
       void queryClient.invalidateQueries({ queryKey: familyQueryKeys.posts() });
       void refetchPosts?.();
     };
-    const refreshChatMessages = () => {
-      void queryClient.invalidateQueries({ queryKey: familyQueryKeys.chatMessages() });
-      void refetchChatMessages?.();
-    };
 
     return connectFamilySocket(token, {
-      onPostCreated: refreshPosts,
+      onPostCreated: (event) => {
+        void queryClient.invalidateQueries({
+          queryKey: familyQueryKeys.posts(),
+          refetchType: 'inactive',
+        });
+        void queryClient.invalidateQueries({ queryKey: familyQueryKeys.state() });
+        onPostCreated?.(event);
+      },
       onPostCommentCreated: refreshPosts,
       onPostLikeChanged: refreshPosts,
-      onChatMessageCreated: refreshChatMessages,
+      onChatMessageCreated: (event) => {
+        void queryClient.invalidateQueries({
+          queryKey: familyQueryKeys.chatMessages(),
+          refetchType: 'inactive',
+        });
+        void queryClient.invalidateQueries({ queryKey: familyQueryKeys.state() });
+        if (onChatMessageCreated) {
+          onChatMessageCreated(event);
+        } else {
+          void refetchChatMessages?.();
+        }
+      },
       onNotificationCreated: () => undefined,
     });
-  }, [queryClient, refetchChatMessages, refetchPosts, token]);
+  }, [onChatMessageCreated, onPostCreated, queryClient, refetchChatMessages, refetchPosts, token]);
 }
 
 function useDraftMedia() {
@@ -227,11 +332,13 @@ function FamilyIconButton({
   className,
   onClick,
   children,
+  badge,
 }: {
   label: string;
   className?: string;
   onClick: () => void;
   children: ReactNode;
+  badge?: string | null;
 }) {
   return (
     <button
@@ -240,6 +347,7 @@ function FamilyIconButton({
       onClick={onClick}
     >
       {children}
+      {badge ? <span className="mobile-family-icon-badge">{badge}</span> : null}
       <span className="mobile-family-sr">{label}</span>
     </button>
   );
@@ -792,12 +900,16 @@ function FamilyPostCard({
 export function MobileFamilyPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const postsQuery = useFamilyPosts({ page: 1, limit: 30 });
+  const queryClient = useQueryClient();
+  const postsQuery = useFamilyPosts(FAMILY_POST_LIST_PARAMS);
+  const { data: familyReadState, markPostsReadAsync } = useFamilyState();
   const createComment = useCreateFamilyComment();
   const likePost = useLikeFamilyPost();
   const unlikePost = useUnlikeFamilyPost();
   const currentUser = useAuthStore((state) => state.user);
   const posts = useMemo(() => postsQuery.data?.items ?? [], [postsQuery.data?.items]);
+  const latestPostId = useMemo(() => getLatestPostId(posts), [posts]);
+  const postListQueryKey = familyQueryKeys.postList(FAMILY_POST_LIST_PARAMS);
   const [previewPost, setPreviewPost] = useState<FamilyPost | null>(null);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [moduleMenuOpen, setModuleMenuOpen] = useState(false);
@@ -805,9 +917,30 @@ export function MobileFamilyPage() {
   const [commentDraftTarget, setCommentDraftTarget] = useState<CommentTarget | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [optimisticLikes, setOptimisticLikes] = useState<Record<number, boolean>>({});
+  const [pendingPostEvents, setPendingPostEvents] = useState<FamilyPostCreatedEvent[]>([]);
+  const [loadingPendingPosts, setLoadingPendingPosts] = useState(false);
   const commentInputRef = useRef<HTMLDivElement>(null);
+  const pendingPostPrompt = formatNewPostPrompt(pendingPostEvents);
+  const chatUnreadBadge = formatUnreadBadge(familyReadState?.unreadChatMessages);
 
-  useFamilyRealtime({ refetchPosts: postsQuery.refetch });
+  const handlePostCreated = useCallback(
+    (event: FamilyPostCreatedEvent) => {
+      if (event.authorId === currentUser?.id) return;
+
+      setPendingPostEvents((current) => {
+        if (current.some((item) => item.postId === event.postId)) return current;
+        return [event, ...current];
+      });
+    },
+    [currentUser?.id]
+  );
+
+  useFamilyRealtime({ refetchPosts: postsQuery.refetch, onPostCreated: handlePostCreated });
+
+  useEffect(() => {
+    if (!latestPostId) return;
+    void markPostsReadAsync(latestPostId);
+  }, [latestPostId, markPostsReadAsync]);
 
   useEffect(() => {
     if (!commentTarget || typeof window === 'undefined') return undefined;
@@ -831,6 +964,38 @@ export function MobileFamilyPage() {
   const openPreview = (post: FamilyPost, index: number) => {
     setPreviewPost(post);
     setPreviewIndex(index);
+  };
+
+  const refreshFamilyPosts = async () => {
+    const result = await postsQuery.refetch();
+    const refreshedLatestPostId = getLatestPostId(result.data?.items ?? []);
+    setPendingPostEvents([]);
+    if (refreshedLatestPostId) {
+      await markPostsReadAsync(refreshedLatestPostId);
+    }
+  };
+
+  const loadPendingPosts = async () => {
+    if (loadingPendingPosts) return;
+    setLoadingPendingPosts(true);
+    try {
+      const result = await familyService.getPosts({
+        ...FAMILY_POST_LIST_PARAMS,
+        ...(latestPostId ? { afterId: latestPostId } : {}),
+      });
+      queryClient.setQueryData<FamilyPaginationResult<FamilyPost>>(postListQueryKey, (current) =>
+        mergeFamilyPostResults(current, result)
+      );
+      const loadedLatestPostId = getLatestPostId(result.items) ?? latestPostId;
+      setPendingPostEvents([]);
+      if (loadedLatestPostId) {
+        await markPostsReadAsync(loadedLatestPostId);
+      }
+    } catch {
+      Toast.show({ icon: 'fail', content: '新动态加载失败', position: 'center' });
+    } finally {
+      setLoadingPendingPosts(false);
+    }
   };
 
   const currentFamilyUser = currentUser
@@ -959,14 +1124,24 @@ export function MobileFamilyPage() {
             className="mobile-family-logo-button"
             label="家庭群聊"
             onClick={() => navigate('/family/chat')}
+            badge={chatUnreadBadge}
           >
             <MessageFilled />
           </FamilyIconButton>
         }
       />
 
-      <PullToRefresh onRefresh={async () => void (await postsQuery.refetch())}>
+      <PullToRefresh onRefresh={refreshFamilyPosts}>
         <section className="mobile-family-feed">
+          {pendingPostEvents.length > 0 ? (
+            <button
+              className="mobile-family-new-post-prompt"
+              type="button"
+              onClick={() => void loadPendingPosts()}
+            >
+              {loadingPendingPosts ? '正在加载新动态...' : pendingPostPrompt}
+            </button>
+          ) : null}
           {posts.length === 0 ? (
             <Empty description={postsQuery.isLoading ? '加载中...' : '还没有家庭动态'} />
           ) : (
@@ -1200,20 +1375,21 @@ function FamilyChatHeader({ onBack }: { onBack: () => void }) {
 
 export function MobileFamilyChatPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const chatListRef = useRef<HTMLElement>(null);
   const currentUser = useAuthStore((state) => state.user);
-  const chatQuery = useFamilyChatMessages({ page: 1, limit: 100 });
+  const chatQuery = useFamilyChatMessages(FAMILY_CHAT_LIST_PARAMS);
+  const { markChatReadAsync } = useFamilyState();
   const createChatMessage = useCreateFamilyChatMessage();
   const draft = useDraftMedia();
   const [messageText, setMessageText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [attachmentPanelOpen, setAttachmentPanelOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-
-  useFamilyRealtime({
-    refetchChatMessages: chatQuery.refetch,
-  });
+  const [pendingChatMessageIds, setPendingChatMessageIds] = useState<number[]>([]);
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
+  const latestMessageIdRef = useRef<number | null>(null);
 
   const messages = useMemo(
     () =>
@@ -1223,6 +1399,7 @@ export function MobileFamilyChatPage() {
     [chatQuery.data?.items]
   );
   const latestMessageTime = messages.at(-1)?.createdAt;
+  const latestMessageId = useMemo(() => getLatestMessageId(messages), [messages]);
   const messageDay = latestMessageTime ? formatChatDivider(latestMessageTime) : null;
   const canSend = messageText.trim().length > 0 || draft.items.length > 0;
   const previewItems = draft.items.map((item) => ({
@@ -1233,10 +1410,82 @@ export function MobileFamilyChatPage() {
   }));
 
   useEffect(() => {
+    latestMessageIdRef.current = latestMessageId;
+  }, [latestMessageId]);
+
+  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     const list = chatListRef.current;
     if (!list || typeof list.scrollTo !== 'function') return;
-    list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
-  }, [latestMessageTime]);
+    list.scrollTo({ top: list.scrollHeight, behavior });
+  }, []);
+
+  const fetchChatMessagesAfter = useCallback(
+    async (afterId: number | null) => {
+      const result = await familyService.getChatMessages({
+        ...FAMILY_CHAT_LIST_PARAMS,
+        ...(afterId ? { afterId } : {}),
+      });
+      queryClient.setQueryData<FamilyPaginationResult<FamilyChatMessage>>(
+        familyQueryKeys.chatMessageList(FAMILY_CHAT_LIST_PARAMS),
+        (current) => mergeFamilyChatMessageResults(current, result)
+      );
+      return result.items;
+    },
+    [queryClient]
+  );
+
+  const handleChatMessageCreated = useCallback(
+    (event: FamilyChatMessageCreatedEvent) => {
+      const shouldStickToBottom =
+        isNearScrollBottom(chatListRef.current) || event.senderId === currentUser?.id;
+      if (!shouldStickToBottom) {
+        setPendingChatMessageIds((current) =>
+          current.includes(event.messageId) ? current : [...current, event.messageId]
+        );
+      }
+
+      void (async () => {
+        try {
+          const items = await fetchChatMessagesAfter(latestMessageIdRef.current);
+          const loadedLatestMessageId = getLatestMessageId(items) ?? event.messageId;
+          if (shouldStickToBottom) {
+            setPendingChatMessageIds([]);
+            setShouldScrollToBottom(true);
+            await markChatReadAsync(loadedLatestMessageId);
+          }
+        } catch {
+          Toast.show({ icon: 'fail', content: '新消息加载失败', position: 'center' });
+        }
+      })();
+    },
+    [currentUser?.id, fetchChatMessagesAfter, markChatReadAsync]
+  );
+
+  useFamilyRealtime({
+    onChatMessageCreated: handleChatMessageCreated,
+  });
+
+  useEffect(() => {
+    if (!latestMessageId || !shouldScrollToBottom) return undefined;
+
+    const scroll = () => {
+      scrollChatToBottom('smooth');
+      setShouldScrollToBottom(false);
+    };
+
+    if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+      scroll();
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(scroll);
+    return () => window.cancelAnimationFrame(frame);
+  }, [latestMessageId, scrollChatToBottom, shouldScrollToBottom]);
+
+  useEffect(() => {
+    if (!latestMessageId || pendingChatMessageIds.length > 0) return;
+    void markChatReadAsync(latestMessageId);
+  }, [latestMessageId, markChatReadAsync, pendingChatMessageIds.length]);
 
   const shouldShowTime = (message: FamilyChatMessage, index: number) => {
     if (index === 0) return false;
@@ -1259,6 +1508,7 @@ export function MobileFamilyChatPage() {
       setMessageText('');
       setAttachmentPanelOpen(false);
       setPreviewIndex(null);
+      setShouldScrollToBottom(true);
     } catch {
       Toast.show({ icon: 'fail', content: '消息发送失败', position: 'center' });
     } finally {
@@ -1266,15 +1516,41 @@ export function MobileFamilyChatPage() {
     }
   };
 
+  const refreshChatMessages = async () => {
+    const result = await chatQuery.refetch();
+    const refreshedLatestMessageId = getLatestMessageId(result.data?.items ?? []);
+    setPendingChatMessageIds([]);
+    setShouldScrollToBottom(true);
+    if (refreshedLatestMessageId) {
+      await markChatReadAsync(refreshedLatestMessageId);
+    }
+  };
+
+  const handleChatScroll = () => {
+    if (pendingChatMessageIds.length === 0 || !isNearScrollBottom(chatListRef.current)) return;
+    setPendingChatMessageIds([]);
+    if (latestMessageIdRef.current) {
+      void markChatReadAsync(latestMessageIdRef.current);
+    }
+  };
+
+  const openPendingChatMessages = () => {
+    setPendingChatMessageIds([]);
+    setShouldScrollToBottom(true);
+    if (latestMessageIdRef.current) {
+      void markChatReadAsync(latestMessageIdRef.current);
+    }
+  };
+
   return (
     <div className="mobile-family-chat-page wechat-warm">
       <FamilyChatHeader onBack={() => navigate('/family')} />
-      <PullToRefresh
-        onRefresh={async () => {
-          await chatQuery.refetch();
-        }}
-      >
-        <section className="mobile-family-chat-list warm" ref={chatListRef}>
+      <PullToRefresh onRefresh={refreshChatMessages}>
+        <section
+          className="mobile-family-chat-list warm"
+          ref={chatListRef}
+          onScroll={handleChatScroll}
+        >
           {messages.length === 0 ? (
             <Empty description={chatQuery.isLoading ? '加载中...' : '还没有家庭消息'} />
           ) : (
@@ -1296,6 +1572,15 @@ export function MobileFamilyChatPage() {
           )}
         </section>
       </PullToRefresh>
+      {pendingChatMessageIds.length > 0 ? (
+        <button
+          className="mobile-family-chat-new-message"
+          type="button"
+          onClick={openPendingChatMessages}
+        >
+          {pendingChatMessageIds.length} 条新消息
+        </button>
+      ) : null}
       <div className="mobile-family-chat-input warm">
         <input
           ref={inputRef}
