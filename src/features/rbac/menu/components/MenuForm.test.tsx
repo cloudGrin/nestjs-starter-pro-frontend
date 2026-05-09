@@ -2,7 +2,7 @@ import { App } from 'antd';
 import { screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MenuForm } from './MenuForm';
-import { renderWithProviders } from '@/test/test-utils';
+import { renderWithProviders, userEvent } from '@/test/test-utils';
 import { MenuType, type MenuTreeNode } from '../types/menu.types';
 
 const treeSelectState = vi.hoisted(() => ({
@@ -143,6 +143,31 @@ describe('MenuForm', () => {
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ icon: null }));
+    });
+  });
+
+  it('submits external menus with https urls', async () => {
+    const onSubmit = vi.fn();
+
+    renderWithProviders(
+      <App>
+        <MenuForm open mode="create" menuTree={menuTree} onSubmit={onSubmit} onCancel={vi.fn()} />
+      </App>
+    );
+
+    await userEvent.type(screen.getByLabelText('菜单名称'), '外部系统');
+    await userEvent.click(screen.getByLabelText('外部链接'));
+    await userEvent.type(screen.getByLabelText('路由路径'), 'https://example.com/admin');
+    await userEvent.click(screen.getByText('OK'));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: '外部系统',
+          path: 'https://example.com/admin',
+          isExternal: true,
+        })
+      );
     });
   });
 });

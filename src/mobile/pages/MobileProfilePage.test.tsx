@@ -1,5 +1,6 @@
 import { MemoryRouter } from 'react-router-dom';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Toast } from 'antd-mobile';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,7 +8,8 @@ import { authService } from '@/features/auth/services/auth.service';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { uploadFile } from '@/features/file/services/file.service';
 import { UserStatus, type User } from '@/shared/types/user.types';
-import { renderWithProviders } from '@/test/test-utils';
+import { createTestQueryClient } from '@/test/test-utils';
+import { clearMobilePersistedQueryCache } from '../pwa/queryPersistence';
 import { MobileProfilePage } from './MobileProfilePage';
 
 vi.mock('@/features/auth/services/auth.service', () => ({
@@ -31,6 +33,10 @@ vi.mock('@/features/family/hooks/useFamily', () => ({
 
 vi.mock('@/features/notification/hooks/useNotifications', () => ({
   useUnreadNotifications: () => ({ data: [] }),
+}));
+
+vi.mock('../pwa/queryPersistence', () => ({
+  clearMobilePersistedQueryCache: vi.fn(),
 }));
 
 const user: User = {
@@ -58,11 +64,18 @@ let canvasContext: {
 };
 
 function renderPage() {
-  return renderWithProviders(
-    <MemoryRouter>
-      <MobileProfilePage />
-    </MemoryRouter>
-  );
+  const queryClient = createTestQueryClient();
+
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <MobileProfilePage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    ),
+  };
 }
 
 function firePointerEvent(
@@ -73,6 +86,17 @@ function firePointerEvent(
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.assign(event, options);
   fireEvent(target, event);
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
 }
 
 describe('MobileProfilePage', () => {
@@ -215,6 +239,22 @@ describe('MobileProfilePage', () => {
     });
   });
 
+  it('clears mobile query caches when logging out', async () => {
+    const event = userEvent.setup();
+    useAuthStore.setState({
+      logout: vi.fn().mockResolvedValue(undefined),
+    });
+    const { queryClient } = renderPage();
+    const clearQueryCache = vi.spyOn(queryClient, 'clear');
+
+    await event.click(screen.getByRole('button', { name: '退出登录' }));
+
+    await waitFor(() => {
+      expect(clearQueryCache).toHaveBeenCalled();
+      expect(clearMobilePersistedQueryCache).toHaveBeenCalled();
+    });
+  });
+
   it('opens the crop sheet before uploading a selected avatar image', async () => {
     const { container } = renderPage();
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
@@ -225,6 +265,17 @@ describe('MobileProfilePage', () => {
 
     expect(await screen.findByText('裁剪头像')).toBeInTheDocument();
     expect(uploadFile).not.toHaveBeenCalled();
+  });
+
+  it('accepts selected avatar images when mobile browsers omit the file MIME type', async () => {
+    const { container } = renderPage();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['avatar'], 'avatar.heic', { type: '' })] },
+    });
+
+    expect(await screen.findByText('裁剪头像')).toBeInTheDocument();
   });
 
   it('keeps unsaved profile edits when avatar cropping is cancelled from the edit sheet', async () => {
@@ -280,6 +331,33 @@ describe('MobileProfilePage', () => {
     );
   });
 
+  it('keeps unsaved profile edits when the avatar is saved from the edit sheet', async () => {
+    const event = userEvent.setup();
+    const { container } = renderPage();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    vi.mocked(authService.updateProfile).mockResolvedValue({
+      ...user,
+      realName: '服务端姓名',
+      avatar: 'https://example.com/new.png',
+    });
+
+    await event.click(screen.getByRole('button', { name: /编辑资料/ }));
+    await event.clear(screen.getByLabelText('姓名'));
+    await event.type(screen.getByLabelText('姓名'), '还没保存的姓名');
+
+    fireEvent.change(input, {
+      target: { files: [new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })] },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: '保存头像' }));
+
+    await waitFor(() =>
+      expect(authService.updateProfile).toHaveBeenCalledWith({
+        avatar: 'https://example.com/new.png',
+      })
+    );
+    expect(screen.getByLabelText('姓名')).toHaveValue('还没保存的姓名');
+  });
+
   it('uses the measured crop frame size when saving the avatar', async () => {
     const { container } = renderPage();
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
@@ -311,6 +389,49 @@ describe('MobileProfilePage', () => {
     fireEvent.click(mask!);
 
     expect(screen.getByRole('button', { name: '保存头像' })).toBeInTheDocument();
+  });
+
+  it('locks crop controls while the avatar is uploading', async () => {
+    const uploadDeferred = createDeferred<Awaited<ReturnType<typeof uploadFile>>>();
+    vi.mocked(uploadFile).mockReturnValue(uploadDeferred.promise);
+    const { container } = renderPage();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })] },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: '保存头像' }));
+
+    await waitFor(() => expect(uploadFile).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: '关闭' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '取消' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '重置' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /左旋/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /右旋/ })).toBeDisabled();
+    expect(screen.getByLabelText('缩放')).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }));
+
+    expect(screen.getByText('裁剪头像')).toBeInTheDocument();
+    uploadDeferred.resolve(undefined as unknown as Awaited<ReturnType<typeof uploadFile>>);
+  });
+
+  it('locks the profile edit sheet while profile changes are saving', async () => {
+    const event = userEvent.setup();
+    const saveDeferred = createDeferred<Awaited<ReturnType<typeof authService.updateProfile>>>();
+    vi.mocked(authService.updateProfile).mockReturnValue(saveDeferred.promise);
+    renderPage();
+
+    await event.click(screen.getByRole('button', { name: /编辑资料/ }));
+    await event.click(screen.getByRole('button', { name: '保存资料' }));
+
+    await waitFor(() => expect(authService.updateProfile).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: '关闭' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '取消' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }));
+
+    expect(screen.getByLabelText('姓名')).toBeInTheDocument();
+    saveDeferred.resolve(user);
   });
 
   it('supports pinch zooming the crop preview', async () => {

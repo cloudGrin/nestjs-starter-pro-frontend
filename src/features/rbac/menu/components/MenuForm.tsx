@@ -16,6 +16,8 @@ import {
 
 const { TextArea } = Input;
 const { Option } = Select;
+const INTERNAL_PATH_PATTERN = /^\/[a-zA-Z0-9/_-]*$/;
+const EXTERNAL_URL_PATTERN = /^https?:\/\/.+/i;
 
 interface TreeSelectNode {
   value: number;
@@ -46,6 +48,7 @@ export function MenuForm({
 }: MenuFormProps) {
   const [form] = Form.useForm();
   const menuType = Form.useWatch('type', form);
+  const isExternal = Form.useWatch('isExternal', form);
 
   useEffect(() => {
     if (open) {
@@ -60,6 +63,7 @@ export function MenuForm({
           sort: menu.sort,
           isActive: menu.isActive,
           isVisible: menu.isVisible,
+          isExternal: menu.isExternal,
           remark: menu.remark,
         });
       } else {
@@ -70,6 +74,7 @@ export function MenuForm({
           sort: 0,
           isActive: true,
           isVisible: true,
+          isExternal: false,
         });
       }
     }
@@ -165,15 +170,27 @@ export function MenuForm({
             rules={[
               {
                 validator: (_, value?: string) => {
-                  if (menuType === 'menu' && !value?.trim()) {
+                  const trimmedValue = value?.trim();
+                  if (isExternal) {
+                    if (!trimmedValue) {
+                      return Promise.reject(new Error('外部链接必须填写地址'));
+                    }
+                    if (!EXTERNAL_URL_PATTERN.test(trimmedValue)) {
+                      return Promise.reject(new Error('外部链接必须以 http:// 或 https:// 开头'));
+                    }
+                    return Promise.resolve();
+                  }
+
+                  if (menuType === 'menu' && !trimmedValue) {
                     return Promise.reject(new Error('菜单类型必须填写路由路径'));
+                  }
+                  if (trimmedValue && !INTERNAL_PATH_PATTERN.test(trimmedValue)) {
+                    return Promise.reject(
+                      new Error('路径必须以/开头，只能包含字母、数字、/、-、_')
+                    );
                   }
                   return Promise.resolve();
                 },
-              },
-              {
-                pattern: /^\/[a-zA-Z0-9/_-]*$/,
-                message: '路径必须以/开头，只能包含字母、数字、/、-、_',
               },
             ]}
           >
@@ -185,7 +202,7 @@ export function MenuForm({
           </Form.Item>
         </div>
 
-        {menuType === 'menu' && (
+        {menuType === 'menu' && !isExternal && (
           <Form.Item
             label="页面组件"
             name="component"
@@ -204,6 +221,10 @@ export function MenuForm({
 
           <Form.Item label="显示菜单" name="isVisible" valuePropName="checked">
             <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
+          </Form.Item>
+
+          <Form.Item label="外部链接" name="isExternal" valuePropName="checked">
+            <Switch checkedChildren="外链" unCheckedChildren="内部" />
           </Form.Item>
         </div>
 

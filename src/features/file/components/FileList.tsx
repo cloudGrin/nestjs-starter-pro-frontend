@@ -91,6 +91,8 @@ const FILE_MODULE_OPTIONS = [
   { value: 'audio', label: '音频' },
   { value: 'insurance-policy', label: '家庭保险保单' },
   { value: 'task-attachment', label: '家庭任务' },
+  { value: 'family-circle', label: '家庭圈媒体' },
+  { value: 'family-chat', label: '家庭群聊媒体' },
   { value: 'other', label: '其他' },
 ] as const;
 const FILE_MODULE_LABELS = new Map(FILE_MODULE_OPTIONS.map((item) => [item.value, item.label]));

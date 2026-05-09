@@ -9,6 +9,7 @@ describe('dynamic routing', () => {
     expect(getComponent('system/users')).not.toBeNull();
     expect(getComponent('system/roles')).not.toBeNull();
     expect(getComponent('system/menus')).not.toBeNull();
+    expect(getComponent('FamilyContentPage')).not.toBeNull();
   });
 
   it('does not register test files as dynamic route components', () => {

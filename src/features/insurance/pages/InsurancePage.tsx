@@ -265,6 +265,10 @@ export function InsurancePage() {
       })),
     [users]
   );
+  const userNameById = useMemo(
+    () => new Map(userOptions.map((option) => [option.value, option.label])),
+    [userOptions]
+  );
   const relationshipSelectOptions = useMemo(() => {
     const values = new Set(relationshipOptions);
     members.forEach((member) => {
@@ -456,10 +460,17 @@ export function InsurancePage() {
 
   const handleMemberSubmit = async () => {
     const values = await memberForm.validateFields();
+    const data: CreateInsuranceMemberDto = {
+      ...values,
+      name: values.name.trim(),
+      relationship: values.relationship || null,
+      linkedUserId: values.linkedUserId ?? null,
+      remark: values.remark?.trim() || null,
+    };
 
     if (editingMember) {
       updateMember.mutate(
-        { id: editingMember.id, data: values },
+        { id: editingMember.id, data },
         {
           onSuccess: () => {
             setEditingMember(null);
@@ -470,7 +481,7 @@ export function InsurancePage() {
       return;
     }
 
-    createMember.mutate(values, {
+    createMember.mutate(data, {
       onSuccess: () => memberForm.resetFields(),
     });
   };
@@ -580,6 +591,12 @@ export function InsurancePage() {
         <Space direction="vertical" size={0}>
           <span>{name}</span>
           <span className="text-xs text-slate-500">{record.relationship || '-'}</span>
+          {record.linkedUserId ? (
+            <span className="text-xs text-slate-500">
+              绑定：{userNameById.get(record.linkedUserId) ?? `用户 #${record.linkedUserId}`}
+            </span>
+          ) : null}
+          {record.remark ? <span className="text-xs text-slate-500">{record.remark}</span> : null}
         </Space>
       ),
     },
@@ -880,37 +897,63 @@ export function InsurancePage() {
         footer={null}
         width={720}
       >
-        <Form form={memberForm} layout="inline" className="mb-4">
-          <Form.Item name="name" rules={[{ required: true, message: '请输入姓名' }]}>
-            <Input placeholder="姓名" />
+        <Form form={memberForm} layout="vertical" className="mb-4">
+          <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+            <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
+              <Input placeholder="姓名" />
+            </Form.Item>
+            <Form.Item name="relationship" label="关系">
+              <Select
+                allowClear
+                showSearch
+                placeholder="关系"
+                options={relationshipSelectOptions}
+                onInputKeyDown={(event) => {
+                  if (event.key !== 'Enter') {
+                    return;
+                  }
+                  const value = (event.target as HTMLInputElement).value.trim();
+                  if (value) {
+                    memberForm.setFieldValue('relationship', value);
+                  }
+                }}
+              />
+            </Form.Item>
+            <Form.Item name="linkedUserId" label="绑定用户">
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                placeholder="可不绑定"
+                options={userOptions}
+              />
+            </Form.Item>
+            <Form.Item name="sort" label="排序">
+              <InputNumber placeholder="排序" />
+            </Form.Item>
+          </div>
+          <Form.Item name="remark" label="备注">
+            <Input.TextArea rows={2} placeholder="可选" maxLength={200} showCount />
           </Form.Item>
-          <Form.Item name="relationship">
-            <Select
-              allowClear
-              showSearch
-              placeholder="关系"
-              options={relationshipSelectOptions}
-              onInputKeyDown={(event) => {
-                if (event.key !== 'Enter') {
-                  return;
-                }
-                const value = (event.target as HTMLInputElement).value.trim();
-                if (value) {
-                  memberForm.setFieldValue('relationship', value);
-                }
-              }}
-            />
-          </Form.Item>
-          <Form.Item name="sort">
-            <InputNumber placeholder="排序" />
-          </Form.Item>
-          <Button
-            type="primary"
-            loading={createMember.isPending || updateMember.isPending}
-            onClick={handleMemberSubmit}
-          >
-            {editingMember ? '保存' : '添加'}
-          </Button>
+          <Space>
+            <Button
+              type="primary"
+              loading={createMember.isPending || updateMember.isPending}
+              onClick={handleMemberSubmit}
+            >
+              {editingMember ? '保存' : '添加'}
+            </Button>
+            {editingMember ? (
+              <Button
+                onClick={() => {
+                  setEditingMember(null);
+                  memberForm.resetFields();
+                }}
+              >
+                取消编辑
+              </Button>
+            ) : null}
+          </Space>
         </Form>
         <Table<InsuranceMember>
           columns={memberColumns}

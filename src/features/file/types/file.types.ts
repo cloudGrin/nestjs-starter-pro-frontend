@@ -67,6 +67,8 @@ export type FileModule =
   | 'audio'
   | 'insurance-policy'
   | 'task-attachment'
+  | 'family-circle'
+  | 'family-chat'
   | 'other';
 
 export interface FileStorageOption {

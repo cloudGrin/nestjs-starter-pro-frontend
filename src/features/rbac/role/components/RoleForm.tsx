@@ -3,7 +3,7 @@
  */
 
 import { useEffect } from 'react';
-import { Form, Input, Switch, Modal } from 'antd';
+import { Form, Input, InputNumber, Switch, Modal } from 'antd';
 import type { Role, CreateRoleDto, UpdateRoleDto } from '../types/role.types';
 
 const { TextArea } = Input;
@@ -27,11 +27,13 @@ export function RoleForm({ open, mode, role, loading, onSubmit, onCancel }: Role
           code: role.code,
           name: role.name,
           description: role.description,
+          sort: role.sort,
           isActive: role.isActive,
         });
       } else {
         form.resetFields();
         form.setFieldsValue({
+          sort: 0,
           isActive: true, // 默认启用
         });
       }
@@ -96,6 +98,10 @@ export function RoleForm({ open, mode, role, loading, onSubmit, onCancel }: Role
 
         <Form.Item label="角色描述" name="description">
           <TextArea rows={4} placeholder="输入角色描述（可选）" maxLength={200} showCount />
+        </Form.Item>
+
+        <Form.Item label="排序" name="sort">
+          <InputNumber min={0} max={9999} placeholder="数字越小越靠前" className="w-full!" />
         </Form.Item>
 
         <Form.Item label="启用状态" name="isActive" valuePropName="checked">

@@ -28,7 +28,7 @@ function formatMenuBadge(count: number) {
   return count > 99 ? '99+' : String(count);
 }
 
-export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+function MobileModuleMenuContent({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
   const [familyUnreadCount, setFamilyUnreadCount] = useState(0);
@@ -37,7 +37,7 @@ export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: ()
   const notificationBadge = formatMenuBadge(unreadNotificationsQuery.data?.length ?? 0);
 
   useEffect(() => {
-    if (!open || !token) {
+    if (!token) {
       setFamilyUnreadCount(0);
       return undefined;
     }
@@ -58,7 +58,7 @@ export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: ()
     return () => {
       cancelled = true;
     };
-  }, [open, token]);
+  }, [token]);
 
   const handleNavigate = (path: string) => {
     onClose();
@@ -66,40 +66,46 @@ export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: ()
   };
 
   return (
+    <div className="mobile-module-menu">
+      <div className="mobile-module-menu-hero">
+        <span>
+          <AppstoreOutlined />
+        </span>
+        <strong>家庭应用</strong>
+      </div>
+      <div className="mobile-module-menu-grid">
+        {moduleItems.map((item) => (
+          <button
+            key={item.path}
+            className={`mobile-module-menu-card ${item.tone}`}
+            type="button"
+            onClick={() => handleNavigate(item.path)}
+          >
+            <span className="mobile-module-menu-icon">{item.icon}</span>
+            <strong>{item.title}</strong>
+            {item.tone === 'family' && familyBadge ? (
+              <span className="mobile-module-menu-badge">{familyBadge}</span>
+            ) : null}
+            {item.tone === 'notice' && notificationBadge ? (
+              <span className="mobile-module-menu-badge">{notificationBadge}</span>
+            ) : null}
+            <RightOutlined className="mobile-module-menu-arrow" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function MobileModuleMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
     <Popup
       visible={open}
       position="left"
       onMaskClick={onClose}
       bodyStyle={{ width: '84vw', maxWidth: 360 }}
     >
-      <div className="mobile-module-menu">
-        <div className="mobile-module-menu-hero">
-          <span>
-            <AppstoreOutlined />
-          </span>
-          <strong>家庭应用</strong>
-        </div>
-        <div className="mobile-module-menu-grid">
-          {moduleItems.map((item) => (
-            <button
-              key={item.path}
-              className={`mobile-module-menu-card ${item.tone}`}
-              type="button"
-              onClick={() => handleNavigate(item.path)}
-            >
-              <span className="mobile-module-menu-icon">{item.icon}</span>
-              <strong>{item.title}</strong>
-              {item.tone === 'family' && familyBadge ? (
-                <span className="mobile-module-menu-badge">{familyBadge}</span>
-              ) : null}
-              {item.tone === 'notice' && notificationBadge ? (
-                <span className="mobile-module-menu-badge">{notificationBadge}</span>
-              ) : null}
-              <RightOutlined className="mobile-module-menu-arrow" />
-            </button>
-          ))}
-        </div>
-      </div>
+      {open ? <MobileModuleMenuContent onClose={onClose} /> : null}
     </Popup>
   );
 }

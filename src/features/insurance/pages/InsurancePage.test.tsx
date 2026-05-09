@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { createMockUser, renderWithProviders, setMockUser } from '@/test/test-utils';
+import { createMockUser, renderWithProviders, setMockUser, userEvent } from '@/test/test-utils';
 import { InsurancePage } from './InsurancePage';
 
 const insuranceHookMocks = vi.hoisted(() => ({
@@ -230,5 +230,51 @@ describe('InsurancePage', () => {
     expect(screen.getByText('银行卡自动扣费')).toBeInTheDocument();
     expect(screen.getByText('保险经纪人')).toBeInTheDocument();
     expect(screen.getByText('关闭')).toBeInTheDocument();
+  });
+
+  it('updates member linked user and remark from the member manager', async () => {
+    const updateMember = mockMutation();
+    insuranceHookMocks.useUpdateInsuranceMember.mockReturnValue(updateMember);
+    insuranceHookMocks.useInsuranceMembers.mockReturnValue({
+      data: [
+        {
+          id: 1,
+          name: '妈妈',
+          relationship: '母亲',
+          linkedUserId: 7,
+          remark: '旧备注',
+          sort: 0,
+        },
+      ],
+      isLoading: false,
+    });
+
+    renderInsurancePage();
+
+    await userEvent.click(screen.getByRole('button', { name: /管理成员/ }));
+    const dialog = await screen.findByRole('dialog', { name: '管理成员' });
+    await userEvent.click(within(dialog).getByRole('button', { name: /编辑/ }));
+
+    expect(within(dialog).getByLabelText('备注')).toHaveValue('旧备注');
+
+    await userEvent.clear(within(dialog).getByLabelText('备注'));
+    await userEvent.type(within(dialog).getByLabelText('备注'), '家庭账号已绑定');
+    await userEvent.click(within(dialog).getByRole('button', { name: /保.*存/ }));
+
+    await waitFor(() => {
+      expect(updateMember.mutate).toHaveBeenCalledWith(
+        {
+          id: 1,
+          data: expect.objectContaining({
+            name: '妈妈',
+            relationship: '母亲',
+            linkedUserId: 7,
+            remark: '家庭账号已绑定',
+            sort: 0,
+          }),
+        },
+        expect.any(Object)
+      );
+    });
   });
 });

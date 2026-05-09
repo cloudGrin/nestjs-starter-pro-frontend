@@ -1,11 +1,47 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
+import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    VitePWA({
+      injectRegister: false,
+      manifest: false,
+      registerType: 'autoUpdate',
+      scope: '/m/',
+      filename: 'mobile-sw.js',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        navigateFallback: '/m/index.html',
+        navigateFallbackAllowlist: [/^\/m(?:\/.*)?$/],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+            handler: 'NetworkOnly',
+            method: 'GET',
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/socket.io/'),
+            handler: 'NetworkOnly',
+            method: 'GET',
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/assets/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'home-mobile-static-assets',
+              expiration: {
+                maxEntries: 80,
+                maxAgeSeconds: 30 * 24 * 60 * 60,
+              },
+            },
+          },
+        ],
+      },
+    }),
     {
       name: 'mobile-entry-redirect',
       configureServer(server) {

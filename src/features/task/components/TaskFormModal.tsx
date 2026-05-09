@@ -78,6 +78,7 @@ interface TaskFormValues {
   recurrenceType: TaskRecurrenceType;
   recurrenceInterval?: number;
   continuousReminderEnabled: boolean;
+  continuousReminderIntervalMinutes?: number;
 }
 
 const recurrenceOptions: Array<{ label: string; value: TaskRecurrenceType }> = [
@@ -165,6 +166,9 @@ function toPayload(values: TaskFormValues, isEditing: boolean): CreateTaskDto | 
     recurrenceType: values.recurrenceType,
     continuousReminderEnabled: values.continuousReminderEnabled,
   };
+  if (values.taskType !== 'anniversary') {
+    payload.continuousReminderIntervalMinutes = values.continuousReminderIntervalMinutes ?? 30;
+  }
 
   const description = values.description?.trim();
   if (description) {
@@ -322,6 +326,7 @@ export function TaskFormModal({
         recurrenceType: task.recurrenceType,
         recurrenceInterval: task.recurrenceInterval ?? undefined,
         continuousReminderEnabled: task.continuousReminderEnabled ?? true,
+        continuousReminderIntervalMinutes: task.continuousReminderIntervalMinutes ?? 30,
       });
       setUploadedAttachments(task.attachments ?? []);
       return;
@@ -344,7 +349,8 @@ export function TaskFormModal({
       checkItems: [],
       recurrenceType: nextTaskType === 'anniversary' ? 'yearly' : 'none',
       recurrenceInterval: undefined,
-      continuousReminderEnabled: true,
+      continuousReminderEnabled: nextTaskType !== 'anniversary',
+      continuousReminderIntervalMinutes: 30,
     });
     setUploadedAttachments([]);
   }, [defaultDueAt, defaultTaskType, firstActiveListId, form, mustMigrateArchivedList, open, task]);
@@ -761,9 +767,25 @@ export function TaskFormModal({
         )}
 
         {isAnniversaryForm ? null : (
-          <Form.Item name="continuousReminderEnabled" label="持续提醒" valuePropName="checked">
-            <Switch checkedChildren="开启" unCheckedChildren="关闭" />
-          </Form.Item>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Form.Item name="continuousReminderEnabled" label="持续提醒" valuePropName="checked">
+              <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+            </Form.Item>
+            <Form.Item
+              noStyle
+              shouldUpdate={(prev, next) =>
+                prev.continuousReminderEnabled !== next.continuousReminderEnabled
+              }
+            >
+              {({ getFieldValue }) =>
+                getFieldValue('continuousReminderEnabled') ? (
+                  <Form.Item name="continuousReminderIntervalMinutes" label="提醒间隔">
+                    <InputNumber min={1} max={1440} addonAfter="分钟" className="w-full!" />
+                  </Form.Item>
+                ) : null
+              }
+            </Form.Item>
+          </div>
         )}
 
         {isAnniversaryForm ? null : (

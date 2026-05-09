@@ -6,6 +6,7 @@ import {
   RotateRightOutlined,
 } from '@ant-design/icons';
 import { Button, Card, Input, List, Popup, Switch, Toast } from 'antd-mobile';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '@/features/auth/services/auth.service';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -27,6 +28,7 @@ import {
   type AvatarCropState,
 } from '../utils/avatarCrop';
 import { MobileModuleHeader } from '../components/MobileModuleHeader';
+import { clearMobilePersistedQueryCache } from '../pwa/queryPersistence';
 
 function displayName(user: User) {
   return user.nickname || user.realName || user.username;
@@ -35,6 +37,14 @@ function displayName(user: User) {
 function normalizeOptionalName(value: string) {
   const trimmed = value.trim();
   return trimmed || null;
+}
+
+function isAvatarImageFile(file: File) {
+  if (file.type.startsWith('image/')) {
+    return true;
+  }
+
+  return /\.(avif|gif|heic|heif|jpe?g|png|webp)$/i.test(file.name);
 }
 
 function mergeAuthUser(currentUser: User | null, updatedUser: User): User {
@@ -63,6 +73,7 @@ interface CropPointer {
 
 export function MobileProfilePage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const cropFrameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -93,11 +104,13 @@ export function MobileProfilePage() {
   const cropPreviewUrl = cropDraft?.previewUrl;
 
   useEffect(() => {
+    if (profilePopupOpen) return;
+
     setProfileValues({
       realName: user?.realName || '',
       nickname: user?.nickname || '',
     });
-  }, [user?.realName, user?.nickname]);
+  }, [profilePopupOpen, user?.realName, user?.nickname]);
 
   useEffect(() => {
     return () => {
@@ -123,7 +136,7 @@ export function MobileProfilePage() {
   }, [cropPreviewUrl]);
 
   const handleProfileSave = async () => {
-    if (!user) return;
+    if (!user || profileSaving) return;
 
     const values: UpdateProfileDto = {
       realName: normalizeOptionalName(profileValues.realName),
@@ -151,11 +164,17 @@ export function MobileProfilePage() {
     setProfilePopupOpen(true);
   };
 
+  const closeProfilePopup = () => {
+    if (profileSaving) return;
+
+    setProfilePopupOpen(false);
+  };
+
   const handleAvatarChange = async (files: FileList | null) => {
     const file = files?.[0];
     if (!file || !user) return;
 
-    if (!file.type.startsWith('image/')) {
+    if (!isAvatarImageFile(file)) {
       Toast.show({ icon: 'fail', content: '请选择图片文件', position: 'center' });
       return;
     }
@@ -185,7 +204,9 @@ export function MobileProfilePage() {
     }
   };
 
-  const closeCropSheet = () => {
+  const closeCropSheet = (options?: { force?: boolean }) => {
+    if (avatarUploading && !options?.force) return;
+
     dragRef.current = null;
     pinchRef.current = null;
     activePointersRef.current.clear();
@@ -198,6 +219,8 @@ export function MobileProfilePage() {
   };
 
   const updateCropOffset = (offsetX: number, offsetY: number) => {
+    if (avatarUploading) return;
+
     setCropDraft((draft) => {
       if (!draft) return draft;
       return {
@@ -208,6 +231,8 @@ export function MobileProfilePage() {
   };
 
   const updateCropScale = (scale: number) => {
+    if (avatarUploading) return;
+
     setCropDraft((draft) => {
       if (!draft) return draft;
       const nextDraft = { ...draft, scale: clampValue(scale, AVATAR_MIN_SCALE, AVATAR_MAX_SCALE) };
@@ -219,6 +244,8 @@ export function MobileProfilePage() {
   };
 
   const resetCrop = () => {
+    if (avatarUploading) return;
+
     setCropDraft((draft) =>
       draft
         ? {
@@ -233,11 +260,13 @@ export function MobileProfilePage() {
   };
 
   const rotateCrop = (rotationDelta: number) => {
+    if (avatarUploading) return;
+
     setCropDraft((draft) => (draft ? rotateAvatarCropState(draft, rotationDelta) : draft));
   };
 
   const handleCropPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (!cropDraft) return;
+    if (!cropDraft || avatarUploading) return;
 
     activePointersRef.current.set(event.pointerId, {
       x: event.clientX,
@@ -265,6 +294,8 @@ export function MobileProfilePage() {
   };
 
   const handleCropPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (avatarUploading) return;
+
     if (!activePointersRef.current.has(event.pointerId)) return;
 
     activePointersRef.current.set(event.pointerId, {
@@ -315,7 +346,7 @@ export function MobileProfilePage() {
   };
 
   const handleAvatarSave = async () => {
-    if (!cropDraft || !user) return;
+    if (!cropDraft || !user || avatarUploading) return;
 
     setAvatarUploading(true);
     try {
@@ -352,7 +383,7 @@ export function MobileProfilePage() {
       }
 
       setUser(mergeAuthUser(user, updatedUser));
-      closeCropSheet();
+      closeCropSheet({ force: true });
       Toast.show({ icon: 'success', content: '头像已更新', position: 'center' });
     } finally {
       setAvatarUploading(false);
@@ -361,6 +392,8 @@ export function MobileProfilePage() {
 
   const handleLogout = async () => {
     await logout();
+    queryClient.clear();
+    clearMobilePersistedQueryCache();
     navigate('/login', { replace: true });
   };
 
@@ -452,7 +485,7 @@ export function MobileProfilePage() {
       {profilePopupOpen ? (
         <Popup
           visible
-          onMaskClick={() => setProfilePopupOpen(false)}
+          onMaskClick={closeProfilePopup}
           bodyStyle={{ borderRadius: '18px 18px 0 0' }}
         >
           <div className="mobile-profile-edit-sheet">
@@ -461,7 +494,7 @@ export function MobileProfilePage() {
                 <strong>编辑资料</strong>
                 <span>更新显示名称和昵称</span>
               </div>
-              <Button size="mini" fill="none" onClick={() => setProfilePopupOpen(false)}>
+              <Button size="mini" fill="none" disabled={profileSaving} onClick={closeProfilePopup}>
                 关闭
               </Button>
             </div>
@@ -470,6 +503,7 @@ export function MobileProfilePage() {
               <button
                 className="mobile-profile-edit-avatar"
                 type="button"
+                disabled={profileSaving}
                 onClick={() => avatarInputRef.current?.click()}
               >
                 {user?.avatar ? (
@@ -493,6 +527,7 @@ export function MobileProfilePage() {
                 <Input
                   value={profileValues.realName}
                   maxLength={50}
+                  disabled={profileSaving}
                   placeholder="请输入姓名"
                   onChange={(realName) => setProfileValues((values) => ({ ...values, realName }))}
                 />
@@ -502,6 +537,7 @@ export function MobileProfilePage() {
                 <Input
                   value={profileValues.nickname}
                   maxLength={50}
+                  disabled={profileSaving}
                   placeholder="请输入昵称"
                   onChange={(nickname) => setProfileValues((values) => ({ ...values, nickname }))}
                 />
@@ -509,13 +545,19 @@ export function MobileProfilePage() {
             </div>
 
             <div className="mobile-profile-edit-actions">
-              <Button size="small" fill="outline" onClick={() => setProfilePopupOpen(false)}>
+              <Button
+                size="small"
+                fill="outline"
+                disabled={profileSaving}
+                onClick={closeProfilePopup}
+              >
                 取消
               </Button>
               <Button
                 size="small"
                 color="primary"
                 loading={profileSaving}
+                disabled={profileSaving}
                 onClick={() => void handleProfileSave()}
               >
                 保存资料
@@ -535,7 +577,12 @@ export function MobileProfilePage() {
         <div className="mobile-popup-body mobile-avatar-crop-sheet">
           <div className="mobile-popup-header">
             <strong>裁剪头像</strong>
-            <Button size="mini" fill="none" onClick={() => closeCropSheet()}>
+            <Button
+              size="mini"
+              fill="none"
+              disabled={avatarUploading}
+              onClick={() => closeCropSheet()}
+            >
               关闭
             </Button>
           </div>
@@ -565,15 +612,26 @@ export function MobileProfilePage() {
                     max={AVATAR_MAX_SCALE}
                     step="0.01"
                     value={cropDraft.scale}
+                    disabled={avatarUploading}
                     onChange={(event) => updateCropScale(Number(event.target.value))}
                   />
                 </label>
                 <div className="mobile-avatar-crop-tools">
-                  <Button size="mini" fill="outline" onClick={() => rotateCrop(-90)}>
+                  <Button
+                    size="mini"
+                    fill="outline"
+                    disabled={avatarUploading}
+                    onClick={() => rotateCrop(-90)}
+                  >
                     <RotateLeftOutlined />
                     <span>左旋</span>
                   </Button>
-                  <Button size="mini" fill="outline" onClick={() => rotateCrop(90)}>
+                  <Button
+                    size="mini"
+                    fill="outline"
+                    disabled={avatarUploading}
+                    onClick={() => rotateCrop(90)}
+                  >
                     <RotateRightOutlined />
                     <span>右旋</span>
                   </Button>
@@ -581,17 +639,23 @@ export function MobileProfilePage() {
               </div>
 
               <div className="mobile-sheet-actions">
-                <Button size="small" fill="outline" onClick={resetCrop}>
+                <Button size="small" fill="outline" disabled={avatarUploading} onClick={resetCrop}>
                   重置
                 </Button>
                 <div>
-                  <Button size="small" fill="outline" onClick={() => closeCropSheet()}>
+                  <Button
+                    size="small"
+                    fill="outline"
+                    disabled={avatarUploading}
+                    onClick={() => closeCropSheet()}
+                  >
                     取消
                   </Button>
                   <Button
                     size="small"
                     color="primary"
                     loading={avatarUploading}
+                    disabled={avatarUploading}
                     onClick={() => void handleAvatarSave()}
                   >
                     保存头像

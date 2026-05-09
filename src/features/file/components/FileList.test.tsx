@@ -283,6 +283,17 @@ describe('FileList', () => {
     expect(screen.getAllByText('家庭保险保单')).toHaveLength(2);
   });
 
+  it('renders family media modules with Chinese labels', () => {
+    render(
+      <MemoryRouter>
+        <FileList />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('家庭圈媒体')).toBeInTheDocument();
+    expect(screen.getByText('家庭群聊媒体')).toBeInTheDocument();
+  });
+
   it('uses a temporary access link for private image preview', () => {
     render(
       <MemoryRouter>

@@ -320,6 +320,40 @@ describe('TaskFormModal', () => {
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         continuousReminderEnabled: true,
+        continuousReminderIntervalMinutes: 30,
+      })
+    );
+  });
+
+  it('loads and submits the continuous reminder interval', async () => {
+    const onSubmit = vi.fn();
+
+    renderWithProviders(
+      <TaskFormModal
+        open
+        task={{
+          ...task,
+          continuousReminderIntervalMinutes: 45,
+        }}
+        lists={[{ id: 1, name: '家庭计划', scope: 'family', sort: 0, isArchived: false }]}
+        users={[{ id: 2, username: 'family-user', nickname: 'Family' }]}
+        submitting={false}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    expect(screen.getByRole('spinbutton', { name: '提醒间隔' })).toHaveValue('45');
+
+    await userEvent.clear(screen.getByRole('spinbutton', { name: '提醒间隔' }));
+    await userEvent.type(screen.getByRole('spinbutton', { name: '提醒间隔' }), '15');
+    await userEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        continuousReminderEnabled: true,
+        continuousReminderIntervalMinutes: 15,
       })
     );
   });

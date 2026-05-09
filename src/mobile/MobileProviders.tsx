@@ -1,16 +1,22 @@
-import { useEffect, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, Dialog, Toast } from 'antd-mobile';
 import zhCN from 'antd-mobile/es/locales/zh-CN';
-import { queryClient } from '@/shared/config/query.config';
 import { useThemeStore } from '@/shared/stores';
 import { registerRequestFeedback } from '@/shared/utils/requestFeedback';
+import { MobileOfflineBanner } from './components/MobileOfflineBanner';
+import {
+  clearMobilePersistedQueryCache,
+  createMobileQueryClient,
+  persistMobileQueryClient,
+} from './pwa/queryPersistence';
 
 interface MobileProvidersProps {
   children: React.ReactNode;
 }
 
 export function MobileProviders({ children }: MobileProvidersProps) {
+  const [mobileQueryClient] = useState(createMobileQueryClient);
   const themeMode = useThemeStore((state) => state.mode);
 
   useEffect(() => {
@@ -42,9 +48,31 @@ export function MobileProviders({ children }: MobileProvidersProps) {
     });
   }, []);
 
+  useEffect(() => {
+    const [unsubscribe] = persistMobileQueryClient(mobileQueryClient);
+
+    return unsubscribe;
+  }, [mobileQueryClient]);
+
+  useEffect(() => {
+    const clearPersistedCache = () => {
+      mobileQueryClient.clear();
+      clearMobilePersistedQueryCache();
+    };
+
+    window.addEventListener('auth:session-expired', clearPersistedCache);
+
+    return () => {
+      window.removeEventListener('auth:session-expired', clearPersistedCache);
+    };
+  }, [mobileQueryClient]);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <ConfigProvider locale={zhCN}>{children}</ConfigProvider>
+    <QueryClientProvider client={mobileQueryClient}>
+      <ConfigProvider locale={zhCN}>
+        <MobileOfflineBanner />
+        {children}
+      </ConfigProvider>
     </QueryClientProvider>
   );
 }

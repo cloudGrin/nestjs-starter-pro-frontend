@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button, Form, Input, Toast } from 'antd-mobile';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/authStore';
+import { clearMobilePersistedQueryCache } from '../pwa/queryPersistence';
 
 interface LoginFormValues {
   account: string;
@@ -26,6 +27,7 @@ export function MobileLoginPage() {
   const handleFinish = async (values: LoginFormValues) => {
     setSubmitting(true);
     try {
+      clearMobilePersistedQueryCache();
       await login(values.account.trim(), values.password);
       navigate(from, { replace: true });
     } catch {
