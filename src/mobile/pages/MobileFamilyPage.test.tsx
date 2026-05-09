@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import type { ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -48,6 +49,27 @@ const familyServiceMocks = vi.hoisted(() => ({
   },
 }));
 
+vi.mock('antd-mobile', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('antd-mobile')>();
+  return {
+    ...actual,
+    PullToRefresh: ({
+      children,
+      onRefresh,
+    }: {
+      children: ReactNode;
+      onRefresh: () => void | Promise<void>;
+    }) => (
+      <div>
+        <button type="button" onClick={() => void onRefresh()}>
+          mock pull refresh
+        </button>
+        {children}
+      </div>
+    ),
+  };
+});
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
   return {
@@ -60,6 +82,7 @@ vi.mock('@/features/family/realtime/familySocket', () => socketMocks);
 vi.mock('@/features/family/services/family.service', () => familyServiceMocks);
 
 const refetch = vi.fn().mockResolvedValue(undefined);
+const babyRefetch = vi.fn().mockResolvedValue(undefined);
 const createPost = vi.fn().mockResolvedValue(undefined);
 const createComment = vi.fn().mockResolvedValue(undefined);
 const likePost = vi.fn();
@@ -175,6 +198,8 @@ function createDeferred<T>() {
 describe('MobileFamilyPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    refetch.mockResolvedValue({ data: { items: [post], meta: { totalItems: 1 } } });
+    babyRefetch.mockResolvedValue(undefined);
     familyHooks.useFamilyPosts.mockReturnValue({
       data: { items: [post], meta: { totalItems: 1 } },
       isLoading: false,
@@ -183,6 +208,7 @@ describe('MobileFamilyPage', () => {
     familyHooks.useBabyOverview.mockReturnValue({
       data: { profile: null, latestGrowthRecord: null, growthRecords: [], birthdays: [] },
       isLoading: false,
+      refetch: babyRefetch,
     });
     familyHooks.useFamilyState.mockReturnValue({
       data: {
@@ -275,6 +301,15 @@ describe('MobileFamilyPage', () => {
     );
     expect(screen.getByAltText('妈妈')).toHaveAttribute('src', 'https://example.com/mom.png');
     expect(screen.queryByText('2 人喜欢')).not.toBeInTheDocument();
+  });
+
+  it('refreshes the baby summary card together with the family feed', async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock pull refresh' }));
+
+    await waitFor(() => expect(refetch).toHaveBeenCalled());
+    expect(babyRefetch).toHaveBeenCalled();
   });
 
   it('prefers nicknames over real names in family user display', () => {

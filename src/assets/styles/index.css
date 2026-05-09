@@ -286,22 +286,10 @@
   color: inherit;
 }
 
-.login-panel.ant-card {
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-}
-
 .dark .ant-card {
   background: rgba(30, 41, 59, 0.72) !important;
   border-color: rgba(102, 126, 234, 0.18) !important;
   box-shadow: 0 12px 34px rgba(15, 23, 42, 0.28) !important;
-}
-
-.dark .login-panel.ant-card {
-  background: rgba(15, 23, 42, 0.9) !important;
-  border: 0 !important;
-  box-shadow: none !important;
 }
 
 .dark .ant-card-head {

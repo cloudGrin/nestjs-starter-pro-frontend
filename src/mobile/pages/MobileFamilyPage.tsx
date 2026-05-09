@@ -1044,7 +1044,7 @@ export function MobileFamilyPage() {
   };
 
   const refreshFamilyPosts = async () => {
-    const result = await postsQuery.refetch();
+    const [result] = await Promise.all([postsQuery.refetch(), babyOverviewQuery.refetch()]);
     const refreshedLatestPostId = getLatestPostId(result.data?.items ?? []);
     setPendingPostEvents([]);
     if (refreshedLatestPostId) {

@@ -39,36 +39,62 @@ export function MobileLoginPage() {
   };
 
   return (
-    <div className="mobile-page flex min-h-screen flex-col justify-center">
-      <div className="mb-8">
-        <h1 className="mobile-title">家庭助手</h1>
-        <div className="mobile-subtitle">查看家庭任务、保险和提醒</div>
-      </div>
-      <div className="mobile-card p-3">
-        <Form
-          layout="vertical"
-          footer={
-            <Button block color="primary" type="submit" loading={submitting}>
-              登录
-            </Button>
-          }
-          onFinish={(values: LoginFormValues) => void handleFinish(values)}
-        >
-          <Form.Item
-            name="account"
-            label="账号"
-            rules={[{ required: true, message: '请输入账号' }]}
+    <div className="mobile-page mobile-login-page">
+      <div className="mobile-login-shell">
+        <div className="mobile-login-brand">
+          <div className="mobile-login-mark">H</div>
+          <div className="mobile-login-brand-copy">
+            <h1>家庭助手</h1>
+            <p>家庭动态、任务和提醒都在这里</p>
+          </div>
+        </div>
+
+        <div className="mobile-login-panel">
+          <div className="mobile-login-panel-header">
+            <h2>欢迎回来</h2>
+            <p>登录后继续查看家庭圈</p>
+          </div>
+
+          <Form
+            className="mobile-login-form"
+            layout="vertical"
+            footer={
+              <Button
+                block
+                className="mobile-login-submit"
+                color="primary"
+                type="submit"
+                loading={submitting}
+              >
+                登录
+              </Button>
+            }
+            initialValues={{ account: '', password: '' }}
+            onFinish={(values: LoginFormValues) => void handleFinish(values)}
           >
-            <Input placeholder="用户名、邮箱或手机号" clearable />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            label="密码"
-            rules={[{ required: true, message: '请输入密码' }]}
-          >
-            <Input placeholder="请输入密码" type="password" clearable />
-          </Form.Item>
-        </Form>
+            <Form.Item
+              name="account"
+              label="账号"
+              rules={[{ required: true, message: '请输入账号' }]}
+            >
+              <Input placeholder="用户名、邮箱或手机号" autoComplete="username" clearable />
+            </Form.Item>
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[{ required: true, message: '请输入密码' }]}
+            >
+              <Input
+                placeholder="请输入密码"
+                type="password"
+                autoComplete="current-password"
+                clearable
+              />
+            </Form.Item>
+          </Form>
+
+          <div className="mobile-login-note">首次部署后请使用后端日志中的初始管理员密码登录</div>
+        </div>
       </div>
     </div>
   );
