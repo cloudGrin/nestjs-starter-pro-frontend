@@ -30,7 +30,14 @@ interface UserFormData {
   username: string;
   email: string;
   password?: string;
+  realName?: string;
   nickname?: string;
+  phone?: string;
+  gender?: User['gender'];
+  birthday?: string;
+  address?: string;
+  bio?: string;
+  avatar?: string;
   status: UserStatus;
   barkKey?: string;
   feishuUserId?: string;
@@ -45,7 +52,7 @@ function notificationSettingsToFormValues(
   };
 }
 
-function normalizeOptionalText(value?: string) {
+function normalizeOptionalText(value?: string | null) {
   const text = value?.trim();
   return text ? text : null;
 }
@@ -54,6 +61,19 @@ function toNotificationSettingsPayload(data: UserFormData): UpdateUserNotificati
   return {
     barkKey: normalizeOptionalText(data.barkKey),
     feishuUserId: normalizeOptionalText(data.feishuUserId),
+  };
+}
+
+function toUserProfilePayload(data: UserFormData) {
+  return {
+    realName: normalizeOptionalText(data.realName),
+    nickname: normalizeOptionalText(data.nickname),
+    phone: normalizeOptionalText(data.phone),
+    gender: data.gender ?? 'unknown',
+    birthday: normalizeOptionalText(data.birthday),
+    address: normalizeOptionalText(data.address),
+    bio: normalizeOptionalText(data.bio),
+    avatar: normalizeOptionalText(data.avatar),
   };
 }
 
@@ -77,7 +97,14 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
       username: '',
       email: '',
       password: '',
+      realName: '',
       nickname: '',
+      phone: '',
+      gender: 'unknown',
+      birthday: '',
+      address: '',
+      bio: '',
+      avatar: '',
       status: 'active' as UserStatus,
       barkKey: '',
       feishuUserId: '',
@@ -104,7 +131,14 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
       reset({
         username: user.username,
         email: user.email,
+        realName: user.realName || '',
         nickname: user.nickname || '',
+        phone: user.phone || '',
+        gender: user.gender || 'unknown',
+        birthday: user.birthday || '',
+        address: user.address || '',
+        bio: user.bio || '',
+        avatar: user.avatar || '',
         status: user.status,
         barkKey: '',
         feishuUserId: '',
@@ -114,7 +148,14 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
         username: '',
         email: '',
         password: '',
+        realName: '',
         nickname: '',
+        phone: '',
+        gender: 'unknown',
+        birthday: '',
+        address: '',
+        bio: '',
+        avatar: '',
         status: 'active' as UserStatus,
         barkKey: '',
         feishuUserId: '',
@@ -153,7 +194,7 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
         // 编辑模式
         const updateDto: UpdateUserDto = {
           email: data.email,
-          nickname: data.nickname,
+          ...toUserProfilePayload(data),
           status: data.status,
         };
         await updateUser.mutateAsync({ id: user.id, data: updateDto, silent: true });
@@ -173,7 +214,7 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
           username: data.username,
           email: data.email,
           password: data.password,
-          nickname: data.nickname,
+          ...toUserProfilePayload(data),
           status: data.status,
         };
         await createUser.mutateAsync(createDto);
@@ -200,7 +241,7 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
         isNotificationSettingsLoading
       }
       okButtonProps={{ disabled: isNotificationSettingsUnavailable }}
-      width={600}
+      width={720}
       afterClose={() => reset()}
     >
       <Form layout="vertical" style={{ marginTop: 24 }}>
@@ -281,16 +322,181 @@ export function UserForm({ visible, user, onCancel, onSuccess }: UserFormProps) 
           </Form.Item>
         )}
 
-        {/* 昵称 */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {/* 真实姓名 */}
+          <Form.Item
+            label="真实姓名"
+            htmlFor="realName"
+            validateStatus={errors.realName ? 'error' : ''}
+            help={errors.realName?.message}
+          >
+            <Controller
+              name="realName"
+              control={control}
+              rules={{ maxLength: { value: 50, message: '真实姓名最多50个字符' } }}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  id="realName"
+                  value={field.value || ''}
+                  maxLength={50}
+                  placeholder="请输入真实姓名"
+                />
+              )}
+            />
+          </Form.Item>
+
+          {/* 昵称 */}
+          <Form.Item
+            label="昵称"
+            validateStatus={errors.nickname ? 'error' : ''}
+            help={errors.nickname?.message}
+          >
+            <Controller
+              name="nickname"
+              control={control}
+              rules={{ maxLength: { value: 50, message: '昵称最多50个字符' } }}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  value={field.value || ''}
+                  maxLength={50}
+                  placeholder="请输入昵称（可选）"
+                />
+              )}
+            />
+          </Form.Item>
+
+          {/* 手机号 */}
+          <Form.Item
+            label="手机号"
+            htmlFor="phone"
+            validateStatus={errors.phone ? 'error' : ''}
+            help={errors.phone?.message}
+          >
+            <Controller
+              name="phone"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  id="phone"
+                  value={field.value || ''}
+                  placeholder="请输入中国大陆手机号"
+                />
+              )}
+            />
+          </Form.Item>
+
+          {/* 性别 */}
+          <Form.Item
+            label="性别"
+            htmlFor="gender"
+            validateStatus={errors.gender ? 'error' : ''}
+            help={errors.gender?.message}
+          >
+            <Controller
+              name="gender"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  {...field}
+                  id="gender"
+                  placeholder="请选择性别"
+                  options={[
+                    { label: '男', value: 'male' },
+                    { label: '女', value: 'female' },
+                    { label: '未知', value: 'unknown' },
+                  ]}
+                />
+              )}
+            />
+          </Form.Item>
+
+          {/* 生日 */}
+          <Form.Item
+            label="生日"
+            htmlFor="birthday"
+            validateStatus={errors.birthday ? 'error' : ''}
+            help={errors.birthday?.message}
+          >
+            <Controller
+              name="birthday"
+              control={control}
+              render={({ field }) => (
+                <Input {...field} id="birthday" value={field.value || ''} type="date" />
+              )}
+            />
+          </Form.Item>
+
+          {/* 头像 */}
+          <Form.Item
+            label="头像 URL"
+            htmlFor="avatar"
+            validateStatus={errors.avatar ? 'error' : ''}
+            help={errors.avatar?.message}
+          >
+            <Controller
+              name="avatar"
+              control={control}
+              rules={{ maxLength: { value: 255, message: '头像 URL 最多255个字符' } }}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  id="avatar"
+                  value={field.value || ''}
+                  maxLength={255}
+                  placeholder="请输入头像 URL"
+                />
+              )}
+            />
+          </Form.Item>
+        </div>
+
+        {/* 地址 */}
         <Form.Item
-          label="昵称"
-          validateStatus={errors.nickname ? 'error' : ''}
-          help={errors.nickname?.message}
+          label="地址"
+          htmlFor="address"
+          validateStatus={errors.address ? 'error' : ''}
+          help={errors.address?.message}
         >
           <Controller
-            name="nickname"
+            name="address"
             control={control}
-            render={({ field }) => <Input {...field} placeholder="请输入昵称（可选）" />}
+            rules={{ maxLength: { value: 255, message: '地址最多255个字符' } }}
+            render={({ field }) => (
+              <Input
+                {...field}
+                id="address"
+                value={field.value || ''}
+                maxLength={255}
+                placeholder="请输入地址"
+              />
+            )}
+          />
+        </Form.Item>
+
+        {/* 个人简介 */}
+        <Form.Item
+          label="个人简介"
+          htmlFor="bio"
+          validateStatus={errors.bio ? 'error' : ''}
+          help={errors.bio?.message}
+        >
+          <Controller
+            name="bio"
+            control={control}
+            render={({ field }) => (
+              <Input.TextArea
+                {...field}
+                id="bio"
+                value={field.value || ''}
+                rows={3}
+                maxLength={500}
+                showCount
+                placeholder="请输入个人简介"
+              />
+            )}
           />
         </Form.Item>
 

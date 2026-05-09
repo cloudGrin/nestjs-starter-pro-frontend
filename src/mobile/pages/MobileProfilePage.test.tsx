@@ -1,6 +1,7 @@
 import { MemoryRouter } from 'react-router-dom';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Toast } from 'antd-mobile';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { authService } from '@/features/auth/services/auth.service';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -28,6 +29,10 @@ vi.mock('@/features/family/hooks/useFamily', () => ({
   }),
 }));
 
+vi.mock('@/features/notification/hooks/useNotifications', () => ({
+  useUnreadNotifications: () => ({ data: [] }),
+}));
+
 const user: User = {
   id: 1,
   username: 'dad',
@@ -41,6 +46,17 @@ const user: User = {
   updatedAt: '2026-05-04T00:00:00.000Z',
 };
 
+let canvasContext: {
+  drawImage: ReturnType<typeof vi.fn>;
+  save: ReturnType<typeof vi.fn>;
+  restore: ReturnType<typeof vi.fn>;
+  translate: ReturnType<typeof vi.fn>;
+  scale: ReturnType<typeof vi.fn>;
+  rotate: ReturnType<typeof vi.fn>;
+  imageSmoothingEnabled: boolean;
+  imageSmoothingQuality: ImageSmoothingQuality;
+};
+
 function renderPage() {
   return renderWithProviders(
     <MemoryRouter>
@@ -49,9 +65,20 @@ function renderPage() {
   );
 }
 
+function firePointerEvent(
+  target: Element,
+  type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
+  options: { pointerId: number; clientX: number; clientY: number }
+) {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.assign(event, options);
+  fireEvent(target, event);
+}
+
 describe('MobileProfilePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Toast.clear();
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
       value: vi.fn(() => 'blob:avatar-preview'),
@@ -59,6 +86,33 @@ describe('MobileProfilePage', () => {
     Object.defineProperty(URL, 'revokeObjectURL', {
       configurable: true,
       value: vi.fn(),
+    });
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
+      if (this instanceof HTMLElement && this.classList.contains('mobile-avatar-crop-frame')) {
+        return {
+          width: 240,
+          height: 240,
+          top: 0,
+          right: 240,
+          bottom: 240,
+          left: 0,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        };
+      }
+
+      return {
+        width: 0,
+        height: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      };
     });
     vi.stubGlobal(
       'Image',
@@ -73,11 +127,19 @@ describe('MobileProfilePage', () => {
         }
       }
     );
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    canvasContext = {
       drawImage: vi.fn(),
+      save: vi.fn(),
+      restore: vi.fn(),
+      translate: vi.fn(),
+      scale: vi.fn(),
+      rotate: vi.fn(),
       imageSmoothingEnabled: false,
       imageSmoothingQuality: 'low',
-    } as unknown as CanvasRenderingContext2D);
+    };
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      canvasContext as unknown as CanvasRenderingContext2D
+    );
     vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback, type) => {
       callback(new Blob(['cropped-avatar'], { type: type || 'image/jpeg' }));
     });
@@ -216,6 +278,73 @@ describe('MobileProfilePage', () => {
       'src',
       'https://example.com/new.png'
     );
+  });
+
+  it('uses the measured crop frame size when saving the avatar', async () => {
+    const { container } = renderPage();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })] },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: '保存头像' }));
+
+    await waitFor(() => expect(uploadFile).toHaveBeenCalled());
+    expect(canvasContext.scale).toHaveBeenCalledWith(512 / 240, 512 / 240);
+  });
+
+  it('does not close the crop sheet when the popup mask is tapped', async () => {
+    const { container } = renderPage();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })] },
+    });
+    await screen.findByText('裁剪头像');
+
+    const mask = await waitFor(() => {
+      const element = document.querySelector('.adm-popup .adm-mask');
+      expect(element).toBeInTheDocument();
+      return element;
+    });
+    fireEvent.click(mask!);
+
+    expect(screen.getByRole('button', { name: '保存头像' })).toBeInTheDocument();
+  });
+
+  it('supports pinch zooming the crop preview', async () => {
+    const { container } = renderPage();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })] },
+    });
+    await screen.findByText('裁剪头像');
+
+    const frame = document.querySelector('.mobile-avatar-crop-frame') as HTMLElement;
+    firePointerEvent(frame, 'pointerdown', { pointerId: 1, clientX: 90, clientY: 120 });
+    firePointerEvent(frame, 'pointerdown', { pointerId: 2, clientX: 150, clientY: 120 });
+    firePointerEvent(frame, 'pointermove', { pointerId: 2, clientX: 210, clientY: 120 });
+
+    await waitFor(() =>
+      expect(Number((screen.getByLabelText('缩放') as HTMLInputElement).value)).toBeGreaterThan(1)
+    );
+  });
+
+  it('rotates the cropped avatar before saving', async () => {
+    const { container } = renderPage();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })] },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /右旋/ }));
+    fireEvent.click(screen.getByRole('button', { name: '保存头像' }));
+
+    await waitFor(() => expect(uploadFile).toHaveBeenCalled());
+    expect(canvasContext.rotate).toHaveBeenCalledWith(Math.PI / 2);
   });
 
   it('does not upload when avatar cropping is cancelled', async () => {

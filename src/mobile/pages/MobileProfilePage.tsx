@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { CameraOutlined, EditOutlined } from '@ant-design/icons';
+import {
+  CameraOutlined,
+  EditOutlined,
+  RotateLeftOutlined,
+  RotateRightOutlined,
+} from '@ant-design/icons';
 import { Button, Card, Input, List, Popup, Switch, Toast } from 'antd-mobile';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '@/features/auth/services/auth.service';
@@ -10,10 +15,15 @@ import { useThemeStore } from '@/shared/stores';
 import type { User } from '@/shared/types/user.types';
 import {
   AVATAR_CROP_SIZE,
+  AVATAR_MAX_SCALE,
+  AVATAR_MIN_SCALE,
   clampCropOffset,
   cropAvatarFile,
+  getAvatarPreviewMetrics,
   getUploadedAvatarUrl,
   loadImageFromUrl,
+  resizeAvatarCropState,
+  rotateAvatarCropState,
   type AvatarCropState,
 } from '../utils/avatarCrop';
 import { MobileModuleHeader } from '../components/MobileModuleHeader';
@@ -46,14 +56,26 @@ interface AvatarCropDraft extends AvatarCropState {
   previewUrl: string;
 }
 
+interface CropPointer {
+  x: number;
+  y: number;
+}
+
 export function MobileProfilePage() {
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const cropFrameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
+    pointerId: number;
     startX: number;
     startY: number;
     offsetX: number;
     offsetY: number;
+  } | null>(null);
+  const activePointersRef = useRef<Map<number, CropPointer>>(new Map());
+  const pinchRef = useRef<{
+    startDistance: number;
+    startScale: number;
   } | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -68,6 +90,7 @@ export function MobileProfilePage() {
   const setUser = useAuthStore((state) => state.setUser);
   const themeMode = useThemeStore((state) => state.mode);
   const setThemeMode = useThemeStore((state) => state.setTheme);
+  const cropPreviewUrl = cropDraft?.previewUrl;
 
   useEffect(() => {
     setProfileValues({
@@ -78,11 +101,26 @@ export function MobileProfilePage() {
 
   useEffect(() => {
     return () => {
-      if (cropDraft?.previewUrl && typeof URL.revokeObjectURL === 'function') {
-        URL.revokeObjectURL(cropDraft.previewUrl);
+      if (cropPreviewUrl && typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(cropPreviewUrl);
       }
     };
-  }, [cropDraft?.previewUrl]);
+  }, [cropPreviewUrl]);
+
+  useEffect(() => {
+    if (!cropPreviewUrl) return;
+
+    const updateCropFrameSize = () => {
+      const size = getMeasuredCropFrameSize();
+      if (size > 0) {
+        setCropDraft((draft) => (draft ? resizeAvatarCropState(draft, size) : draft));
+      }
+    };
+
+    updateCropFrameSize();
+    window.addEventListener('resize', updateCropFrameSize);
+    return () => window.removeEventListener('resize', updateCropFrameSize);
+  }, [cropPreviewUrl]);
 
   const handleProfileSave = async () => {
     if (!user) return;
@@ -139,6 +177,7 @@ export function MobileProfilePage() {
         scale: 1,
         offsetX: 0,
         offsetY: 0,
+        rotation: 0,
       });
     } catch {
       URL.revokeObjectURL(previewUrl);
@@ -148,7 +187,14 @@ export function MobileProfilePage() {
 
   const closeCropSheet = () => {
     dragRef.current = null;
+    pinchRef.current = null;
+    activePointersRef.current.clear();
     setCropDraft(null);
+  };
+
+  const getMeasuredCropFrameSize = () => {
+    const rect = cropFrameRef.current?.getBoundingClientRect();
+    return rect ? Math.floor(Math.min(rect.width, rect.height)) : 0;
   };
 
   const updateCropOffset = (offsetX: number, offsetY: number) => {
@@ -164,7 +210,7 @@ export function MobileProfilePage() {
   const updateCropScale = (scale: number) => {
     setCropDraft((draft) => {
       if (!draft) return draft;
-      const nextDraft = { ...draft, scale };
+      const nextDraft = { ...draft, scale: clampValue(scale, AVATAR_MIN_SCALE, AVATAR_MAX_SCALE) };
       return {
         ...nextDraft,
         ...clampCropOffset(nextDraft.offsetX, nextDraft.offsetY, nextDraft),
@@ -180,25 +226,63 @@ export function MobileProfilePage() {
             scale: 1,
             offsetX: 0,
             offsetY: 0,
+            rotation: 0,
           }
         : draft
     );
   };
 
+  const rotateCrop = (rotationDelta: number) => {
+    setCropDraft((draft) => (draft ? rotateAvatarCropState(draft, rotationDelta) : draft));
+  };
+
   const handleCropPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!cropDraft) return;
 
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      offsetX: cropDraft.offsetX,
-      offsetY: cropDraft.offsetY,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
+    activePointersRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    if (activePointersRef.current.size >= 2) {
+      const [first, second] = Array.from(activePointersRef.current.values());
+      pinchRef.current = {
+        startDistance: getPointerDistance(first, second),
+        startScale: cropDraft.scale,
+      };
+      dragRef.current = null;
+    } else {
+      dragRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        offsetX: cropDraft.offsetX,
+        offsetY: cropDraft.offsetY,
+      };
+    }
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
   const handleCropPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current) return;
+    if (!activePointersRef.current.has(event.pointerId)) return;
+
+    activePointersRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    if (activePointersRef.current.size >= 2 && pinchRef.current) {
+      const [first, second] = Array.from(activePointersRef.current.values());
+      const distance = getPointerDistance(first, second);
+      const scaleRatio = pinchRef.current.startDistance
+        ? distance / pinchRef.current.startDistance
+        : 1;
+      updateCropScale(pinchRef.current.startScale * scaleRatio);
+      return;
+    }
+
+    if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return;
 
     updateCropOffset(
       dragRef.current.offsetX + event.clientX - dragRef.current.startX,
@@ -206,7 +290,27 @@ export function MobileProfilePage() {
     );
   };
 
-  const handleCropPointerEnd = () => {
+  const handleCropPointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    activePointersRef.current.delete(event.pointerId);
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    if (activePointersRef.current.size < 2) {
+      pinchRef.current = null;
+    }
+
+    const remainingPointer = Array.from(activePointersRef.current.entries())[0];
+    if (remainingPointer && cropDraft) {
+      const [pointerId, pointer] = remainingPointer;
+      dragRef.current = {
+        pointerId,
+        startX: pointer.x,
+        startY: pointer.y,
+        offsetX: cropDraft.offsetX,
+        offsetY: cropDraft.offsetY,
+      };
+      return;
+    }
+
     dragRef.current = null;
   };
 
@@ -215,19 +319,41 @@ export function MobileProfilePage() {
 
     setAvatarUploading(true);
     try {
-      const croppedFile = await cropAvatarFile(cropDraft.file, cropDraft.previewUrl, cropDraft);
-      const uploaded = await uploadFile(croppedFile, {
-        module: 'user-avatar',
-        tags: 'avatar,profile',
-        isPublic: true,
-      });
-      const avatar = getUploadedAvatarUrl(uploaded);
-      const updatedUser = await authService.updateProfile({ avatar });
+      let croppedFile: File;
+      try {
+        const measuredCropSize = getMeasuredCropFrameSize();
+        const cropState =
+          measuredCropSize > 0 ? resizeAvatarCropState(cropDraft, measuredCropSize) : cropDraft;
+        croppedFile = await cropAvatarFile(cropDraft.file, cropDraft.previewUrl, cropState);
+      } catch {
+        Toast.show({ icon: 'fail', content: '头像裁剪失败', position: 'center' });
+        return;
+      }
+
+      let avatar: string;
+      try {
+        const uploaded = await uploadFile(croppedFile, {
+          module: 'user-avatar',
+          tags: 'avatar,profile',
+          isPublic: true,
+        });
+        avatar = getUploadedAvatarUrl(uploaded);
+      } catch {
+        Toast.show({ icon: 'fail', content: '头像上传失败', position: 'center' });
+        return;
+      }
+
+      let updatedUser: User;
+      try {
+        updatedUser = await authService.updateProfile({ avatar });
+      } catch {
+        Toast.show({ icon: 'fail', content: '资料更新失败', position: 'center' });
+        return;
+      }
+
       setUser(mergeAuthUser(user, updatedUser));
       closeCropSheet();
       Toast.show({ icon: 'success', content: '头像已更新', position: 'center' });
-    } catch {
-      Toast.show({ icon: 'fail', content: '头像上传失败', position: 'center' });
     } finally {
       setAvatarUploading(false);
     }
@@ -238,15 +364,16 @@ export function MobileProfilePage() {
     navigate('/login', { replace: true });
   };
 
-  const cropImageStyle = cropDraft
+  const cropMetrics = cropDraft ? getAvatarPreviewMetrics(cropDraft) : null;
+  const cropImageLayerStyle = cropDraft
     ? {
-        width:
-          (cropDraft.imageWidth * AVATAR_CROP_SIZE * cropDraft.scale) /
-          Math.min(cropDraft.imageWidth, cropDraft.imageHeight),
-        height:
-          (cropDraft.imageHeight * AVATAR_CROP_SIZE * cropDraft.scale) /
-          Math.min(cropDraft.imageWidth, cropDraft.imageHeight),
-        transform: `translate(calc(-50% + ${cropDraft.offsetX}px), calc(-50% + ${cropDraft.offsetY}px))`,
+        transform: `translate(-50%, -50%) translate(${cropDraft.offsetX}px, ${cropDraft.offsetY}px) rotate(${cropDraft.rotation}deg)`,
+      }
+    : undefined;
+  const cropImageStyle = cropMetrics
+    ? {
+        width: cropMetrics.imageWidth,
+        height: cropMetrics.imageHeight,
       }
     : undefined;
   const currentDisplayName = user ? displayName(user) : '-';
@@ -400,7 +527,9 @@ export function MobileProfilePage() {
 
       <Popup
         visible={!!cropDraft}
-        onMaskClick={() => closeCropSheet()}
+        closeOnMaskClick={false}
+        mask
+        onMaskClick={() => undefined}
         bodyStyle={{ borderRadius: '18px 18px 0 0' }}
       >
         <div className="mobile-popup-body mobile-avatar-crop-sheet">
@@ -414,13 +543,16 @@ export function MobileProfilePage() {
           {cropDraft ? (
             <>
               <div
+                ref={cropFrameRef}
                 className="mobile-avatar-crop-frame"
                 onPointerDown={handleCropPointerDown}
                 onPointerMove={handleCropPointerMove}
                 onPointerUp={handleCropPointerEnd}
                 onPointerCancel={handleCropPointerEnd}
               >
-                <img src={cropDraft.previewUrl} style={cropImageStyle} alt="头像预览" />
+                <div className="mobile-avatar-crop-image-layer" style={cropImageLayerStyle}>
+                  <img src={cropDraft.previewUrl} style={cropImageStyle} alt="头像预览" />
+                </div>
                 <div className="mobile-avatar-crop-mask" />
               </div>
 
@@ -429,13 +561,23 @@ export function MobileProfilePage() {
                   <span>缩放</span>
                   <input
                     type="range"
-                    min="1"
-                    max="3"
+                    min={AVATAR_MIN_SCALE}
+                    max={AVATAR_MAX_SCALE}
                     step="0.01"
                     value={cropDraft.scale}
                     onChange={(event) => updateCropScale(Number(event.target.value))}
                   />
                 </label>
+                <div className="mobile-avatar-crop-tools">
+                  <Button size="mini" fill="outline" onClick={() => rotateCrop(-90)}>
+                    <RotateLeftOutlined />
+                    <span>左旋</span>
+                  </Button>
+                  <Button size="mini" fill="outline" onClick={() => rotateCrop(90)}>
+                    <RotateRightOutlined />
+                    <span>右旋</span>
+                  </Button>
+                </div>
               </div>
 
               <div className="mobile-sheet-actions">
@@ -462,4 +604,12 @@ export function MobileProfilePage() {
       </Popup>
     </div>
   );
+}
+
+function getPointerDistance(first: CropPointer, second: CropPointer) {
+  return Math.hypot(second.x - first.x, second.y - first.y);
+}
+
+function clampValue(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }

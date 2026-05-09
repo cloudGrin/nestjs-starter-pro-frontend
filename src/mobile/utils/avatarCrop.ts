@@ -2,6 +2,10 @@ import type { FileEntity } from '@/features/file/types/file.types';
 
 export const AVATAR_CROP_SIZE = 280;
 export const AVATAR_OUTPUT_SIZE = 512;
+export const AVATAR_MIN_SCALE = 1;
+export const AVATAR_MAX_SCALE = 4;
+
+export type AvatarRotation = 0 | 90 | 180 | 270;
 
 export interface AvatarCropState {
   imageWidth: number;
@@ -10,6 +14,16 @@ export interface AvatarCropState {
   scale: number;
   offsetX: number;
   offsetY: number;
+  rotation: AvatarRotation;
+}
+
+export interface AvatarPreviewMetrics {
+  frameSize: number;
+  imageWidth: number;
+  imageHeight: number;
+  displayWidth: number;
+  displayHeight: number;
+  displayScale: number;
 }
 
 export function loadImageFromUrl(url: string): Promise<HTMLImageElement> {
@@ -24,11 +38,10 @@ export function loadImageFromUrl(url: string): Promise<HTMLImageElement> {
 export function clampCropOffset(
   offsetX: number,
   offsetY: number,
-  state: Pick<AvatarCropState, 'imageWidth' | 'imageHeight' | 'cropSize' | 'scale'>
+  state: Pick<AvatarCropState, 'imageWidth' | 'imageHeight' | 'cropSize' | 'scale'> &
+    Partial<Pick<AvatarCropState, 'rotation'>>
 ) {
-  const displayScale = getDisplayScale(state);
-  const displayWidth = state.imageWidth * displayScale;
-  const displayHeight = state.imageHeight * displayScale;
+  const { displayWidth, displayHeight } = getAvatarPreviewMetrics(state);
   const maxX = Math.max(0, (displayWidth - state.cropSize) / 2);
   const maxY = Math.max(0, (displayHeight - state.cropSize) / 2);
 
@@ -36,6 +49,55 @@ export function clampCropOffset(
     offsetX: clamp(offsetX, -maxX, maxX),
     offsetY: clamp(offsetY, -maxY, maxY),
   };
+}
+
+export function getAvatarPreviewMetrics(
+  state: Pick<AvatarCropState, 'imageWidth' | 'imageHeight' | 'cropSize' | 'scale'> &
+    Partial<Pick<AvatarCropState, 'rotation'>>
+): AvatarPreviewMetrics {
+  const displayScale = getDisplayScale(state);
+  const rotation = normalizeAvatarRotation(state.rotation || 0);
+  const imageWidth = state.imageWidth * displayScale;
+  const imageHeight = state.imageHeight * displayScale;
+  const displayWidth = isSidewaysRotation(rotation) ? imageHeight : imageWidth;
+  const displayHeight = isSidewaysRotation(rotation) ? imageWidth : imageHeight;
+
+  return {
+    frameSize: state.cropSize,
+    imageWidth,
+    imageHeight,
+    displayWidth,
+    displayHeight,
+    displayScale,
+  };
+}
+
+export function resizeAvatarCropState<T extends AvatarCropState>(state: T, cropSize: number): T {
+  const nextState = { ...state, cropSize };
+  return {
+    ...nextState,
+    ...clampCropOffset(nextState.offsetX, nextState.offsetY, nextState),
+  };
+}
+
+export function rotateAvatarCropState<T extends AvatarCropState>(state: T, rotationDelta: number): T {
+  const nextState = {
+    ...state,
+    rotation: normalizeAvatarRotation(state.rotation + rotationDelta),
+  };
+
+  return {
+    ...nextState,
+    ...clampCropOffset(nextState.offsetX, nextState.offsetY, nextState),
+  };
+}
+
+export function normalizeAvatarRotation(rotation: number): AvatarRotation {
+  const normalized = ((rotation % 360) + 360) % 360;
+  if (normalized === 90 || normalized === 180 || normalized === 270) {
+    return normalized;
+  }
+  return 0;
 }
 
 export async function cropAvatarFile(
@@ -56,22 +118,22 @@ export async function cropAvatarFile(
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = 'high';
 
-  const displayScale = getDisplayScale(state);
-  const sourceSize = state.cropSize / displayScale;
-  const sourceX = state.imageWidth / 2 - state.offsetX / displayScale - sourceSize / 2;
-  const sourceY = state.imageHeight / 2 - state.offsetY / displayScale - sourceSize / 2;
+  const metrics = getAvatarPreviewMetrics(state);
+  const outputScale = AVATAR_OUTPUT_SIZE / state.cropSize;
 
+  context.save();
+  context.translate(AVATAR_OUTPUT_SIZE / 2, AVATAR_OUTPUT_SIZE / 2);
+  context.scale(outputScale, outputScale);
+  context.translate(state.offsetX, state.offsetY);
+  context.rotate((normalizeAvatarRotation(state.rotation) * Math.PI) / 180);
   context.drawImage(
     image,
-    sourceX,
-    sourceY,
-    sourceSize,
-    sourceSize,
-    0,
-    0,
-    AVATAR_OUTPUT_SIZE,
-    AVATAR_OUTPUT_SIZE
+    -metrics.imageWidth / 2,
+    -metrics.imageHeight / 2,
+    metrics.imageWidth,
+    metrics.imageHeight
   );
+  context.restore();
 
   const mimeType = getOutputMimeType(file.type);
   const blob = await canvasToBlob(canvas, mimeType);
@@ -83,9 +145,13 @@ export function getUploadedAvatarUrl(uploaded: Pick<FileEntity, 'id' | 'url'>) {
 }
 
 function getDisplayScale(
-  state: Pick<AvatarCropState, 'imageWidth' | 'imageHeight' | 'cropSize' | 'scale'>
+  state: Pick<AvatarCropState, 'imageWidth' | 'imageHeight' | 'cropSize' | 'scale'> &
+    Partial<Pick<AvatarCropState, 'rotation'>>
 ) {
-  return (state.cropSize / Math.min(state.imageWidth, state.imageHeight)) * state.scale;
+  const rotation = normalizeAvatarRotation(state.rotation || 0);
+  const baseWidth = isSidewaysRotation(rotation) ? state.imageHeight : state.imageWidth;
+  const baseHeight = isSidewaysRotation(rotation) ? state.imageWidth : state.imageHeight;
+  return (state.cropSize / Math.min(baseWidth, baseHeight)) * state.scale;
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string): Promise<Blob> {
@@ -120,4 +186,8 @@ function createAvatarFileName(originalName: string, mimeType: string) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function isSidewaysRotation(rotation: AvatarRotation) {
+  return rotation === 90 || rotation === 270;
 }

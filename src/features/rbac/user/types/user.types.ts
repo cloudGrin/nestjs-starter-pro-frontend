@@ -11,14 +11,14 @@ export interface CreateUserDto {
   username: string;
   email: string;
   password: string;
-  realName?: string;
-  nickname?: string;
-  phone?: string;
+  realName?: string | null;
+  nickname?: string | null;
+  phone?: string | null;
   gender?: 'male' | 'female' | 'unknown';
-  birthday?: string;
-  address?: string;
-  bio?: string;
-  avatar?: string;
+  birthday?: string | null;
+  address?: string | null;
+  bio?: string | null;
+  avatar?: string | null;
   status?: UserStatus;
 }
 
@@ -27,14 +27,14 @@ export interface CreateUserDto {
  */
 export interface UpdateUserDto {
   email?: string;
-  realName?: string;
-  nickname?: string;
-  phone?: string;
+  realName?: string | null;
+  nickname?: string | null;
+  phone?: string | null;
   gender?: 'male' | 'female' | 'unknown';
-  birthday?: string;
-  address?: string;
-  bio?: string;
-  avatar?: string;
+  birthday?: string | null;
+  address?: string | null;
+  bio?: string | null;
+  avatar?: string | null;
   status?: UserStatus;
 }
 

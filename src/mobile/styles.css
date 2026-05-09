@@ -957,16 +957,25 @@ body {
   margin: 8px auto 18px;
   overflow: hidden;
   touch-action: none;
-  border-radius: var(--mobile-radius);
+  border-radius: 50%;
   background: #111827;
   box-shadow: 0 16px 38px rgba(15, 23, 42, 0.22);
 }
 
-.mobile-avatar-crop-frame img {
+.mobile-avatar-crop-image-layer {
   position: absolute;
   top: 50%;
   left: 50%;
+  width: 0;
+  height: 0;
+}
+
+.mobile-avatar-crop-frame img {
+  position: absolute;
+  top: 0;
+  left: 0;
   max-width: none;
+  transform: translate(-50%, -50%);
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -975,7 +984,7 @@ body {
   position: absolute;
   inset: 0;
   border: 2px solid rgba(255, 255, 255, 0.9);
-  border-radius: var(--mobile-radius);
+  border-radius: 50%;
   box-shadow: inset 0 0 0 999px rgba(15, 23, 42, 0.08);
   pointer-events: none;
 }
@@ -1003,6 +1012,15 @@ body {
 .mobile-avatar-crop-controls input[type='range'] {
   width: 100%;
   accent-color: var(--mobile-primary);
+}
+
+.mobile-avatar-crop-tools {
+  display: flex;
+  gap: 8px;
+}
+
+.mobile-avatar-crop-tools .adm-button {
+  flex: 1;
 }
 
 .mobile-toolbar {

@@ -41,6 +41,12 @@ const getStatusProps = (
   return statusMap[status] || { status: 'default', text: '未知' };
 };
 
+const genderTextMap: Record<NonNullable<User['gender']>, string> = {
+  male: '男',
+  female: '女',
+  unknown: '未知',
+};
+
 export function UserTable({
   data,
   loading,
@@ -79,6 +85,18 @@ export function UserTable({
       render: (text) => text || '-',
     },
     {
+      title: '手机号',
+      dataIndex: 'phone',
+      width: 160,
+      render: (text) => text || '-',
+    },
+    {
+      title: '性别',
+      dataIndex: 'gender',
+      width: 100,
+      render: (gender: User['gender']) => (gender ? genderTextMap[gender] : '-'),
+    },
+    {
       title: '角色',
       dataIndex: 'roles',
       width: 200,
@@ -107,6 +125,12 @@ export function UserTable({
     {
       title: '创建时间',
       dataIndex: 'createdAt',
+      width: 180,
+      render: formatDate.full,
+    },
+    {
+      title: '更新时间',
+      dataIndex: 'updatedAt',
       width: 180,
       render: formatDate.full,
     },
@@ -158,7 +182,7 @@ export function UserTable({
         showTotal: (total) => `共 ${total} 条`,
       }}
       onChange={onPaginationChange}
-      scroll={{ x: 1350 }}
+      scroll={{ x: 1790 }}
     />
   );
 }
