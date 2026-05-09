@@ -2,6 +2,9 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { familyService } from '../services/family.service';
 import type {
+  CreateBabyBirthdayContributionDto,
+  CreateBabyBirthdayDto,
+  CreateBabyGrowthRecordDto,
   CreateFamilyChatMessageDto,
   CreateFamilyPostCommentDto,
   CreateFamilyPostDto,
@@ -9,6 +12,9 @@ import type {
   FamilyPost,
   QueryFamilyChatMessagesParams,
   QueryFamilyPostsParams,
+  SaveBabyProfileDto,
+  UpdateBabyBirthdayDto,
+  UpdateBabyGrowthRecordDto,
 } from '../types/family.types';
 
 export const familyQueryKeys = {
@@ -20,6 +26,7 @@ export const familyQueryKeys = {
   chatMessageList: (params: QueryFamilyChatMessagesParams) =>
     ['family', 'chat-messages', params] as const,
   state: () => ['family', 'state'] as const,
+  baby: () => ['family', 'baby'] as const,
 };
 
 const FAMILY_MEDIA_LINK_REFRESH_BUFFER_MS = 60 * 1000;
@@ -79,6 +86,110 @@ export function useFamilyPosts(params: QueryFamilyPostsParams) {
     },
     placeholderData: keepPreviousData,
     staleTime: 30 * 1000,
+  });
+}
+
+export function useBabyOverview() {
+  return useQuery({
+    queryKey: familyQueryKeys.baby(),
+    queryFn: () => familyService.getBabyOverview(),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useSaveBabyProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: SaveBabyProfileDto) => familyService.saveBabyProfile(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.baby() });
+    },
+  });
+}
+
+export function useCreateBabyGrowthRecord() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateBabyGrowthRecordDto) => familyService.createBabyGrowthRecord(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.baby() });
+    },
+  });
+}
+
+export function useUpdateBabyGrowthRecord() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateBabyGrowthRecordDto }) =>
+      familyService.updateBabyGrowthRecord(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.baby() });
+    },
+  });
+}
+
+export function useDeleteBabyGrowthRecord() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => familyService.deleteBabyGrowthRecord(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.baby() });
+    },
+  });
+}
+
+export function useCreateBabyBirthday() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateBabyBirthdayDto) => familyService.createBabyBirthday(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.baby() });
+    },
+  });
+}
+
+export function useUpdateBabyBirthday() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateBabyBirthdayDto }) =>
+      familyService.updateBabyBirthday(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.baby() });
+    },
+  });
+}
+
+export function useDeleteBabyBirthday() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => familyService.deleteBabyBirthday(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.baby() });
+    },
+  });
+}
+
+export function useCreateBabyBirthdayContribution() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      birthdayId,
+      data,
+    }: {
+      birthdayId: number;
+      data: CreateBabyBirthdayContributionDto;
+    }) => familyService.createBabyBirthdayContribution(birthdayId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.baby() });
+    },
   });
 }
 

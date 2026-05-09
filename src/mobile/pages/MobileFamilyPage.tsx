@@ -8,6 +8,7 @@ import {
   type RefObject,
   type TouchEvent,
   type FocusEvent,
+  type VideoHTMLAttributes,
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Dialog, Empty, PullToRefresh, TextArea, Toast } from 'antd-mobile';
@@ -30,6 +31,7 @@ import {
   useCreateFamilyChatMessage,
   useCreateFamilyComment,
   useCreateFamilyPost,
+  useBabyOverview,
   useFamilyChatMessages,
   useFamilyPosts,
   useFamilyState,
@@ -51,6 +53,7 @@ import type {
 } from '@/features/family/types/family.types';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { MobileModuleMenu } from '../components/MobileModuleHeader';
+import { MobileBabySummaryCard } from './MobileBabyPage';
 
 interface DraftMediaItem {
   id: string;
@@ -72,6 +75,10 @@ const FAMILY_CHAT_LIST_PARAMS = { page: 1, limit: 100 };
 const CHAT_BOTTOM_THRESHOLD_PX = 80;
 
 type FamilyAvatarSize = 'regular' | 'small' | 'mini';
+
+interface MobileInlineVideoProps extends VideoHTMLAttributes<HTMLVideoElement> {
+  stopPropagation?: boolean;
+}
 
 interface CommentTarget {
   postId: number;
@@ -197,6 +204,55 @@ function isVideo(media: Pick<FamilyMedia, 'mediaType' | 'mimeType'>) {
 
 function isVideoFile(file: File) {
   return file.type.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi|wmv)$/i.test(file.name);
+}
+
+function MobileInlineVideo({
+  className,
+  stopPropagation = true,
+  onClick,
+  onTouchStart,
+  onPointerDown,
+  onPlay,
+  ...props
+}: MobileInlineVideoProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.setAttribute('webkit-playsinline', 'true');
+    video.setAttribute('x5-playsinline', 'true');
+    video.setAttribute('x5-video-player-type', 'h5-page');
+  }, []);
+
+  return (
+    <video
+      {...props}
+      ref={videoRef}
+      className={['mobile-family-video', className].filter(Boolean).join(' ')}
+      playsInline
+      onClick={(event) => {
+        if (stopPropagation) event.stopPropagation();
+        onClick?.(event);
+      }}
+      onPointerDown={(event) => {
+        if (stopPropagation) event.stopPropagation();
+        onPointerDown?.(event);
+      }}
+      onTouchStart={(event) => {
+        if (stopPropagation) event.stopPropagation();
+        onTouchStart?.(event);
+      }}
+      onPlay={(event) => {
+        document.querySelectorAll<HTMLVideoElement>('.mobile-family-video').forEach((video) => {
+          if (video !== event.currentTarget) {
+            video.pause();
+          }
+        });
+        onPlay?.(event);
+      }}
+    />
+  );
 }
 
 function getPreviewUrl(file: File) {
@@ -486,7 +542,7 @@ function MediaGrid({
         >
           {isVideo(item) ? (
             <>
-              <video src={item.displayUrl} controls playsInline preload="metadata" />
+              <MobileInlineVideo src={item.displayUrl} preload="metadata" stopPropagation={false} />
               <span className="mobile-family-video-mark">
                 <PlayCircleFilled />
               </span>
@@ -505,11 +561,13 @@ function MediaGrid({
 
 function DraftMediaGrid({
   items,
+  disabled = false,
   onAdd,
   onRemove,
   onPreview,
 }: {
   items: DraftMediaItem[];
+  disabled?: boolean;
   onAdd: () => void;
   onRemove: (id: string) => void;
   onPreview: (index: number) => void;
@@ -524,21 +582,31 @@ function DraftMediaGrid({
         <div className="mobile-family-draft-tile" key={item.id}>
           <button type="button" onClick={() => onPreview(index)}>
             {item.previewUrl && item.mediaType === 'video' ? (
-              <video src={item.previewUrl} muted playsInline preload="metadata" />
+              <MobileInlineVideo
+                src={item.previewUrl}
+                muted
+                preload="metadata"
+                stopPropagation={false}
+              />
             ) : item.previewUrl ? (
               <img src={item.previewUrl} alt={item.name} />
             ) : (
               <span className="mobile-family-draft-file">{item.name}</span>
             )}
           </button>
-          <button type="button" onClick={() => onRemove(item.id)}>
+          <button type="button" disabled={disabled} onClick={() => onRemove(item.id)}>
             <CloseCircleFilled />
           </button>
           {item.previewUrl ? <span>{item.name}</span> : null}
         </div>
       ))}
       {items.length < 9 ? (
-        <button className="mobile-family-add-media-tile" type="button" onClick={onAdd}>
+        <button
+          className="mobile-family-add-media-tile"
+          type="button"
+          disabled={disabled}
+          onClick={onAdd}
+        >
           <span className="mobile-family-add-media-icon">
             <PlusOutlined />
           </span>
@@ -551,10 +619,12 @@ function DraftMediaGrid({
 
 function ChatDraftMediaStrip({
   items,
+  disabled = false,
   onPreview,
   onRemove,
 }: {
   items: DraftMediaItem[];
+  disabled?: boolean;
   onPreview: (index: number) => void;
   onRemove: (id: string) => void;
 }) {
@@ -570,7 +640,12 @@ function ChatDraftMediaStrip({
             onClick={() => onPreview(index)}
           >
             {item.previewUrl && item.mediaType === 'video' ? (
-              <video src={item.previewUrl} muted playsInline preload="metadata" />
+              <MobileInlineVideo
+                src={item.previewUrl}
+                muted
+                preload="metadata"
+                stopPropagation={false}
+              />
             ) : item.previewUrl ? (
               <img src={item.previewUrl} alt={item.name} />
             ) : (
@@ -580,6 +655,7 @@ function ChatDraftMediaStrip({
           <button
             className="mobile-family-chat-draft-remove"
             type="button"
+            disabled={disabled}
             aria-label={`移除 ${item.name}`}
             onClick={() => onRemove(item.id)}
           >
@@ -752,7 +828,7 @@ function MediaPreviewOverlay({
           style={frameDragStyle}
         >
           {item.mediaType === 'video' ? (
-            <video src={item.url} controls playsInline />
+            <MobileInlineVideo src={item.url} controls />
           ) : (
             <img src={item.url} alt={item.name || '家庭图片'} />
           )}
@@ -901,6 +977,7 @@ export function MobileFamilyPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const babyOverviewQuery = useBabyOverview();
   const postsQuery = useFamilyPosts(FAMILY_POST_LIST_PARAMS);
   const { data: familyReadState, markPostsReadAsync } = useFamilyState();
   const createComment = useCreateFamilyComment();
@@ -1133,6 +1210,10 @@ export function MobileFamilyPage() {
 
       <PullToRefresh onRefresh={refreshFamilyPosts}>
         <section className="mobile-family-feed">
+          <MobileBabySummaryCard
+            overview={babyOverviewQuery.data}
+            onClick={() => navigate('/family/baby')}
+          />
           {pendingPostEvents.length > 0 ? (
             <button
               className="mobile-family-new-post-prompt"
@@ -1197,8 +1278,11 @@ export function MobileFamilyComposePage() {
   const [content, setContent] = useState('');
   const [uploading, setUploading] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const submitting = uploading || createPost.isPending;
 
   const submitPost = async () => {
+    if (submitting) return;
+
     const trimmedContent = content.trim();
     if (!trimmedContent && draft.items.length === 0) {
       Toast.show({ content: '写点内容或添加图片/视频', position: 'center' });
@@ -1235,6 +1319,7 @@ export function MobileFamilyComposePage() {
           <button
             className="mobile-family-text-button"
             type="button"
+            disabled={submitting}
             onClick={() => navigate('/family')}
           >
             取消
@@ -1243,7 +1328,8 @@ export function MobileFamilyComposePage() {
         right={
           <Button
             className="mobile-family-publish-button"
-            loading={uploading || createPost.isPending}
+            loading={submitting}
+            disabled={submitting}
             onClick={submitPost}
           >
             发布
@@ -1256,8 +1342,11 @@ export function MobileFamilyComposePage() {
         hidden
         multiple
         accept="image/*,video/*"
+        disabled={submitting}
         onChange={(event) => {
-          draft.addFiles(event.currentTarget.files);
+          if (!submitting) {
+            draft.addFiles(event.currentTarget.files);
+          }
           event.currentTarget.value = '';
         }}
       />
@@ -1265,6 +1354,7 @@ export function MobileFamilyComposePage() {
         <section className="mobile-family-compose-panel">
           <DraftMediaGrid
             items={draft.items}
+            disabled={submitting}
             onAdd={() => inputRef.current?.click()}
             onRemove={draft.removeItem}
             onPreview={setPreviewIndex}
@@ -1276,6 +1366,7 @@ export function MobileFamilyComposePage() {
               rows={2}
               autoSize={{ minRows: 2, maxRows: 6 }}
               maxLength={5000}
+              disabled={submitting}
               onChange={setContent}
             />
           </div>
@@ -1285,7 +1376,7 @@ export function MobileFamilyComposePage() {
         items={previewItems}
         index={previewIndex}
         onClose={() => setPreviewIndex(null)}
-        onDelete={draft.removeItem}
+        onDelete={submitting ? undefined : draft.removeItem}
       />
     </div>
   );
@@ -1305,7 +1396,7 @@ function ChatMessageMediaBubble({
   if (video) {
     return (
       <div className="mobile-family-chat-media-bubble video">
-        <video src={media.displayUrl} controls playsInline preload="metadata" />
+        <MobileInlineVideo src={media.displayUrl} controls preload="metadata" />
       </div>
     );
   }
@@ -1398,10 +1489,10 @@ export function MobileFamilyChatPage() {
       ),
     [chatQuery.data?.items]
   );
-  const latestMessageTime = messages.at(-1)?.createdAt;
   const latestMessageId = useMemo(() => getLatestMessageId(messages), [messages]);
-  const messageDay = latestMessageTime ? formatChatDivider(latestMessageTime) : null;
-  const canSend = messageText.trim().length > 0 || draft.items.length > 0;
+  const submitting = uploading || createChatMessage.isPending;
+  const hasSendableContent = messageText.trim().length > 0 || draft.items.length > 0;
+  const canSend = hasSendableContent && !submitting;
   const previewItems = draft.items.map((item) => ({
     id: item.id,
     url: item.previewUrl || '',
@@ -1488,12 +1579,25 @@ export function MobileFamilyChatPage() {
   }, [latestMessageId, markChatReadAsync, pendingChatMessageIds.length]);
 
   const shouldShowTime = (message: FamilyChatMessage, index: number) => {
-    if (index === 0) return false;
+    if (index === 0) return true;
     const previous = messages[index - 1];
     return dayjs(message.createdAt).diff(previous.createdAt, 'minute') >= 5;
   };
 
+  const formatMessageTimeDivider = (message: FamilyChatMessage, index: number) => {
+    if (index === 0) {
+      return formatChatDivider(message.createdAt);
+    }
+
+    const previous = messages[index - 1];
+    return dayjs(message.createdAt).isSame(previous.createdAt, 'day')
+      ? formatChatTime(message.createdAt)
+      : formatChatDivider(message.createdAt);
+  };
+
   const submitMessage = async () => {
+    if (submitting) return;
+
     const content = messageText.trim();
     if (!content && draft.items.length === 0) {
       Toast.show({ content: '写点内容或添加图片/视频', position: 'center' });
@@ -1555,14 +1659,17 @@ export function MobileFamilyChatPage() {
             <Empty description={chatQuery.isLoading ? '加载中...' : '还没有家庭消息'} />
           ) : (
             <>
-              {messageDay ? (
-                <div className="mobile-family-chat-date-divider">{messageDay}</div>
-              ) : null}
               {messages.map((item, index) => (
                 <div className="mobile-family-chat-message-group" key={item.id}>
                   {shouldShowTime(item, index) ? (
-                    <div className="mobile-family-chat-time-divider">
-                      {formatChatTime(item.createdAt)}
+                    <div
+                      className={
+                        index === 0
+                          ? 'mobile-family-chat-date-divider'
+                          : 'mobile-family-chat-time-divider'
+                      }
+                    >
+                      {formatMessageTimeDivider(item, index)}
                     </div>
                   ) : null}
                   <ChatMessageBubble message={item} mine={item.senderId === currentUser?.id} />
@@ -1588,8 +1695,11 @@ export function MobileFamilyChatPage() {
           hidden
           multiple
           accept="image/*,video/*"
+          disabled={submitting}
           onChange={(event) => {
-            draft.addFiles(event.currentTarget.files);
+            if (!submitting) {
+              draft.addFiles(event.currentTarget.files);
+            }
             event.currentTarget.value = '';
           }}
         />
@@ -1600,6 +1710,7 @@ export function MobileFamilyChatPage() {
               placeholder="给家里人发消息"
               rows={1}
               autoSize={{ minRows: 1, maxRows: 4 }}
+              disabled={submitting}
               onChange={setMessageText}
             />
           </div>
@@ -1608,6 +1719,7 @@ export function MobileFamilyChatPage() {
               attachmentPanelOpen ? 'mobile-family-chat-tool active' : 'mobile-family-chat-tool'
             }
             type="button"
+            disabled={submitting}
             onClick={() => setAttachmentPanelOpen((open) => !open)}
           >
             <PlusOutlined />
@@ -1615,8 +1727,8 @@ export function MobileFamilyChatPage() {
           </button>
           <Button
             className={canSend ? 'mobile-family-chat-send active' : 'mobile-family-chat-send'}
-            loading={uploading || createChatMessage.isPending}
-            disabled={!canSend}
+            loading={submitting}
+            disabled={!canSend || submitting}
             onClick={submitMessage}
           >
             <SendOutlined />
@@ -1625,6 +1737,7 @@ export function MobileFamilyChatPage() {
         </div>
         <ChatDraftMediaStrip
           items={draft.items}
+          disabled={submitting}
           onPreview={setPreviewIndex}
           onRemove={draft.removeItem}
         />
@@ -1633,6 +1746,7 @@ export function MobileFamilyChatPage() {
             <button
               className="mobile-family-chat-attachment-action"
               type="button"
+              disabled={submitting}
               onClick={() => inputRef.current?.click()}
             >
               <PlusOutlined />
@@ -1645,7 +1759,7 @@ export function MobileFamilyChatPage() {
         items={previewItems}
         index={previewIndex}
         onClose={() => setPreviewIndex(null)}
-        onDelete={draft.removeItem}
+        onDelete={submitting ? undefined : draft.removeItem}
       />
     </div>
   );

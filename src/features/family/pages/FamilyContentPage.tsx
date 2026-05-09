@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Button,
   Card,
@@ -26,8 +26,8 @@ import type {
 
 const { Paragraph, Text } = Typography;
 
-const FAMILY_POST_LIST_PARAMS = { page: 1, limit: 50 };
-const FAMILY_CHAT_LIST_PARAMS = { page: 1, limit: 100 };
+const DEFAULT_POST_PAGE_SIZE = 50;
+const DEFAULT_CHAT_PAGE_SIZE = 100;
 
 type ActiveTab = 'posts' | 'chat';
 type DetailState =
@@ -92,8 +92,32 @@ function renderMedia(media: FamilyMedia[]) {
 export function FamilyContentPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('posts');
   const [detail, setDetail] = useState<DetailState>(null);
-  const postsQuery = useFamilyPosts(FAMILY_POST_LIST_PARAMS);
-  const chatQuery = useFamilyChatMessages(FAMILY_CHAT_LIST_PARAMS);
+  const [postPagination, setPostPagination] = useState({
+    current: 1,
+    pageSize: DEFAULT_POST_PAGE_SIZE,
+  });
+  const [chatPagination, setChatPagination] = useState({
+    current: 1,
+    pageSize: DEFAULT_CHAT_PAGE_SIZE,
+  });
+  const postListParams = useMemo(
+    () => ({ page: postPagination.current, limit: postPagination.pageSize }),
+    [postPagination]
+  );
+  const chatListParams = useMemo(
+    () => ({ page: chatPagination.current, limit: chatPagination.pageSize }),
+    [chatPagination]
+  );
+  const postsQuery = useFamilyPosts(postListParams);
+  const chatQuery = useFamilyChatMessages(chatListParams);
+
+  const handlePostPageChange = (current: number, pageSize: number) => {
+    setPostPagination({ current, pageSize });
+  };
+
+  const handleChatPageChange = (current: number, pageSize: number) => {
+    setChatPagination({ current, pageSize });
+  };
 
   const postColumns: ColumnsType<FamilyPost> = [
     {
@@ -214,7 +238,13 @@ export function FamilyContentPage() {
           columns={postColumns}
           loading={postsQuery.isLoading}
           scroll={{ x: 980 }}
-          pagination={false}
+          pagination={{
+            current: postPagination.current,
+            pageSize: postPagination.pageSize,
+            total: postsQuery.data?.meta.totalItems ?? 0,
+            showSizeChanger: true,
+            onChange: handlePostPageChange,
+          }}
         />
       ),
     },
@@ -228,7 +258,13 @@ export function FamilyContentPage() {
           columns={chatColumns}
           loading={chatQuery.isLoading}
           scroll={{ x: 720 }}
-          pagination={false}
+          pagination={{
+            current: chatPagination.current,
+            pageSize: chatPagination.pageSize,
+            total: chatQuery.data?.meta.totalItems ?? 0,
+            showSizeChanger: true,
+            onChange: handleChatPageChange,
+          }}
         />
       ),
     },

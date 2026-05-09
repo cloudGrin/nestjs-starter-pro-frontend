@@ -10,11 +10,11 @@
       作用：
       1. 立即从LocalStorage读取用户的主题偏好
       2. 如果用户选择了深色模式，立即添加.dark类到<html>
-      3. 如果是首次访问，检测系统主题偏好并自动适配
+      3. 如果是首次访问，默认使用浅色模式
       这样可以避免页面加载时的主题闪烁（FOUC）
     -->
     <script>
-      (function() {
+      (function () {
         try {
           // 尝试从LocalStorage读取用户的主题偏好
           const stored = localStorage.getItem('theme-storage');
@@ -29,13 +29,8 @@
               document.documentElement.classList.remove('dark');
             }
           } else {
-            // 首次访问，检测系统主题偏好
-            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-              document.documentElement.classList.add('dark');
-            } else {
-              // ✅ 修复：浅色模式时显式移除dark类
-              document.documentElement.classList.remove('dark');
-            }
+            // 首次访问默认浅色模式
+            document.documentElement.classList.remove('dark');
           }
         } catch (error) {
           // 出错时静默失败，使用浅色模式作为默认值

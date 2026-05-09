@@ -29,7 +29,8 @@ export function connectFamilySocket(token: string | null, handlers: FamilySocket
 
   const socket: Socket = io(`${resolveSocketBaseUrl()}/family`, {
     auth: { token },
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
+    tryAllTransports: true,
   });
 
   socket.on('family:post-created', (event) => handlers.onPostCreated?.(event));

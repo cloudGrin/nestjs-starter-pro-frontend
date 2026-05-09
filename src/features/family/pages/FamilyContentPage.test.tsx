@@ -4,6 +4,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { FamilyContentPage } from './FamilyContentPage';
 
 const hookMocks = vi.hoisted(() => ({
+  useFamilyPosts: vi.fn(),
+  useFamilyChatMessages: vi.fn(),
   postsResult: {
     data: {
       items: [
@@ -71,8 +73,8 @@ const hookMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/features/family/hooks/useFamily', () => ({
-  useFamilyPosts: () => hookMocks.postsResult,
-  useFamilyChatMessages: () => hookMocks.chatResult,
+  useFamilyPosts: hookMocks.useFamilyPosts,
+  useFamilyChatMessages: hookMocks.useFamilyChatMessages,
 }));
 
 vi.mock('@/shared/components', () => ({
@@ -143,9 +145,17 @@ vi.mock('antd', () => {
     Table: ({
       columns,
       dataSource,
+      pagination,
     }: {
       columns: any[];
       dataSource: Array<Record<string, any>>;
+      pagination?:
+        | false
+        | {
+            current?: number;
+            pageSize?: number;
+            onChange?: (page: number, pageSize: number) => void;
+          };
     }) => (
       <div>
         {dataSource.map((record) => (
@@ -161,6 +171,11 @@ vi.mock('antd', () => {
             })}
           </article>
         ))}
+        {pagination ? (
+          <button type="button" onClick={() => pagination.onChange?.(2, pagination.pageSize ?? 10)}>
+            第 2 页
+          </button>
+        ) : null}
       </div>
     ),
     Tabs: ({
@@ -194,6 +209,10 @@ vi.mock('antd', () => {
 describe('FamilyContentPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    hookMocks.postsResult.data.meta.totalItems = 1;
+    hookMocks.chatResult.data.meta.totalItems = 1;
+    hookMocks.useFamilyPosts.mockReturnValue(hookMocks.postsResult);
+    hookMocks.useFamilyChatMessages.mockReturnValue(hookMocks.chatResult);
   });
 
   it('renders family post rows and opens the post detail drawer', () => {
@@ -225,5 +244,28 @@ describe('FamilyContentPage', () => {
 
     expect(screen.getByRole('heading', { name: '群聊详情' })).toBeInTheDocument();
     expect(screen.getAllByText('晚点回家').length).toBeGreaterThan(1);
+  });
+
+  it('requests family post pages through table pagination', () => {
+    hookMocks.postsResult.data.meta.totalItems = 75;
+
+    render(<FamilyContentPage />);
+
+    expect(hookMocks.useFamilyPosts).toHaveBeenLastCalledWith({ page: 1, limit: 50 });
+    fireEvent.click(screen.getByRole('button', { name: '第 2 页' }));
+
+    expect(hookMocks.useFamilyPosts).toHaveBeenLastCalledWith({ page: 2, limit: 50 });
+  });
+
+  it('requests chat message pages through table pagination', () => {
+    hookMocks.chatResult.data.meta.totalItems = 150;
+
+    render(<FamilyContentPage />);
+    fireEvent.click(screen.getByRole('button', { name: '群聊' }));
+
+    expect(hookMocks.useFamilyChatMessages).toHaveBeenLastCalledWith({ page: 1, limit: 100 });
+    fireEvent.click(screen.getByRole('button', { name: '第 2 页' }));
+
+    expect(hookMocks.useFamilyChatMessages).toHaveBeenLastCalledWith({ page: 2, limit: 100 });
   });
 });

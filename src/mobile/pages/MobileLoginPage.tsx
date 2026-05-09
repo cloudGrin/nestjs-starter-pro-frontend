@@ -3,6 +3,7 @@ import { Button, Form, Input, Toast } from 'antd-mobile';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { clearMobilePersistedQueryCache } from '../pwa/queryPersistence';
+import { DEFAULT_MOBILE_HOME_PATH } from '../routes';
 
 interface LoginFormValues {
   account: string;
@@ -16,7 +17,7 @@ export function MobileLoginPage() {
   const user = useAuthStore((state) => state.user);
   const login = useAuthStore((state) => state.login);
   const [submitting, setSubmitting] = useState(false);
-  const from = (location.state as { from?: string } | null)?.from || '/tasks';
+  const from = (location.state as { from?: string } | null)?.from || DEFAULT_MOBILE_HOME_PATH;
 
   useEffect(() => {
     if (token && user) {

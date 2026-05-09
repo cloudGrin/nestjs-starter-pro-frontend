@@ -20,6 +20,7 @@ const familyHooks = vi.hoisted(() => ({
     state: () => ['family', 'state'],
   },
   useFamilyPosts: vi.fn(),
+  useBabyOverview: vi.fn(),
   useFamilyState: vi.fn(),
   useCreateFamilyPost: vi.fn(),
   useCreateFamilyComment: vi.fn(),
@@ -27,6 +28,7 @@ const familyHooks = vi.hoisted(() => ({
   useUnlikeFamilyPost: vi.fn(),
   useFamilyChatMessages: vi.fn(),
   useCreateFamilyChatMessage: vi.fn(),
+  useCreateBabyBirthdayContribution: vi.fn(),
 }));
 
 const socketMocks = vi.hoisted(() => ({
@@ -159,6 +161,17 @@ function cssRule(selector: string) {
   return readMobileCss().match(new RegExp(`${escapedSelector} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? '';
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+}
+
 describe('MobileFamilyPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -166,6 +179,10 @@ describe('MobileFamilyPage', () => {
       data: { items: [post], meta: { totalItems: 1 } },
       isLoading: false,
       refetch,
+    });
+    familyHooks.useBabyOverview.mockReturnValue({
+      data: { profile: null, latestGrowthRecord: null, growthRecords: [], birthdays: [] },
+      isLoading: false,
     });
     familyHooks.useFamilyState.mockReturnValue({
       data: {
@@ -196,6 +213,10 @@ describe('MobileFamilyPage', () => {
     });
     familyHooks.useCreateFamilyChatMessage.mockReturnValue({
       mutateAsync: createMessage,
+      isPending: false,
+    });
+    familyHooks.useCreateBabyBirthdayContribution.mockReturnValue({
+      mutateAsync: vi.fn(),
       isPending: false,
     });
     queryClientMocks.setQueryData.mockImplementation((_key, updater) => {
@@ -622,6 +643,65 @@ describe('MobileFamilyPage', () => {
     );
   });
 
+  it('keeps family dark mode readable across feed comments and chat controls', () => {
+    const css = readMobileCss();
+
+    expect(css).toContain('.dark .mobile-family-inline-comment .adm-text-area');
+    expect(css).toContain('.dark .mobile-family-feed-comment');
+    expect(css).toContain('.dark .mobile-family-chat-text .adm-text-area-element');
+    expect(css).toContain('.dark .mobile-family-logo-button');
+    expect(css).toContain('.dark .mobile-family-menu-button');
+    expect(css).toContain('.dark .mobile-family-chat-back');
+    expect(css).toContain('.dark .mobile-family-icon-badge');
+    expect(css).toContain('.dark .mobile-task-dock-badge');
+    expect(css).toContain(
+      '.dark .mobile-family-chat-input.warm .mobile-family-chat-send.adm-button:not(.active)'
+    );
+    expect(css).toContain('.dark .mobile-family-chat-attachment-action');
+    expect(css).toContain('.dark .mobile-family-chat-new-message');
+  });
+
+  it('locks compose controls while publish media is uploading', async () => {
+    const upload = createDeferred<{ id: number }>();
+    familyServiceMocks.familyService.uploadFamilyMedia.mockReturnValue(upload.promise);
+    const { container } = renderPage('/family/compose');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(screen.getByPlaceholderText('配一句话...'), {
+      target: { value: '正在上传的家庭动态' },
+    });
+    fireEvent.change(input, {
+      target: {
+        files: [new File(['x'], 'pending.jpg', { type: 'image/jpeg' })],
+      },
+    });
+    await screen.findByText('pending.jpg');
+
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+
+    await waitFor(() =>
+      expect(familyServiceMocks.familyService.uploadFamilyMedia).toHaveBeenCalled()
+    );
+    expect(screen.getByRole('button', { name: '取消' })).toBeDisabled();
+    expect(screen.getByPlaceholderText('配一句话...')).toBeDisabled();
+    expect(input).toBeDisabled();
+    expect(document.querySelector('.mobile-family-add-media-tile')).toBeDisabled();
+    expect(
+      document.querySelector('.mobile-family-draft-tile > button:last-of-type')
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+    expect(screen.getByRole('heading', { name: '发布动态' })).toBeInTheDocument();
+
+    upload.resolve({ id: 900 });
+    await waitFor(() =>
+      expect(createPost).toHaveBeenCalledWith({
+        content: '正在上传的家庭动态',
+        mediaFileIds: [900],
+      })
+    );
+  });
+
   it('submits comments from the family feed', async () => {
     renderPage('/family');
 
@@ -678,6 +758,48 @@ describe('MobileFamilyPage', () => {
     );
   });
 
+  it('opens feed videos through the preview layer instead of playing inside the thumbnail', () => {
+    familyHooks.useFamilyPosts.mockReturnValue({
+      data: {
+        items: [
+          {
+            ...post,
+            media: [
+              {
+                id: 20,
+                fileId: 20,
+                mediaType: 'video',
+                sort: 0,
+                mimeType: 'video/mp4',
+                displayUrl: '/api/v1/files/20/access?token=video',
+                expiresAt: '2026-05-04T00:00:00.000Z',
+              },
+            ],
+          },
+        ],
+        meta: { totalItems: 1 },
+      },
+      isLoading: false,
+      refetch,
+    });
+    renderPage('/family');
+
+    const thumbnailVideo = document.querySelector(
+      '.mobile-family-media-item video'
+    ) as HTMLVideoElement;
+    expect(thumbnailVideo).toBeTruthy();
+    expect(thumbnailVideo).not.toHaveAttribute('controls');
+    expect(thumbnailVideo).toHaveAttribute('playsinline');
+
+    fireEvent.click(thumbnailVideo);
+
+    const previewVideo = document.querySelector('.mobile-family-preview video');
+    expect(previewVideo).toHaveAttribute('controls');
+    expect(previewVideo).toHaveAttribute('playsinline');
+    expect(previewVideo).toHaveAttribute('webkit-playsinline', 'true');
+    expect(previewVideo).toHaveAttribute('x5-playsinline', 'true');
+  });
+
   it('shows the family chat route as a clean message thread and sends text messages', async () => {
     renderPage('/family/chat');
 
@@ -700,6 +822,9 @@ describe('MobileFamilyPage', () => {
       '/api/v1/files/20/access?token=video'
     );
     expect(mediaBubble?.querySelector('video')).toHaveAttribute('controls');
+    expect(mediaBubble?.querySelector('video')).toHaveAttribute('playsinline');
+    expect(mediaBubble?.querySelector('video')).toHaveAttribute('webkit-playsinline', 'true');
+    expect(mediaBubble?.querySelector('video')).toHaveAttribute('x5-playsinline', 'true');
 
     fireEvent.change(screen.getByPlaceholderText('给家里人发消息'), {
       target: { value: '收到' },
@@ -709,6 +834,30 @@ describe('MobileFamilyPage', () => {
     await waitFor(() =>
       expect(createMessage).toHaveBeenCalledWith({ content: '收到', mediaFileIds: [] })
     );
+  });
+
+  it('shows the first chat time divider from the first message instead of the latest message', () => {
+    familyHooks.useFamilyChatMessages.mockReturnValue({
+      data: {
+        items: [
+          { ...message, id: 11, createdAt: '2026-05-05T12:00:00.000Z' },
+          { ...message, id: 10, createdAt: '2026-05-04T00:00:00.000Z' },
+        ],
+        meta: { totalItems: 2 },
+      },
+      isLoading: false,
+      refetch,
+    });
+
+    renderPage('/family/chat');
+
+    const dividers = Array.from(
+      document.querySelectorAll(
+        '.mobile-family-chat-date-divider, .mobile-family-chat-time-divider'
+      )
+    ).map((element) => element.textContent);
+    expect(dividers[0]).toBe('2026/5/4 08:00');
+    expect(dividers[0]).not.toBe('2026/5/5 20:00');
   });
 
   it('keeps new chat messages as a bottom prompt when the user is reading older messages', async () => {
@@ -767,5 +916,37 @@ describe('MobileFamilyPage', () => {
     fireEvent.change(input, { target: { files: makeFiles(9, 'extra') } });
     expect((await screen.findAllByLabelText(/移除 extra-0.jpg/)).length).toBeGreaterThan(0);
     expect(screen.queryByLabelText(/移除 extra-1.jpg/)).not.toBeInTheDocument();
+  });
+
+  it('locks chat draft controls while media is uploading', async () => {
+    const upload = createDeferred<{ id: number }>();
+    familyServiceMocks.familyService.uploadFamilyMedia.mockReturnValue(upload.promise);
+    const { container } = renderPage('/family/chat');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: {
+        files: [new File(['x'], 'chat-pending.jpg', { type: 'image/jpeg' })],
+      },
+    });
+    await screen.findByLabelText(/移除 chat-pending.jpg/);
+    fireEvent.change(screen.getByPlaceholderText('给家里人发消息'), {
+      target: { value: '看图片' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /发送/ }));
+
+    await waitFor(() =>
+      expect(familyServiceMocks.familyService.uploadFamilyMedia).toHaveBeenCalled()
+    );
+    expect(screen.getByPlaceholderText('给家里人发消息')).toBeDisabled();
+    expect(input).toBeDisabled();
+    expect(screen.getByRole('button', { name: /添加图片或视频/ })).toBeDisabled();
+    expect(screen.getByLabelText(/移除 chat-pending.jpg/)).toBeDisabled();
+
+    upload.resolve({ id: 901 });
+    await waitFor(() =>
+      expect(createMessage).toHaveBeenCalledWith({ content: '看图片', mediaFileIds: [901] })
+    );
   });
 });

@@ -130,3 +130,106 @@ export interface FamilyMediaDirectUploadInitResponse {
 }
 
 export type FamilyUploadedMedia = FileEntity;
+
+export interface BabyProfile {
+  id: number;
+  nickname: string;
+  birthDate: string;
+  birthTime?: string | null;
+  avatarFileId?: number | null;
+  avatarUrl?: string | null;
+  birthHeightCm?: number | null;
+  birthWeightKg?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BabyGrowthRecord {
+  id: number;
+  measuredAt: string;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  remark?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BabyBirthdayMedia {
+  id: number;
+  fileId: number;
+  contributionId?: number | null;
+  uploaderId: number;
+  uploader?: FamilyUserSummary;
+  sort: number;
+  originalName?: string;
+  mimeType?: string;
+  size?: number;
+  displayUrl: string;
+  expiresAt: string;
+  createdAt?: string;
+}
+
+export interface BabyBirthdayContribution {
+  id: number;
+  birthdayId: number;
+  authorId: number;
+  author?: FamilyUserSummary;
+  content?: string | null;
+  media: BabyBirthdayMedia[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BabyBirthday {
+  id: number;
+  year: number;
+  title: string;
+  description?: string | null;
+  coverFileId?: number | null;
+  coverUrl?: string | null;
+  mediaCount: number;
+  contributionCount: number;
+  media: BabyBirthdayMedia[];
+  contributions: BabyBirthdayContribution[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BabyOverview {
+  profile: BabyProfile | null;
+  latestGrowthRecord: BabyGrowthRecord | null;
+  growthRecords: BabyGrowthRecord[];
+  birthdays: BabyBirthday[];
+}
+
+export interface SaveBabyProfileDto {
+  nickname: string;
+  birthDate: string;
+  birthTime?: string | null;
+  avatarFileId?: number | null;
+  birthHeightCm?: number | null;
+  birthWeightKg?: number | null;
+}
+
+export interface CreateBabyGrowthRecordDto {
+  measuredAt: string;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  remark?: string | null;
+}
+
+export type UpdateBabyGrowthRecordDto = Partial<CreateBabyGrowthRecordDto>;
+
+export interface CreateBabyBirthdayDto {
+  year: number;
+  title: string;
+  description?: string | null;
+  coverFileId?: number | null;
+}
+
+export type UpdateBabyBirthdayDto = Partial<CreateBabyBirthdayDto>;
+
+export interface CreateBabyBirthdayContributionDto {
+  content?: string | null;
+  mediaFileIds?: number[];
+}

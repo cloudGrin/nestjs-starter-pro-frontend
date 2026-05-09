@@ -2,6 +2,14 @@ import axios from 'axios';
 import { appConfig } from '@/shared/config/app.config';
 import { request } from '@/shared/utils/request';
 import type {
+  BabyBirthday,
+  BabyBirthdayContribution,
+  BabyGrowthRecord,
+  BabyOverview,
+  BabyProfile,
+  CreateBabyBirthdayContributionDto,
+  CreateBabyBirthdayDto,
+  CreateBabyGrowthRecordDto,
   CreateFamilyChatMessageDto,
   CreateFamilyPostCommentDto,
   CreateFamilyPostDto,
@@ -14,6 +22,9 @@ import type {
   FamilyUploadedMedia,
   QueryFamilyChatMessagesParams,
   QueryFamilyPostsParams,
+  SaveBabyProfileDto,
+  UpdateBabyBirthdayDto,
+  UpdateBabyGrowthRecordDto,
 } from '../types/family.types';
 
 const BASE_URL = '/family';
@@ -62,6 +73,86 @@ function normalizeFamilyUploadFile(file: File) {
 }
 
 export const familyService = {
+  getBabyOverview: () => request.get<BabyOverview>('/family/baby'),
+
+  saveBabyProfile: (data: SaveBabyProfileDto) =>
+    request.put<BabyProfile>('/family/baby/profile', data, {
+      requestOptions: {
+        messageConfig: { successMessage: '宝宝资料已保存' },
+      },
+    }),
+
+  createBabyGrowthRecord: (data: CreateBabyGrowthRecordDto) =>
+    request.post<BabyGrowthRecord>('/family/baby/growth-records', data, {
+      requestOptions: {
+        messageConfig: { successMessage: '成长记录已添加' },
+      },
+    }),
+
+  updateBabyGrowthRecord: (id: number, data: UpdateBabyGrowthRecordDto) =>
+    request.put<BabyGrowthRecord>(`/family/baby/growth-records/${id}`, data, {
+      requestOptions: {
+        messageConfig: { successMessage: '成长记录已更新' },
+      },
+    }),
+
+  deleteBabyGrowthRecord: (id: number) =>
+    request.delete<void>(`/family/baby/growth-records/${id}`, {
+      requestOptions: {
+        messageConfig: { successMessage: '成长记录已删除' },
+      },
+    }),
+
+  createBabyBirthday: (data: CreateBabyBirthdayDto) =>
+    request.post<BabyBirthday>('/family/baby/birthdays', data, {
+      requestOptions: {
+        messageConfig: { successMessage: '生日合辑已创建' },
+      },
+    }),
+
+  updateBabyBirthday: (id: number, data: UpdateBabyBirthdayDto) =>
+    request.put<BabyBirthday>(`/family/baby/birthdays/${id}`, data, {
+      requestOptions: {
+        messageConfig: { successMessage: '生日合辑已更新' },
+      },
+    }),
+
+  deleteBabyBirthday: (id: number) =>
+    request.delete<void>(`/family/baby/birthdays/${id}`, {
+      requestOptions: {
+        messageConfig: { successMessage: '生日合辑已删除' },
+      },
+    }),
+
+  uploadBabyBirthdayImage: async (birthdayId: number, file: File): Promise<FamilyUploadedMedia> => {
+    const formData = new FormData();
+    formData.append('file', normalizeFamilyUploadFile(file));
+
+    return request.post<FamilyUploadedMedia>(
+      `/family/baby/birthdays/${birthdayId}/media/upload`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        requestOptions: {
+          messageConfig: { successMessage: false },
+        },
+      }
+    );
+  },
+
+  createBabyBirthdayContribution: (birthdayId: number, data: CreateBabyBirthdayContributionDto) =>
+    request.post<BabyBirthdayContribution>(
+      `/family/baby/birthdays/${birthdayId}/contributions`,
+      data,
+      {
+        requestOptions: {
+          messageConfig: { successMessage: '祝福已添加' },
+        },
+      }
+    ),
+
   getPosts: (params: QueryFamilyPostsParams) =>
     request.get<FamilyPaginationResult<FamilyPost>>(`${BASE_URL}/posts`, { params }),
 

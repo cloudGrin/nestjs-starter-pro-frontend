@@ -2732,6 +2732,12 @@ body {
   font-size: 25px;
 }
 
+.mobile-family-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .mobile-family-icon-badge {
   position: absolute;
   top: -5px;
@@ -3836,6 +3842,51 @@ body {
   color: var(--mobile-muted);
 }
 
+.dark .mobile-family-logo-button {
+  border-color: rgba(255, 90, 31, 0.34) !important;
+  background: rgba(255, 90, 31, 0.14) !important;
+  color: #ff9b72 !important;
+  box-shadow: none;
+}
+
+.dark .mobile-family-menu-button,
+.dark .mobile-family-chat-back {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--mobile-text);
+  box-shadow: none;
+}
+
+.dark .mobile-family-icon-badge,
+.dark .mobile-task-dock-badge {
+  border-color: #101827;
+}
+
+.dark .mobile-family-comment-list,
+.dark .mobile-family-inline-comment {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .mobile-family-feed-comment {
+  color: var(--mobile-muted);
+}
+
+.dark .mobile-family-feed-comment strong {
+  color: var(--mobile-text);
+}
+
+.dark .mobile-family-comment-reply-label {
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.dark .mobile-family-inline-comment .adm-text-area {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .mobile-family-inline-comment .adm-text-area-element {
+  color: var(--mobile-text);
+}
+
 .dark .mobile-family-compose-caption .adm-text-area-element {
   color: var(--mobile-muted);
 }
@@ -3872,13 +3923,601 @@ body {
   background: rgba(16, 24, 39, 0.96);
 }
 
+.dark .mobile-family-chat-input.warm .mobile-family-chat-send.adm-button:not(.active) {
+  --background-color: rgba(255, 255, 255, 0.14);
+  --border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.62);
+}
+
 .dark .mobile-family-chat-text .adm-text-area,
 .dark .mobile-family-chat-draft-item {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .mobile-family-chat-text .adm-text-area-element {
+  color: var(--mobile-text);
 }
 
 .dark .mobile-family-chat-tool,
 .dark .mobile-family-chat-attachment-action .anticon {
   border-color: rgba(255, 90, 31, 0.34);
   background: rgba(255, 90, 31, 0.16);
+}
+
+.dark .mobile-family-chat-attachment-action {
+  color: var(--mobile-muted);
+}
+
+.dark .mobile-family-chat-new-message {
+  background: rgba(255, 90, 31, 0.16);
+  color: #ff9b72;
+  box-shadow: none;
+}
+
+.mobile-baby-page {
+  min-height: 100vh;
+  padding: 0 0 96px;
+  background: #fff8f4;
+  color: #2f2f2f;
+}
+
+.mobile-baby-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 54px;
+  align-items: center;
+  min-height: 72px;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+  background: rgba(255, 248, 244, 0.96);
+  backdrop-filter: blur(14px);
+}
+
+.mobile-baby-top-bar button {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  color: #565656;
+  font-size: 22px;
+}
+
+.mobile-baby-top-bar h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.mobile-baby-hero,
+.mobile-baby-section,
+.mobile-baby-birthday-detail {
+  padding: 0 16px;
+}
+
+.mobile-baby-summary-card {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #ffe1d0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #fff0e7 100%);
+  box-shadow: 0 10px 24px rgba(220, 114, 65, 0.14);
+  text-align: left;
+}
+
+.mobile-family-feed > .mobile-baby-summary-card {
+  margin-bottom: 12px;
+}
+
+.mobile-baby-avatar {
+  display: inline-flex;
+  width: 54px;
+  height: 54px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff8a5c 0%, #63b995 100%);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.mobile-baby-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobile-baby-summary-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mobile-baby-summary-main strong {
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-baby-summary-main span {
+  color: #777777;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mobile-baby-summary-metrics {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mobile-baby-summary-metrics span {
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #2f2f2f;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.mobile-baby-summary-metrics small {
+  grid-column: 1 / -1;
+  color: #8a6a5d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mobile-baby-section {
+  margin-top: 18px;
+}
+
+.mobile-baby-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.mobile-baby-section-title h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.mobile-baby-section-title span {
+  color: #888888;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mobile-baby-growth-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-baby-growth-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.mobile-baby-growth-list strong {
+  font-size: 14px;
+}
+
+.mobile-baby-growth-list span {
+  color: #3d806e;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.mobile-baby-growth-list small {
+  grid-column: 1 / -1;
+  color: #777777;
+  line-height: 1.4;
+}
+
+.mobile-baby-birthday-tabs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.mobile-baby-birthday-tabs button {
+  display: flex;
+  min-width: 140px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #ededed;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.mobile-baby-birthday-tabs button.active {
+  border-color: #ff9b73;
+  background: #fff0e8;
+}
+
+.mobile-baby-birthday-tabs strong {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.mobile-baby-birthday-tabs span {
+  color: #888888;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mobile-baby-birthday-detail {
+  margin-top: 14px;
+}
+
+.mobile-baby-birthday-cover {
+  position: relative;
+  overflow: hidden;
+  min-height: 190px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #273c5a 0%, #5b8f7b 100%);
+  color: #ffffff;
+}
+
+.mobile-baby-birthday-cover > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobile-baby-birthday-cover > div {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 190px;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.58));
+}
+
+.mobile-baby-birthday-cover span {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.mobile-baby-birthday-cover h2 {
+  margin: 5px 0 6px;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.mobile-baby-birthday-cover p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.mobile-baby-birthday-cover small {
+  display: inline-flex;
+  margin: 12px 8px 0 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mobile-baby-photo-wall {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.mobile-baby-photo-wall button,
+.mobile-baby-photo-wall img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+}
+
+.mobile-baby-photo-wall button {
+  overflow: hidden;
+  background: #111111;
+}
+
+.mobile-baby-photo-wall img {
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobile-baby-wish-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.mobile-baby-wish-card {
+  padding: 13px;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.mobile-baby-wish-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-baby-wish-author > span {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #5b8f7b;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.mobile-baby-wish-author div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-baby-wish-author strong {
+  font-size: 14px;
+}
+
+.mobile-baby-wish-author small {
+  color: #999999;
+  font-size: 12px;
+}
+
+.mobile-baby-wish-card p {
+  margin: 10px 0 0;
+  color: #444444;
+  font-size: 15px;
+  line-height: 1.48;
+  white-space: pre-wrap;
+}
+
+.mobile-baby-wish-media {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.mobile-baby-wish-media img {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.mobile-baby-add-wish-button {
+  position: fixed;
+  right: 18px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 18;
+  min-width: 104px;
+  height: 48px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: #ff6d3f;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  box-shadow: 0 12px 24px rgba(255, 109, 63, 0.28);
+}
+
+.mobile-baby-composer {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.34);
+}
+
+.mobile-baby-composer-panel {
+  width: 100%;
+  padding: 16px 16px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 8px 8px 0 0;
+  background: #ffffff;
+}
+
+.mobile-baby-composer-header,
+.mobile-baby-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mobile-baby-composer-header {
+  margin-bottom: 12px;
+}
+
+.mobile-baby-composer-header strong {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.mobile-baby-composer-header button {
+  color: #777777;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.mobile-baby-composer .adm-text-area {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f7f7f7;
+}
+
+.mobile-baby-composer-actions {
+  margin-top: 12px;
+}
+
+.mobile-baby-composer-actions > button:first-child {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 6px;
+  color: #5b8f7b;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.mobile-baby-submit-button {
+  min-width: 96px;
+  border-radius: 999px;
+  --text-color: #ffffff;
+  --background-color: #ff6d3f;
+  --border-color: #ff6d3f;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.mobile-baby-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  background: #000000;
+  color: #ffffff;
+}
+
+.mobile-baby-preview-header {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 64px;
+  align-items: center;
+  min-height: 82px;
+  padding: 12px 10px;
+}
+
+.mobile-baby-preview-header button,
+.mobile-baby-preview-header span {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 24px;
+}
+
+.mobile-baby-preview-header strong {
+  justify-self: center;
+  font-size: 20px;
+}
+
+.mobile-baby-preview-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-baby-preview-body img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.mobile-baby-preview-arrow {
+  position: fixed;
+  top: 50%;
+  z-index: 1;
+  display: inline-flex;
+  width: 48px;
+  height: 64px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.28);
+  color: #ffffff;
+  font-size: 28px;
+}
+
+.mobile-baby-preview-arrow.previous {
+  left: 8px;
+}
+
+.mobile-baby-preview-arrow.next {
+  right: 8px;
+  transform: rotate(180deg);
+}
+
+.dark .mobile-baby-page {
+  background: #101827;
+  color: var(--mobile-text);
+}
+
+.dark .mobile-baby-top-bar {
+  background: rgba(16, 24, 39, 0.94);
+}
+
+.dark .mobile-baby-summary-card,
+.dark .mobile-baby-growth-list article,
+.dark .mobile-baby-birthday-tabs button,
+.dark .mobile-baby-wish-card,
+.dark .mobile-baby-composer-panel {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--mobile-card);
+}
+
+.dark .mobile-baby-summary-card {
+  box-shadow: none;
+}
+
+.dark .mobile-baby-summary-main span,
+.dark .mobile-baby-section-title span,
+.dark .mobile-baby-summary-metrics small,
+.dark .mobile-baby-wish-author small,
+.dark .mobile-baby-wish-card p {
+  color: var(--mobile-muted);
+}
+
+.dark .mobile-baby-summary-metrics span,
+.dark .mobile-baby-composer .adm-text-area {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--mobile-text);
+}
+
+.dark .mobile-baby-birthday-tabs button.active {
+  border-color: rgba(255, 155, 114, 0.36);
+  background: rgba(255, 109, 63, 0.14);
 }
