@@ -226,6 +226,30 @@ export function useCreateFamilyComment() {
   });
 }
 
+export function useDeleteFamilyPost() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (postId: number) => familyService.deletePost(postId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.posts() });
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.state() });
+    },
+  });
+}
+
+export function useDeleteFamilyComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ postId, commentId }: { postId: number; commentId: number }) =>
+      familyService.deleteComment(postId, commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.posts() });
+    },
+  });
+}
+
 export function useLikeFamilyPost() {
   const queryClient = useQueryClient();
 
@@ -262,6 +286,18 @@ export function useCreateFamilyChatMessage() {
 
   return useMutation({
     mutationFn: (data: CreateFamilyChatMessageDto) => familyService.createChatMessage(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.chatMessages() });
+      queryClient.invalidateQueries({ queryKey: familyQueryKeys.state() });
+    },
+  });
+}
+
+export function useDeleteFamilyChatMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (messageId: number) => familyService.deleteChatMessage(messageId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: familyQueryKeys.chatMessages() });
       queryClient.invalidateQueries({ queryKey: familyQueryKeys.state() });

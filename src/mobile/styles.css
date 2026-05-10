@@ -2992,6 +2992,8 @@ body {
 .mobile-family-feed-author,
 .mobile-family-feed-content,
 .mobile-family-feed-comment,
+.mobile-family-post-delete,
+.mobile-family-comment-delete,
 .mobile-family-media-item,
 .mobile-family-draft-tile button,
 .mobile-family-add-media-tile,
@@ -3116,7 +3118,7 @@ body {
 .mobile-family-feed-author {
   display: grid;
   width: 100%;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   padding: 0;
@@ -3154,6 +3156,19 @@ body {
   color: #b5b5b5;
   font-size: 12px;
   line-height: 1.25;
+}
+
+.mobile-family-post-delete {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  margin-right: -4px;
+  border-radius: 50%;
+  color: #b5b5b5;
+  font-size: 16px;
 }
 
 .mobile-family-feed-card.text-only .mobile-family-feed-author-main > span {
@@ -3392,8 +3407,15 @@ body {
   border-top: 1px solid #e8e8e8;
 }
 
+.mobile-family-comment-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .mobile-family-feed-comment {
   display: block;
+  flex: 1 1 auto;
   width: 100%;
   padding: 0;
   overflow-wrap: anywhere;
@@ -3409,6 +3431,19 @@ body {
 
 .mobile-family-feed-comment.reply {
   color: #686868;
+}
+
+.mobile-family-comment-delete {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  margin-top: -4px;
+  border-radius: 50%;
+  color: #b5b5b5;
+  font-size: 14px;
 }
 
 .mobile-family-comment-reply-label {
@@ -4163,6 +4198,11 @@ body {
 
 .dark .mobile-family-feed-comment {
   color: var(--mobile-muted);
+}
+
+.dark .mobile-family-post-delete,
+.dark .mobile-family-comment-delete {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .dark .mobile-family-feed-comment strong {

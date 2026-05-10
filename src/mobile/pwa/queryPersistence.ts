@@ -65,6 +65,7 @@ function sanitizeFamilyMedia(media: unknown) {
   return {
     ...(media as Record<string, unknown>),
     displayUrl: undefined,
+    posterUrl: undefined,
     previewUrl: undefined,
     url: undefined,
     expiresAt: undefined,

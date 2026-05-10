@@ -4,7 +4,9 @@ import type { FamilyChatMessageCreatedEvent, FamilyPostCreatedEvent } from '../t
 
 export interface FamilySocketHandlers {
   onPostCreated?: (event: FamilyPostCreatedEvent) => void;
+  onPostDeleted?: (event: unknown) => void;
   onPostCommentCreated?: (event: unknown) => void;
+  onPostCommentDeleted?: (event: unknown) => void;
   onPostLikeChanged?: (event: unknown) => void;
   onChatMessageCreated?: (event: FamilyChatMessageCreatedEvent) => void;
   onNotificationCreated?: () => void;
@@ -34,7 +36,9 @@ export function connectFamilySocket(token: string | null, handlers: FamilySocket
   });
 
   socket.on('family:post-created', (event) => handlers.onPostCreated?.(event));
+  socket.on('family:post-deleted', (event) => handlers.onPostDeleted?.(event));
   socket.on('family:post-comment-created', (event) => handlers.onPostCommentCreated?.(event));
+  socket.on('family:post-comment-deleted', (event) => handlers.onPostCommentDeleted?.(event));
   socket.on('family:post-like-changed', (event) => handlers.onPostLikeChanged?.(event));
   socket.on('family:chat-message-created', (event) => handlers.onChatMessageCreated?.(event));
   socket.on('family:notification-created', () => handlers.onNotificationCreated?.());

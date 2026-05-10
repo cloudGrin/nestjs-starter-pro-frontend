@@ -20,6 +20,7 @@ export interface FamilyMedia {
   originalName?: string;
   size?: number;
   displayUrl: string;
+  posterUrl?: string;
   expiresAt: string;
 }
 

@@ -32,6 +32,8 @@ import {
   useCreateFamilyComment,
   useCreateFamilyPost,
   useBabyOverview,
+  useDeleteFamilyComment,
+  useDeleteFamilyPost,
   useFamilyChatMessages,
   useFamilyPosts,
   useFamilyState,
@@ -314,6 +316,8 @@ function useFamilyRealtime({
         onPostCreated?.(event);
       },
       onPostCommentCreated: refreshPosts,
+      onPostCommentDeleted: refreshPosts,
+      onPostDeleted: refreshPosts,
       onPostLikeChanged: refreshPosts,
       onChatMessageCreated: (event) => {
         void queryClient.invalidateQueries({
@@ -521,7 +525,12 @@ function MediaGrid({
         >
           {isVideo(item) ? (
             <>
-              <MobileInlineVideo src={item.displayUrl} preload="metadata" stopPropagation={false} />
+              <MobileInlineVideo
+                src={item.displayUrl}
+                poster={item.posterUrl}
+                preload="metadata"
+                stopPropagation={false}
+              />
               <span className="mobile-family-video-mark">
                 <PlayCircleFilled />
               </span>
@@ -850,6 +859,8 @@ function MediaPreviewOverlay({
 function FamilyPostCard({
   post,
   onPreview,
+  onDeleteComment,
+  onDeletePost,
   onToggleLike,
   commentDraft,
   commentOpen,
@@ -862,9 +873,12 @@ function FamilyPostCard({
   onReplyComment,
   onSubmitComment,
   onToggleComment,
+  canDeleteComment,
 }: {
   post: FamilyPost;
   onPreview: (index: number) => void;
+  onDeleteComment?: (comment: FamilyPostComment) => void;
+  onDeletePost?: () => void;
   onToggleLike: () => void;
   commentDraft: string;
   commentOpen: boolean;
@@ -877,6 +891,7 @@ function FamilyPostCard({
   onReplyComment: (comment: FamilyPostComment) => void;
   onSubmitComment: () => void;
   onToggleComment: () => void;
+  canDeleteComment?: (comment: FamilyPostComment) => boolean;
 }) {
   const hasMedia = post.media.length > 0;
   const comments = post.comments ?? [];
@@ -914,6 +929,12 @@ function FamilyPostCard({
           <strong>{displayName(post.author)}</strong>
           <span>{formatFeedDate(post.createdAt)}</span>
         </div>
+        {onDeletePost ? (
+          <button className="mobile-family-post-delete" type="button" onClick={onDeletePost}>
+            <DeleteOutlined />
+            <span className="mobile-family-sr">删除动态</span>
+          </button>
+        ) : null}
       </div>
       {post.content ? <div className="mobile-family-feed-content">{post.content}</div> : null}
       <MediaGrid media={post.media} onPreview={onPreview} />
@@ -921,18 +942,29 @@ function FamilyPostCard({
       {comments.length ? (
         <div className="mobile-family-comment-list">
           {comments.map((comment) => (
-            <button
-              key={comment.id}
-              className={
-                comment.parentCommentId
-                  ? 'mobile-family-feed-comment reply'
-                  : 'mobile-family-feed-comment'
-              }
-              type="button"
-              onClick={() => onReplyComment(comment)}
-            >
-              <FamilyCommentLine comment={comment} />
-            </button>
+            <div className="mobile-family-comment-row" key={comment.id}>
+              <button
+                className={
+                  comment.parentCommentId
+                    ? 'mobile-family-feed-comment reply'
+                    : 'mobile-family-feed-comment'
+                }
+                type="button"
+                onClick={() => onReplyComment(comment)}
+              >
+                <FamilyCommentLine comment={comment} />
+              </button>
+              {canDeleteComment?.(comment) ? (
+                <button
+                  className="mobile-family-comment-delete"
+                  type="button"
+                  onClick={() => onDeleteComment?.(comment)}
+                >
+                  <DeleteOutlined />
+                  <span className="mobile-family-sr">删除</span>
+                </button>
+              ) : null}
+            </div>
           ))}
         </div>
       ) : null}
@@ -976,6 +1008,8 @@ export function MobileFamilyPage() {
   const postsQuery = useFamilyPosts(FAMILY_POST_LIST_PARAMS);
   const { data: familyReadState, markPostsReadAsync } = useFamilyState();
   const createComment = useCreateFamilyComment();
+  const deletePost = useDeleteFamilyPost();
+  const deleteComment = useDeleteFamilyComment();
   const likePost = useLikeFamilyPost();
   const unlikePost = useUnlikeFamilyPost();
   const currentUser = useAuthStore((state) => state.user);
@@ -1229,6 +1263,52 @@ export function MobileFamilyPage() {
     }
   };
 
+  const canDeletePost = (post: FamilyPost) => currentUser?.id === post.authorId;
+  const canDeleteComment = (post: FamilyPost, comment: FamilyPostComment) =>
+    currentUser?.id === comment.authorId || currentUser?.id === post.authorId;
+
+  const confirmDeletePost = (post: FamilyPost) => {
+    void Dialog.confirm({
+      content: '删除后这条动态和下面的评论都会消失，确定删除吗？',
+      cancelText: '取消',
+      confirmText: '删除',
+      onConfirm: async () => {
+        try {
+          await deletePost.mutateAsync(post.id);
+          setCommentTarget((current) => (current?.postId === post.id ? null : current));
+          setCommentDraftTarget((current) => (current?.postId === post.id ? null : current));
+          if (previewPost?.id === post.id) {
+            setPreviewPost(null);
+            setPreviewIndex(null);
+          }
+        } catch {
+          Toast.show({ icon: 'fail', content: '删除动态失败', position: 'center' });
+        }
+      },
+    });
+  };
+
+  const confirmDeleteComment = (post: FamilyPost, comment: FamilyPostComment) => {
+    void Dialog.confirm({
+      content: '确定删除这条评论吗？',
+      cancelText: '取消',
+      confirmText: '删除',
+      onConfirm: async () => {
+        try {
+          await deleteComment.mutateAsync({ postId: post.id, commentId: comment.id });
+          setCommentTarget((current) =>
+            current?.postId === post.id && current.parentCommentId === comment.id ? null : current
+          );
+          setCommentDraftTarget((current) =>
+            current?.postId === post.id && current.parentCommentId === comment.id ? null : current
+          );
+        } catch {
+          Toast.show({ icon: 'fail', content: '删除评论失败', position: 'center' });
+        }
+      },
+    });
+  };
+
   const toggleLike = (post: FamilyPost) => {
     const displayPost = getDisplayPost(post);
     const nextLikedByMe = !displayPost.likedByMe;
@@ -1301,6 +1381,8 @@ export function MobileFamilyPage() {
                 key={item.id}
                 post={getDisplayPost(item)}
                 onPreview={(index) => openPreview(item, index)}
+                onDeletePost={canDeletePost(item) ? () => confirmDeletePost(item) : undefined}
+                onDeleteComment={(comment) => confirmDeleteComment(item, comment)}
                 onToggleLike={() => toggleLike(item)}
                 commentDraft={commentTarget?.postId === item.id ? commentDraft : ''}
                 commentOpen={commentTarget?.postId === item.id}
@@ -1317,6 +1399,7 @@ export function MobileFamilyPage() {
                 onReplyComment={(comment) => replyToComment(item.id, comment)}
                 onSubmitComment={() => void submitComment(item.id)}
                 onToggleComment={() => toggleComment(item.id)}
+                canDeleteComment={(comment) => canDeleteComment(item, comment)}
               />
             ))
           )}

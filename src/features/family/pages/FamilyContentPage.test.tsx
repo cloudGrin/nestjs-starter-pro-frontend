@@ -6,6 +6,8 @@ import { FamilyContentPage } from './FamilyContentPage';
 const hookMocks = vi.hoisted(() => ({
   useFamilyPosts: vi.fn(),
   useFamilyChatMessages: vi.fn(),
+  useDeleteFamilyPost: vi.fn(),
+  useDeleteFamilyChatMessage: vi.fn(),
   postsResult: {
     data: {
       items: [
@@ -70,11 +72,21 @@ const hookMocks = vi.hoisted(() => ({
     isFetching: false,
     refetch: vi.fn(),
   },
+  deletePostResult: {
+    mutate: vi.fn(),
+    isPending: false,
+  },
+  deleteChatMessageResult: {
+    mutate: vi.fn(),
+    isPending: false,
+  },
 }));
 
 vi.mock('@/features/family/hooks/useFamily', () => ({
   useFamilyPosts: hookMocks.useFamilyPosts,
   useFamilyChatMessages: hookMocks.useFamilyChatMessages,
+  useDeleteFamilyPost: hookMocks.useDeleteFamilyPost,
+  useDeleteFamilyChatMessage: hookMocks.useDeleteFamilyChatMessage,
 }));
 
 vi.mock('@/shared/components', () => ({
@@ -141,6 +153,9 @@ vi.mock('antd', () => {
       ) : null,
     Empty: ({ description }: { description?: ReactNode }) => <div>{description}</div>,
     Image: ({ src, alt }: { src?: string; alt?: string }) => <img alt={alt || ''} src={src} />,
+    Modal: {
+      confirm: vi.fn((options: { onOk?: () => void }) => options.onOk?.()),
+    },
     Space: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Table: ({
       columns,
@@ -218,6 +233,10 @@ describe('FamilyContentPage', () => {
     hookMocks.chatResult.isFetching = false;
     hookMocks.useFamilyPosts.mockReturnValue(hookMocks.postsResult);
     hookMocks.useFamilyChatMessages.mockReturnValue(hookMocks.chatResult);
+    hookMocks.deletePostResult.isPending = false;
+    hookMocks.deleteChatMessageResult.isPending = false;
+    hookMocks.useDeleteFamilyPost.mockReturnValue(hookMocks.deletePostResult);
+    hookMocks.useDeleteFamilyChatMessage.mockReturnValue(hookMocks.deleteChatMessageResult);
   });
 
   it('renders family post rows and opens the post detail drawer', () => {
@@ -249,6 +268,23 @@ describe('FamilyContentPage', () => {
 
     expect(screen.getByRole('heading', { name: '群聊详情' })).toBeInTheDocument();
     expect(screen.getAllByText('晚点回家').length).toBeGreaterThan(1);
+  });
+
+  it('deletes family posts from the management table', () => {
+    render(<FamilyContentPage />);
+
+    fireEvent.click(within(screen.getByTestId('row-11')).getByRole('button', { name: '删除' }));
+
+    expect(hookMocks.deletePostResult.mutate).toHaveBeenCalledWith(11, expect.any(Object));
+  });
+
+  it('deletes chat messages from the management table', () => {
+    render(<FamilyContentPage />);
+    fireEvent.click(screen.getByRole('button', { name: '群聊' }));
+
+    fireEvent.click(within(screen.getByTestId('row-31')).getByRole('button', { name: '删除' }));
+
+    expect(hookMocks.deleteChatMessageResult.mutate).toHaveBeenCalledWith(31, expect.any(Object));
   });
 
   it('requests family post pages through table pagination', () => {

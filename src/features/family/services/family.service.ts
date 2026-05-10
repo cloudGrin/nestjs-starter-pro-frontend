@@ -179,10 +179,24 @@ export const familyService = {
       },
     }),
 
+  deletePost: (postId: number) =>
+    request.delete<void>(`${BASE_URL}/posts/${postId}`, {
+      requestOptions: {
+        messageConfig: { successMessage: '动态已删除' },
+      },
+    }),
+
   createComment: (postId: number, data: CreateFamilyPostCommentDto) =>
     request.post(`${BASE_URL}/posts/${postId}/comments`, data, {
       requestOptions: {
         messageConfig: { successMessage: false },
+      },
+    }),
+
+  deleteComment: (postId: number, commentId: number) =>
+    request.delete<void>(`${BASE_URL}/posts/${postId}/comments/${commentId}`, {
+      requestOptions: {
+        messageConfig: { successMessage: '评论已删除' },
       },
     }),
 
@@ -225,6 +239,13 @@ export const familyService = {
     request.post<FamilyChatMessage>(`${BASE_URL}/chat/messages`, data, {
       requestOptions: {
         messageConfig: { successMessage: false },
+      },
+    }),
+
+  deleteChatMessage: (messageId: number) =>
+    request.delete<void>(`${BASE_URL}/chat/messages/${messageId}`, {
+      requestOptions: {
+        messageConfig: { successMessage: '消息已删除' },
       },
     }),
 

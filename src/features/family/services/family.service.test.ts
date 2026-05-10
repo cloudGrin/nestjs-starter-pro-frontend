@@ -237,4 +237,34 @@ describe('family.service', () => {
       })
     );
   });
+
+  it('deletes family posts through the family circle endpoint', async () => {
+    vi.mocked(request.delete).mockResolvedValue(undefined);
+
+    await familyService.deletePost(11);
+
+    expect(request.delete).toHaveBeenCalledWith(
+      '/family/posts/11',
+      expect.objectContaining({
+        requestOptions: {
+          messageConfig: { successMessage: '动态已删除' },
+        },
+      })
+    );
+  });
+
+  it('deletes family comments and replies through the post comment endpoint', async () => {
+    vi.mocked(request.delete).mockResolvedValue(undefined);
+
+    await familyService.deleteComment(11, 31);
+
+    expect(request.delete).toHaveBeenCalledWith(
+      '/family/posts/11/comments/31',
+      expect.objectContaining({
+        requestOptions: {
+          messageConfig: { successMessage: '评论已删除' },
+        },
+      })
+    );
+  });
 });

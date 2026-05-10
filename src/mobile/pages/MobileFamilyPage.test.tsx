@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Dialog } from 'antd-mobile';
 import {
@@ -27,6 +27,8 @@ const familyHooks = vi.hoisted(() => ({
   useFamilyState: vi.fn(),
   useCreateFamilyPost: vi.fn(),
   useCreateFamilyComment: vi.fn(),
+  useDeleteFamilyPost: vi.fn(),
+  useDeleteFamilyComment: vi.fn(),
   useLikeFamilyPost: vi.fn(),
   useUnlikeFamilyPost: vi.fn(),
   useFamilyChatMessages: vi.fn(),
@@ -91,6 +93,8 @@ const refetch = vi.fn().mockResolvedValue(undefined);
 const babyRefetch = vi.fn().mockResolvedValue(undefined);
 const createPost = vi.fn().mockResolvedValue(undefined);
 const createComment = vi.fn().mockResolvedValue(undefined);
+const deletePost = vi.fn().mockResolvedValue(undefined);
+const deleteComment = vi.fn().mockResolvedValue(undefined);
 const likePost = vi.fn();
 const unlikePost = vi.fn();
 const createMessage = vi.fn().mockResolvedValue(undefined);
@@ -237,6 +241,14 @@ describe('MobileFamilyPage', () => {
     });
     familyHooks.useCreateFamilyComment.mockReturnValue({
       mutateAsync: createComment,
+      isPending: false,
+    });
+    familyHooks.useDeleteFamilyPost.mockReturnValue({
+      mutateAsync: deletePost,
+      isPending: false,
+    });
+    familyHooks.useDeleteFamilyComment.mockReturnValue({
+      mutateAsync: deleteComment,
       isPending: false,
     });
     familyHooks.useLikeFamilyPost.mockReturnValue({ mutate: likePost });
@@ -849,6 +861,70 @@ describe('MobileFamilyPage', () => {
     );
   });
 
+  it('deletes own family posts after confirmation', async () => {
+    mobileUiMocks.dialogConfirm.mockImplementation((options: { onConfirm?: () => void }) => {
+      options.onConfirm?.();
+      return Promise.resolve(true);
+    });
+
+    renderPage('/family');
+
+    fireEvent.click(screen.getByRole('button', { name: /删除动态/ }));
+
+    await waitFor(() => expect(deletePost).toHaveBeenCalledWith(1));
+    expect(mobileUiMocks.dialogConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: '删除后这条动态和下面的评论都会消失，确定删除吗？',
+        cancelText: '取消',
+        confirmText: '删除',
+      })
+    );
+  });
+
+  it('deletes family comments and replies after confirmation', async () => {
+    mobileUiMocks.dialogConfirm.mockImplementation((options: { onConfirm?: () => void }) => {
+      options.onConfirm?.();
+      return Promise.resolve(true);
+    });
+
+    renderPage('/family');
+
+    const commentList = document.querySelector('.mobile-family-comment-list');
+    expect(commentList).toBeTruthy();
+    const deleteButtons = within(commentList as HTMLElement).getAllByRole('button', {
+      name: /删除/,
+    });
+    expect(deleteButtons).toHaveLength(2);
+
+    fireEvent.click(deleteButtons[1]);
+
+    await waitFor(() => expect(deleteComment).toHaveBeenCalledWith({ postId: 1, commentId: 4 }));
+    expect(mobileUiMocks.dialogConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: '确定删除这条评论吗？',
+        cancelText: '取消',
+        confirmText: '删除',
+      })
+    );
+  });
+
+  it('hides family delete controls for users who cannot delete the content', () => {
+    useAuthStore.setState({
+      token: 'token',
+      user: {
+        id: 9,
+        username: 'aunt',
+        nickname: '姑姑',
+        email: 'aunt@example.com',
+      } as never,
+    });
+
+    renderPage('/family');
+
+    expect(screen.queryByRole('button', { name: /删除动态/ })).not.toBeInTheDocument();
+    expect(document.querySelector('.mobile-family-comment-delete')).not.toBeInTheDocument();
+  });
+
   it('opens feed videos through the preview layer instead of playing inside the thumbnail', () => {
     familyHooks.useFamilyPosts.mockReturnValue({
       data: {
@@ -863,6 +939,7 @@ describe('MobileFamilyPage', () => {
                 sort: 0,
                 mimeType: 'video/mp4',
                 displayUrl: '/api/v1/files/20/access?token=video',
+                posterUrl: '/api/v1/files/20/access?token=poster',
                 expiresAt: '2026-05-04T00:00:00.000Z',
               },
             ],
@@ -881,6 +958,10 @@ describe('MobileFamilyPage', () => {
     expect(thumbnailVideo).toBeTruthy();
     expect(thumbnailVideo).not.toHaveAttribute('controls');
     expect(thumbnailVideo).toHaveAttribute('playsinline');
+    expect(thumbnailVideo).toHaveAttribute(
+      'poster',
+      '/api/v1/files/20/access?token=poster'
+    );
 
     fireEvent.click(thumbnailVideo);
 

@@ -6,17 +6,23 @@ import {
   Drawer,
   Empty,
   Image,
+  Modal,
   Space,
   Table,
   Tabs,
   Tag,
   Typography,
 } from 'antd';
-import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { PageWrap } from '@/shared/components';
 import { formatDate } from '@/shared/utils';
-import { useFamilyChatMessages, useFamilyPosts } from '../hooks/useFamily';
+import {
+  useDeleteFamilyChatMessage,
+  useDeleteFamilyPost,
+  useFamilyChatMessages,
+  useFamilyPosts,
+} from '../hooks/useFamily';
 import type {
   FamilyChatMessage,
   FamilyMedia,
@@ -110,6 +116,8 @@ export function FamilyContentPage() {
   );
   const postsQuery = useFamilyPosts(postListParams);
   const chatQuery = useFamilyChatMessages(chatListParams);
+  const deletePost = useDeleteFamilyPost();
+  const deleteChatMessage = useDeleteFamilyChatMessage();
 
   const handlePostPageChange = (current: number, pageSize: number) => {
     setPostPagination({ current, pageSize });
@@ -117,6 +125,44 @@ export function FamilyContentPage() {
 
   const handleChatPageChange = (current: number, pageSize: number) => {
     setChatPagination({ current, pageSize });
+  };
+
+  const handleDeletePost = (record: FamilyPost) => {
+    Modal.confirm({
+      title: '删除家庭动态',
+      content: '删除后这条动态和下面的评论都会消失，确定删除吗？',
+      okText: '删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () => {
+        deletePost.mutate(record.id, {
+          onSuccess: () => {
+            setDetail((current) =>
+              current?.type === 'post' && current.item.id === record.id ? null : current
+            );
+          },
+        });
+      },
+    });
+  };
+
+  const handleDeleteChatMessage = (record: FamilyChatMessage) => {
+    Modal.confirm({
+      title: '删除群聊消息',
+      content: '确定删除这条群聊消息吗？',
+      okText: '删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () => {
+        deleteChatMessage.mutate(record.id, {
+          onSuccess: () => {
+            setDetail((current) =>
+              current?.type === 'chat' && current.item.id === record.id ? null : current
+            );
+          },
+        });
+      },
+    });
   };
 
   const postColumns: ColumnsType<FamilyPost> = [
@@ -164,17 +210,29 @@ export function FamilyContentPage() {
     {
       title: '操作',
       key: 'actions',
-      width: 90,
+      width: 180,
       fixed: 'right',
       render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => setDetail({ type: 'post', item: record })}
-        >
-          详情
-        </Button>
+        <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => setDetail({ type: 'post', item: record })}
+          >
+            详情
+          </Button>
+          <Button
+            danger
+            type="link"
+            size="small"
+            icon={<DeleteOutlined />}
+            loading={deletePost.isPending}
+            onClick={() => handleDeletePost(record)}
+          >
+            删除
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -212,17 +270,29 @@ export function FamilyContentPage() {
     {
       title: '操作',
       key: 'actions',
-      width: 90,
+      width: 180,
       fixed: 'right',
       render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => setDetail({ type: 'chat', item: record })}
-        >
-          详情
-        </Button>
+        <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => setDetail({ type: 'chat', item: record })}
+          >
+            详情
+          </Button>
+          <Button
+            danger
+            type="link"
+            size="small"
+            icon={<DeleteOutlined />}
+            loading={deleteChatMessage.isPending}
+            onClick={() => handleDeleteChatMessage(record)}
+          >
+            删除
+          </Button>
+        </Space>
       ),
     },
   ];
