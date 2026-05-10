@@ -288,6 +288,28 @@ describe('MobileFamilyPage', () => {
   });
 
   it('shows the warmflow-style family circle home', () => {
+    familyHooks.useBabyOverview.mockReturnValue({
+      data: {
+        profile: {
+          id: 1,
+          nickname: '小葡萄',
+          birthDate: '2026-02-01',
+          avatarUrl: null,
+        },
+        latestGrowthRecord: {
+          id: 12,
+          measuredAt: '2026-05-01',
+          heightCm: 61.5,
+          weightKg: 6.8,
+          remark: null,
+        },
+        growthRecords: [],
+        birthdays: [],
+      },
+      isLoading: false,
+      refetch: babyRefetch,
+    });
+
     renderPage();
 
     expect(screen.getByRole('button', { name: /菜单/ })).toBeInTheDocument();
@@ -299,6 +321,10 @@ describe('MobileFamilyPage', () => {
     expect(screen.queryByText('首页')).not.toBeInTheDocument();
     expect(screen.queryByText('我的')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /家庭群聊/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /更多/ })).toHaveClass(
+      'mobile-baby-summary-card',
+      'compact'
+    );
     expect(screen.getByText('宝宝今天会走路了')).toBeInTheDocument();
     expect(screen.getByText('太棒了')).toBeInTheDocument();
     expect(

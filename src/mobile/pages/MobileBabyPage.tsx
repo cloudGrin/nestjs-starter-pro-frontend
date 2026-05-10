@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Empty, TextArea, Toast } from 'antd-mobile';
 import { LeftOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   useBabyOverview,
   useCreateBabyBirthdayContribution,
@@ -60,9 +60,13 @@ function avatarInitial(name?: string) {
 export function MobileBabySummaryCard({
   overview,
   onClick,
+  compact = false,
+  showMoreHint = false,
 }: {
   overview?: BabyOverview | null;
   onClick?: () => void;
+  compact?: boolean;
+  showMoreHint?: boolean;
 }) {
   const profile = overview?.profile;
   if (!profile) return null;
@@ -73,7 +77,11 @@ export function MobileBabySummaryCard({
     : '暂无测量记录';
 
   return (
-    <button className="mobile-baby-summary-card" type="button" onClick={onClick}>
+    <button
+      className={compact ? 'mobile-baby-summary-card compact' : 'mobile-baby-summary-card'}
+      type="button"
+      onClick={onClick}
+    >
       <span className="mobile-baby-avatar">
         {profile.avatarUrl ? (
           <img src={profile.avatarUrl} alt={profile.nickname} />
@@ -85,6 +93,7 @@ export function MobileBabySummaryCard({
         <strong>{profile.nickname}</strong>
         <span>{formatBabyAge(profile.birthDate)}</span>
       </span>
+      {showMoreHint ? <span className="mobile-baby-summary-more">更多</span> : null}
       <span className="mobile-baby-summary-metrics">
         <span>{formatMetric(latest?.weightKg, 'kg')}</span>
         <span>{formatMetric(latest?.heightCm, 'cm')}</span>
@@ -202,6 +211,152 @@ function BirthdayContributionList({ birthday }: { birthday: BabyBirthday }) {
   );
 }
 
+function GrowthTimeline({ records }: { records: BabyOverview['growthRecords'] }) {
+  const visibleRecords = records.slice(0, 5);
+
+  if (visibleRecords.length === 0) {
+    return <Empty description="还没有成长记录" />;
+  }
+
+  return (
+    <div className="mobile-baby-growth-timeline">
+      {visibleRecords.map((item, index) => (
+        <article key={item.id} className={index === 0 ? 'latest' : undefined}>
+          <span className="mobile-baby-growth-node" />
+          <div className="mobile-baby-growth-content">
+            <div className="mobile-baby-growth-head">
+              <strong>{formatDate(item.measuredAt)}</strong>
+              {index === 0 ? <span>最新记录</span> : null}
+            </div>
+            <div className="mobile-baby-growth-metrics">
+              <span>{formatMetric(item.weightKg, 'kg')}</span>
+              <span>{formatMetric(item.heightCm, 'cm')}</span>
+            </div>
+            {item.remark ? <p>{item.remark}</p> : null}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function BirthdayAlbumStrip({
+  birthdays,
+  onSelect,
+}: {
+  birthdays: BabyBirthday[];
+  onSelect: (birthday: BabyBirthday) => void;
+}) {
+  return (
+    <div className="mobile-baby-album-strip">
+      {birthdays.map((birthday) => (
+        <button
+          key={birthday.id}
+          className="mobile-baby-album-card"
+          style={birthday.coverUrl ? { backgroundImage: `url(${birthday.coverUrl})` } : undefined}
+          type="button"
+          onClick={() => onSelect(birthday)}
+        >
+          <span className="mobile-baby-album-year">{birthday.year}</span>
+          <strong>{birthday.title}</strong>
+          <span className="mobile-baby-album-counts">
+            <small>{birthday.mediaCount} 张照片</small>
+            <small>{birthday.contributionCount} 条祝福</small>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BirthdayDetailPageContent({
+  birthday,
+  onBack,
+}: {
+  birthday: BabyBirthday;
+  onBack: () => void;
+}) {
+  const createContribution = useCreateBabyBirthdayContribution();
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
+  const submitContribution = async (content: string, files: File[]) => {
+    const trimmed = content.trim();
+    if (!trimmed && files.length === 0) {
+      Toast.show({ content: '写点祝福或添加照片', position: 'center' });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const mediaFileIds: number[] = [];
+      for (const file of files) {
+        const uploaded = await familyService.uploadBabyBirthdayImage(birthday.id, file);
+        mediaFileIds.push(uploaded.id);
+      }
+      await createContribution.mutateAsync({
+        birthdayId: birthday.id,
+        data: { content: trimmed, mediaFileIds },
+      });
+      setComposerOpen(false);
+      Toast.show({ content: '祝福已添加', position: 'center' });
+    } catch {
+      Toast.show({ icon: 'fail', content: '祝福发送失败', position: 'center' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <main className="mobile-baby-page">
+      <header className="mobile-baby-top-bar">
+        <button type="button" onClick={onBack}>
+          <LeftOutlined />
+        </button>
+        <h1>生日合辑</h1>
+        <span />
+      </header>
+
+      <section className="mobile-baby-birthday-detail">
+        <div className="mobile-baby-birthday-cover">
+          {birthday.coverUrl ? <img src={birthday.coverUrl} alt={birthday.title} /> : null}
+          <div>
+            <span>{birthday.year}</span>
+            <h2>{birthday.title}</h2>
+            <p>{birthday.description || '记录这一次生日的照片和家人祝福'}</p>
+            <div>
+              <small>{birthday.mediaCount} 张照片</small>
+              <small>{birthday.contributionCount} 条祝福</small>
+            </div>
+          </div>
+        </div>
+        <BirthdayPhotoWall media={birthday.media} onPreview={setPreviewIndex} />
+        <BirthdayContributionList birthday={birthday} />
+        <button
+          className="mobile-baby-add-wish-button"
+          type="button"
+          onClick={() => setComposerOpen(true)}
+        >
+          添加祝福
+        </button>
+        <PhotoPreview
+          media={birthday.media}
+          index={previewIndex}
+          onClose={() => setPreviewIndex(null)}
+        />
+        <BirthdayComposer
+          birthday={birthday}
+          open={composerOpen}
+          submitting={uploading || createContribution.isPending}
+          onClose={() => setComposerOpen(false)}
+          onSubmit={submitContribution}
+        />
+      </section>
+    </main>
+  );
+}
+
 function BirthdayComposer({
   birthday,
   open,
@@ -274,48 +429,41 @@ function BirthdayComposer({
   );
 }
 
+export function MobileBabyBirthdayPage() {
+  const navigate = useNavigate();
+  const { birthdayId } = useParams();
+  const overviewQuery = useBabyOverview();
+  const birthdays = useMemo(() => overviewQuery.data?.birthdays ?? [], [overviewQuery.data]);
+  const birthdayIdNumber = Number(birthdayId);
+
+  const birthday = useMemo(
+    () => birthdays.find((item) => item.id === birthdayIdNumber),
+    [birthdays, birthdayIdNumber]
+  );
+
+  if (!birthday) {
+    return (
+      <main className="mobile-baby-page">
+        <header className="mobile-baby-top-bar">
+          <button type="button" onClick={() => navigate('/family/baby')}>
+            <LeftOutlined />
+          </button>
+          <h1>生日合辑</h1>
+          <span />
+        </header>
+        <Empty description={overviewQuery.isLoading ? '生日合辑加载中' : '未找到生日合辑'} />
+      </main>
+    );
+  }
+
+  return <BirthdayDetailPageContent birthday={birthday} onBack={() => navigate('/family/baby')} />;
+}
+
 export function MobileBabyPage() {
   const navigate = useNavigate();
   const overviewQuery = useBabyOverview();
-  const createContribution = useCreateBabyBirthdayContribution();
   const overview = overviewQuery.data;
   const birthdays = useMemo(() => overview?.birthdays ?? [], [overview?.birthdays]);
-  const [selectedBirthdayId, setSelectedBirthdayId] = useState<number | null>(null);
-  const [composerOpen, setComposerOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-
-  const selectedBirthday = useMemo(
-    () => birthdays.find((item) => item.id === selectedBirthdayId),
-    [birthdays, selectedBirthdayId]
-  );
-
-  const submitContribution = async (content: string, files: File[]) => {
-    const trimmed = content.trim();
-    if (!selectedBirthday || (!trimmed && files.length === 0)) {
-      Toast.show({ content: '写点祝福或添加照片', position: 'center' });
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const mediaFileIds: number[] = [];
-      for (const file of files) {
-        const uploaded = await familyService.uploadBabyBirthdayImage(selectedBirthday.id, file);
-        mediaFileIds.push(uploaded.id);
-      }
-      await createContribution.mutateAsync({
-        birthdayId: selectedBirthday.id,
-        data: { content: trimmed, mediaFileIds },
-      });
-      setComposerOpen(false);
-      Toast.show({ content: '祝福已添加', position: 'center' });
-    } catch {
-      Toast.show({ icon: 'fail', content: '祝福发送失败', position: 'center' });
-    } finally {
-      setUploading(false);
-    }
-  };
 
   if (!overview?.profile && !overviewQuery.isLoading) {
     return (
@@ -351,16 +499,7 @@ export function MobileBabyPage() {
           <h2>成长记录</h2>
           <span>{overview?.growthRecords.length ?? 0} 条</span>
         </div>
-        <div className="mobile-baby-growth-list">
-          {(overview?.growthRecords ?? []).slice(0, 5).map((item) => (
-            <article key={item.id}>
-              <strong>{formatDate(item.measuredAt)}</strong>
-              <span>{formatMetric(item.weightKg, 'kg')}</span>
-              <span>{formatMetric(item.heightCm, 'cm')}</span>
-              {item.remark ? <small>{item.remark}</small> : null}
-            </article>
-          ))}
-        </div>
+        <GrowthTimeline records={overview?.growthRecords ?? []} />
       </section>
 
       {birthdays.length > 0 ? (
@@ -369,58 +508,9 @@ export function MobileBabyPage() {
             <h2>生日合辑</h2>
             <span>{birthdays.length} 年</span>
           </div>
-          <div className="mobile-baby-birthday-tabs">
-            {birthdays.map((birthday) => (
-              <button
-                key={birthday.id}
-                className={birthday.id === selectedBirthday?.id ? 'active' : undefined}
-                type="button"
-                onClick={() => setSelectedBirthdayId(birthday.id)}
-              >
-                <strong>{birthday.title}</strong>
-                <span>{birthday.year}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {selectedBirthday ? (
-        <section className="mobile-baby-birthday-detail">
-          <div className="mobile-baby-birthday-cover">
-            {selectedBirthday.coverUrl ? (
-              <img src={selectedBirthday.coverUrl} alt={selectedBirthday.title} />
-            ) : null}
-            <div>
-              <span>{selectedBirthday.year}</span>
-              <h2>{selectedBirthday.title}</h2>
-              <p>{selectedBirthday.description || '记录这一次生日的照片和家人祝福'}</p>
-              <div>
-                <small>{selectedBirthday.mediaCount} 张照片</small>
-                <small>{selectedBirthday.contributionCount} 条祝福</small>
-              </div>
-            </div>
-          </div>
-          <BirthdayPhotoWall media={selectedBirthday.media} onPreview={setPreviewIndex} />
-          <BirthdayContributionList birthday={selectedBirthday} />
-          <button
-            className="mobile-baby-add-wish-button"
-            type="button"
-            onClick={() => setComposerOpen(true)}
-          >
-            添加祝福
-          </button>
-          <PhotoPreview
-            media={selectedBirthday.media}
-            index={previewIndex}
-            onClose={() => setPreviewIndex(null)}
-          />
-          <BirthdayComposer
-            birthday={selectedBirthday}
-            open={composerOpen}
-            submitting={uploading || createContribution.isPending}
-            onClose={() => setComposerOpen(false)}
-            onSubmit={submitContribution}
+          <BirthdayAlbumStrip
+            birthdays={birthdays}
+            onSelect={(birthday) => navigate(`/family/baby/birthdays/${birthday.id}`)}
           />
         </section>
       ) : null}

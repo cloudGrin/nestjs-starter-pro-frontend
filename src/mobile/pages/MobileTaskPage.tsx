@@ -1222,6 +1222,10 @@ function TaskRow({
   const isCompleted = task.status === 'completed';
   const dueAt = displayDueAt ?? task.dueAt;
   const remindAt = displayRemindAt ?? task.remindAt;
+  const anniversaryDisplay =
+    task.taskType === 'anniversary' && !displayDueAt && !displayRemindAt
+      ? getAnniversaryDisplay(task)
+      : undefined;
   const content = (
     <div className={`mobile-task-row${compact ? ' compact' : ''}`} onClick={() => onOpen(task)}>
       <Checkbox
@@ -1237,9 +1241,19 @@ function TaskRow({
       <div className="mobile-task-row-main">
         <div className={`mobile-task-title${isCompleted ? ' completed' : ''}`}>{task.title}</div>
         <div className="mobile-task-meta-line">
-          {dueAt ? <span className="primary">{formatDateTime(dueAt)}</span> : null}
-          {remindAt ? <span>提醒</span> : null}
-          {task.recurrenceType !== 'none' ? <span>重复</span> : null}
+          {anniversaryDisplay ? (
+            <>
+              <span className="primary">{anniversaryDisplay.nextDateLabel}</span>
+              <span>{anniversaryDisplay.countdownText}</span>
+              <span>纪念日</span>
+            </>
+          ) : (
+            <>
+              {dueAt ? <span className="primary">{formatDateTime(dueAt)}</span> : null}
+              {remindAt ? <span>提醒</span> : null}
+              {task.recurrenceType !== 'none' ? <span>重复</span> : null}
+            </>
+          )}
           {task.checkItems?.length ? (
             <span>
               {task.checkItems.filter((item) => item.completed).length}/{task.checkItems.length}

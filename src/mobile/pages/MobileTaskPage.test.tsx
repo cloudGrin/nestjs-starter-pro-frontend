@@ -298,6 +298,41 @@ describe('MobileTaskPage', () => {
     expect(card.textContent).not.toContain('妈妈');
   });
 
+  it('shows anniversary countdown semantics in the regular mobile task list', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'));
+    taskHooks.useTasks.mockReturnValue({
+      data: {
+        items: [
+          {
+            ...baseTask,
+            id: 78,
+            title: '结婚纪念日',
+            taskType: 'anniversary',
+            dueAt: '2020-05-20T00:00:00.000Z',
+            remindAt: null,
+            recurrenceType: 'yearly',
+            continuousReminderEnabled: false,
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+      },
+      isLoading: false,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    });
+
+    renderPage('/tasks?view=list');
+
+    const row = screen.getByText('结婚纪念日').closest('.mobile-task-row');
+    expect(row).not.toBeNull();
+    expect(row?.textContent).toContain('2026-05-20');
+    expect(row?.textContent).toContain('还有 10 天');
+    expect(row?.textContent).toContain('纪念日');
+    expect(row?.textContent).not.toContain('重复');
+  });
+
   it('uses a neutral anniversary card style instead of a red background', () => {
     const cardRule = cssRule('.mobile-anniversary-card');
     const countdownRule = cssRule('.mobile-anniversary-countdown');

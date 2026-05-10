@@ -4293,17 +4293,46 @@ body {
 }
 
 .mobile-baby-summary-card {
+  position: relative;
   display: grid;
   width: 100%;
-  grid-template-columns: 54px minmax(0, 1fr);
+  min-height: 132px;
+  grid-template-columns: 60px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
-  padding: 14px;
+  overflow: hidden;
+  padding: 16px;
   border: 1px solid #ffe1d0;
   border-radius: 8px;
-  background: linear-gradient(135deg, #ffffff 0%, #fff0e7 100%);
-  box-shadow: 0 10px 24px rgba(220, 114, 65, 0.14);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 242, 234, 0.96) 54%),
+    linear-gradient(315deg, rgba(231, 249, 240, 0.92), rgba(255, 255, 255, 0));
+  box-shadow: 0 14px 30px rgba(220, 114, 65, 0.15);
   text-align: left;
+}
+
+.mobile-baby-summary-card::before {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    transparent 46%,
+    rgba(99, 185, 149, 0.1) 100%
+  );
+  content: '';
+}
+
+.mobile-baby-summary-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mobile-baby-summary-card.compact {
+  min-height: 112px;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 9px 11px;
+  padding: 12px;
 }
 
 .mobile-family-feed > .mobile-baby-summary-card {
@@ -4312,8 +4341,8 @@ body {
 
 .mobile-baby-avatar {
   display: inline-flex;
-  width: 54px;
-  height: 54px;
+  width: 60px;
+  height: 60px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -4321,7 +4350,7 @@ body {
   border-radius: 50%;
   background: linear-gradient(135deg, #ff8a5c 0%, #63b995 100%);
   color: #ffffff;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 900;
 }
 
@@ -4329,6 +4358,17 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.mobile-baby-summary-card.compact .mobile-baby-avatar {
+  grid-column: 1;
+  width: 52px;
+  height: 52px;
+  font-size: 21px;
+}
+
+.mobile-baby-summary-card.compact .mobile-baby-summary-main {
+  grid-column: 2;
 }
 
 .mobile-baby-summary-main {
@@ -4353,6 +4393,18 @@ body {
   font-weight: 700;
 }
 
+.mobile-baby-summary-more {
+  grid-column: 3;
+  align-self: start;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 109, 63, 0.1);
+  color: #ff6d3f;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .mobile-baby-summary-metrics {
   display: grid;
   grid-column: 1 / -1;
@@ -4362,19 +4414,30 @@ body {
 
 .mobile-baby-summary-metrics span {
   padding: 9px 10px;
+  border: 1px solid rgba(91, 143, 123, 0.12);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.78);
-  color: #2f2f2f;
-  font-size: 18px;
-  font-weight: 900;
+  color: #273d37;
+  font-size: 17px;
+  font-weight: 400;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .mobile-baby-summary-metrics small {
   grid-column: 1 / -1;
-  color: #8a6a5d;
+  color: #ad8575;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
+}
+
+.mobile-baby-summary-card.compact .mobile-baby-summary-metrics {
+  gap: 6px;
+}
+
+.mobile-baby-summary-card.compact .mobile-baby-summary-metrics span {
+  padding: 7px 9px;
+  font-size: 14px;
 }
 
 .mobile-baby-section {
@@ -4400,70 +4463,198 @@ body {
   font-weight: 700;
 }
 
-.mobile-baby-growth-list {
+.mobile-baby-growth-timeline {
+  position: relative;
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  padding-left: 14px;
 }
 
-.mobile-baby-growth-list article {
+.mobile-baby-growth-timeline::before {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 4px;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff8a5c 0%, #63b995 100%);
+  content: '';
+}
+
+.mobile-baby-growth-timeline article {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 8px;
-  align-items: center;
-  padding: 12px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.mobile-baby-growth-node {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  width: 10px;
+  height: 10px;
+  margin-top: 19px;
+  border: 2px solid #fff8f4;
+  border-radius: 50%;
+  background: #63b995;
+  box-shadow: 0 0 0 3px rgba(99, 185, 149, 0.18);
+}
+
+.mobile-baby-growth-content {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid #f1ece8;
   border-radius: 8px;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 22px rgba(62, 80, 94, 0.07);
 }
 
-.mobile-baby-growth-list strong {
-  font-size: 14px;
+.mobile-baby-growth-timeline article.latest .mobile-baby-growth-node {
+  width: 13px;
+  height: 13px;
+  margin-left: -1px;
+  background: #ff6d3f;
+  box-shadow: 0 0 0 4px rgba(255, 109, 63, 0.16);
 }
 
-.mobile-baby-growth-list span {
-  color: #3d806e;
+.mobile-baby-growth-timeline article.latest .mobile-baby-growth-content {
+  border-color: #ffd8c8;
+  background: linear-gradient(135deg, #ffffff 0%, #fff5ef 100%);
+}
+
+.mobile-baby-growth-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mobile-baby-growth-head strong {
+  color: #2f2f2f;
   font-size: 14px;
   font-weight: 900;
 }
 
-.mobile-baby-growth-list small {
-  grid-column: 1 / -1;
-  color: #777777;
-  line-height: 1.4;
-}
-
-.mobile-baby-birthday-tabs {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-.mobile-baby-birthday-tabs button {
-  display: flex;
-  min-width: 140px;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px;
-  border: 1px solid #ededed;
-  border-radius: 8px;
-  background: #ffffff;
-  text-align: left;
-}
-
-.mobile-baby-birthday-tabs button.active {
-  border-color: #ff9b73;
+.mobile-baby-growth-head span {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
   background: #fff0e8;
+  color: #ff6d3f;
+  font-size: 11px;
+  font-weight: 900;
 }
 
-.mobile-baby-birthday-tabs strong {
-  font-size: 14px;
-  line-height: 1.25;
+.mobile-baby-growth-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.mobile-baby-birthday-tabs span {
-  color: #888888;
+.mobile-baby-growth-metrics span {
+  padding: 8px 10px;
+  border: 1px solid rgba(47, 117, 101, 0.1);
+  border-radius: 8px;
+  background: #f3f8f5;
+  color: #2f7565;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-baby-growth-content p {
+  margin: 10px 0 0;
+  color: #6c625e;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.mobile-baby-album-strip {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding: 2px 0 4px;
+  scroll-snap-type: x proximity;
+}
+
+.mobile-baby-album-card {
+  position: relative;
+  display: flex;
+  min-width: min(78vw, 280px);
+  min-height: 154px;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(38, 52, 72, 0.08), rgba(38, 52, 72, 0.72)),
+    linear-gradient(135deg, #466d85 0%, #79a884 100%);
+  background-position: center;
+  background-size: cover;
+  color: #ffffff;
+  scroll-snap-align: start;
+  text-align: left;
+  box-shadow: 0 14px 28px rgba(62, 80, 94, 0.16);
+}
+
+.mobile-baby-album-card::before {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.62));
+  content: '';
+}
+
+.mobile-baby-album-card.active {
+  border-color: #ffb08c;
+  box-shadow:
+    0 0 0 3px rgba(255, 109, 63, 0.16),
+    0 16px 30px rgba(62, 80, 94, 0.18);
+}
+
+.mobile-baby-album-year,
+.mobile-baby-album-card strong,
+.mobile-baby-album-counts {
+  position: relative;
+  z-index: 1;
+}
+
+.mobile-baby-album-year {
+  align-self: flex-start;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.mobile-baby-album-card strong {
+  overflow-wrap: anywhere;
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.16;
+}
+
+.mobile-baby-album-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mobile-baby-album-counts small {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
   font-size: 12px;
   font-weight: 800;
+  line-height: 1;
 }
 
 .mobile-baby-birthday-detail {
@@ -4785,8 +4976,7 @@ body {
 }
 
 .dark .mobile-baby-summary-card,
-.dark .mobile-baby-growth-list article,
-.dark .mobile-baby-birthday-tabs button,
+.dark .mobile-baby-growth-timeline article .mobile-baby-growth-content,
 .dark .mobile-baby-wish-card,
 .dark .mobile-baby-composer-panel {
   border-color: rgba(255, 255, 255, 0.1);
@@ -4800,18 +4990,47 @@ body {
 .dark .mobile-baby-summary-main span,
 .dark .mobile-baby-section-title span,
 .dark .mobile-baby-summary-metrics small,
+.dark .mobile-baby-growth-content p,
 .dark .mobile-baby-wish-author small,
 .dark .mobile-baby-wish-card p {
   color: var(--mobile-muted);
 }
 
 .dark .mobile-baby-summary-metrics span,
+.dark .mobile-baby-growth-metrics span,
 .dark .mobile-baby-composer .adm-text-area {
   background: rgba(255, 255, 255, 0.08);
   color: var(--mobile-text);
 }
 
-.dark .mobile-baby-birthday-tabs button.active {
-  border-color: rgba(255, 155, 114, 0.36);
-  background: rgba(255, 109, 63, 0.14);
+.dark .mobile-baby-summary-more {
+  background: rgba(255, 109, 63, 0.16);
+  color: #ffb08c;
+}
+
+.dark .mobile-baby-growth-timeline::before {
+  background: linear-gradient(180deg, rgba(255, 155, 114, 0.78), rgba(122, 167, 255, 0.7));
+}
+
+.dark .mobile-baby-growth-node {
+  border-color: #101827;
+}
+
+.dark .mobile-baby-growth-timeline article.latest .mobile-baby-growth-content {
+  border-color: rgba(255, 155, 114, 0.22);
+  background: rgba(255, 109, 63, 0.1);
+}
+
+.dark .mobile-baby-growth-head strong {
+  color: var(--mobile-text);
+}
+
+.dark .mobile-baby-growth-head span {
+  background: rgba(255, 109, 63, 0.16);
+  color: #ffb08c;
+}
+
+.dark .mobile-baby-album-card.active {
+  border-color: rgba(255, 155, 114, 0.42);
+  box-shadow: 0 0 0 3px rgba(255, 109, 63, 0.14);
 }

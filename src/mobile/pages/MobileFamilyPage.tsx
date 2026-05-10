@@ -58,10 +58,8 @@ import {
   type MobileAppUpdateDeferredEvent,
 } from '@/mobile/pwa/appUpdate';
 import { MobileModuleMenu } from '../components/MobileModuleHeader';
-import {
-  getFamilyUserDisplayName,
-  MobileFamilyAvatar as FamilyAvatar,
-} from '../components/MobileFamilyAvatar';
+import { MobileFamilyAvatar as FamilyAvatar } from '../components/MobileFamilyAvatar';
+import { getFamilyUserDisplayName } from '../components/MobileFamilyAvatar.utils';
 import { logMobileDebugEvent } from '../debug/mobileDebug';
 import { MobileBabySummaryCard } from './MobileBabyPage';
 
@@ -1283,6 +1281,8 @@ export function MobileFamilyPage() {
           <MobileBabySummaryCard
             overview={babyOverviewQuery.data}
             onClick={() => navigate('/family/baby')}
+            compact
+            showMoreHint
           />
           {pendingPostEvents.length > 0 ? (
             <button

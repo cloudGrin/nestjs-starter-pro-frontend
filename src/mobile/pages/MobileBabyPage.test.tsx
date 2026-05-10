@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { MobileBabyPage } from './MobileBabyPage';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { MobileBabyBirthdayPage, MobileBabyPage } from './MobileBabyPage';
 import type { BabyOverview } from '@/features/family/types/family.types';
 
 const familyHooks = vi.hoisted(() => ({
@@ -44,6 +44,13 @@ const overview: BabyOverview = {
       measuredAt: '2026-05-01',
       heightCm: 61.5,
       weightKg: 6.8,
+      remark: '抬头更稳了',
+    },
+    {
+      id: 11,
+      measuredAt: '2026-04-01',
+      heightCm: 58.2,
+      weightKg: 5.9,
       remark: null,
     },
   ],
@@ -82,11 +89,33 @@ const overview: BabyOverview = {
   ],
 };
 
-function renderPage() {
+function LocationProbe() {
+  const location = useLocation();
+  return <span data-testid="mobile-location">{location.pathname}</span>;
+}
+
+function renderPage(initialEntry = '/family/baby') {
   return render(
-    <MemoryRouter initialEntries={['/family/baby']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/family/baby" element={<MobileBabyPage />} />
+        <Route
+          path="/family/baby"
+          element={
+            <>
+              <LocationProbe />
+              <MobileBabyPage />
+            </>
+          }
+        />
+        <Route
+          path="/family/baby/birthdays/:birthdayId"
+          element={
+            <>
+              <LocationProbe />
+              <MobileBabyBirthdayPage />
+            </>
+          }
+        />
       </Routes>
     </MemoryRouter>
   );
@@ -118,22 +147,29 @@ describe('MobileBabyPage', () => {
     vi.useRealTimers();
   });
 
-  it('opens a birthday album only after the user chooses it', () => {
-    renderPage();
+  it('opens a birthday album on its own detail route', () => {
+    const { container } = renderPage();
 
     expect(screen.getByText('小葡萄')).toBeInTheDocument();
     expect(screen.getByText('3 个月 9 天')).toBeInTheDocument();
     expect(screen.getAllByText('6.8 kg').length).toBeGreaterThan(0);
     expect(screen.getAllByText('61.5 cm').length).toBeGreaterThan(0);
     expect(screen.getByText('最近测量 2026-05-01')).toBeInTheDocument();
+    expect(container.querySelector('.mobile-baby-growth-timeline')).toBeInTheDocument();
+    expect(screen.getByText('最新记录')).toBeInTheDocument();
+    expect(screen.getByText('抬头更稳了')).toBeInTheDocument();
+    expect(screen.getByText('2026-04-01')).toBeInTheDocument();
+    expect(container.querySelector('.mobile-baby-album-strip')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /一周岁生日/ })).toBeInTheDocument();
     expect(screen.queryByText('愿你每天都开心')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '添加祝福' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /一周岁生日/ }));
 
-    expect(screen.getByText('1 张照片')).toBeInTheDocument();
-    expect(screen.getByText('1 条祝福')).toBeInTheDocument();
+    expect(screen.getByTestId('mobile-location')).toHaveTextContent('/family/baby/birthdays/21');
+    expect(screen.queryByText('成长记录')).not.toBeInTheDocument();
+    expect(screen.getAllByText('1 张照片').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1 条祝福').length).toBeGreaterThan(0);
     expect(screen.getByText('愿你每天都开心')).toBeInTheDocument();
     expect(screen.getByText('生日快乐呀')).toBeInTheDocument();
     expect(screen.getByText('妈').closest('.mobile-family-avatar')).toHaveClass(
@@ -142,6 +178,23 @@ describe('MobileBabyPage', () => {
       'text'
     );
     expect(screen.getByAltText('生日照片')).toHaveAttribute('src', '/birthday/photo.jpg');
+  });
+
+  it('shows an empty state when no growth records exist', () => {
+    familyHooks.useBabyOverview.mockReturnValue({
+      data: {
+        ...overview,
+        latestGrowthRecord: null,
+        growthRecords: [],
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.getByText('还没有成长记录')).toBeInTheDocument();
+    expect(screen.getByText('暂无测量记录')).toBeInTheDocument();
   });
 
   it('hides birthday album entry when no albums have been created', () => {
@@ -166,17 +219,19 @@ describe('MobileBabyPage', () => {
 
     expect(css).toContain('.mobile-baby-page');
     expect(css).toContain('.mobile-baby-summary-card');
+    expect(css).toContain('.mobile-baby-growth-timeline');
+    expect(css).toContain('.mobile-baby-album-strip');
     expect(css).toContain('.mobile-baby-composer-panel');
     expect(css).toContain('.dark .mobile-baby-page');
     expect(css).toContain('.dark .mobile-baby-summary-card');
+    expect(css).toContain('.dark .mobile-baby-growth-timeline article');
     expect(css).toContain('.dark .mobile-baby-composer .adm-text-area');
   });
 
   it('submits a birthday blessing with selected photos', async () => {
-    const { container } = renderPage();
+    const { container } = renderPage('/family/baby/birthdays/21');
     const file = new File(['image'], 'birthday.jpg', { type: 'image/jpeg' });
 
-    fireEvent.click(screen.getByRole('button', { name: /一周岁生日/ }));
     fireEvent.click(screen.getByRole('button', { name: '添加祝福' }));
     fireEvent.change(screen.getByPlaceholderText('写下生日祝福...'), {
       target: { value: '愿你健康快乐' },
