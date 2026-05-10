@@ -13,48 +13,14 @@
  * ```
  */
 
-import { useMemo, lazy, Suspense } from 'react';
+import { useMemo, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { generateRoutesWithDefault } from './generateRoutes';
+import { LoginPage, MainLayout, NotFoundPage, ProfilePage } from './routeLazyComponents';
 import { MenuLoadErrorPage, PageLoading } from './routeFallbacks';
 import { useUserMenus } from '@/features/rbac/menu/hooks/useMenus';
 import { ProtectedRoute } from '@/shared/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/features/auth/stores/authStore';
-
-// ==================== 特殊页面（不在菜单系统中）====================
-
-/**
- * 登录页面（公开访问）
- */
-const LoginPage = lazy(() =>
-  import('@/features/auth/pages/LoginPage').then((m) => ({
-    default: m.LoginPage,
-  }))
-);
-
-const ProfilePage = lazy(() =>
-  import('@/features/auth/pages/ProfilePage').then((m) => ({
-    default: m.ProfilePage,
-  }))
-);
-
-/**
- * 主布局组件
- */
-const MainLayout = lazy(() =>
-  import('@/shared/components/layouts/MainLayout').then((m) => ({
-    default: m.MainLayout,
-  }))
-);
-
-/**
- * 404 页面
- */
-const NotFoundPage = lazy(() =>
-  import('@/shared/pages/NotFoundPage').then((m) => ({
-    default: m.NotFoundPage,
-  }))
-);
 
 /**
  * Suspense 包装器

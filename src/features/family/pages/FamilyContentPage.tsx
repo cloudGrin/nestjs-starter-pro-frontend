@@ -236,7 +236,7 @@ export function FamilyContentPage() {
           rowKey="id"
           dataSource={postsQuery.data?.items ?? []}
           columns={postColumns}
-          loading={postsQuery.isLoading}
+          loading={postsQuery.isLoading || postsQuery.isFetching}
           scroll={{ x: 980 }}
           pagination={{
             current: postPagination.current,
@@ -256,7 +256,7 @@ export function FamilyContentPage() {
           rowKey="id"
           dataSource={chatQuery.data?.items ?? []}
           columns={chatColumns}
-          loading={chatQuery.isLoading}
+          loading={chatQuery.isLoading || chatQuery.isFetching}
           scroll={{ x: 720 }}
           pagination={{
             current: chatPagination.current,

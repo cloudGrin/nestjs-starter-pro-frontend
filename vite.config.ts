@@ -14,6 +14,8 @@ export default defineConfig({
       scope: '/m/',
       filename: 'mobile-sw.js',
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
         navigateFallback: '/m/index.html',
         navigateFallbackAllowlist: [/^\/m(?:\/.*)?$/],

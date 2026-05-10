@@ -84,6 +84,7 @@ import {
   groupTasksByCalendarDate,
   sortCalendarOccurrences,
 } from '@/features/task/utils/taskCalendar';
+import { getAnniversaryDisplay, sortAnniversaryTasks } from '@/features/task/utils/taskAnniversary';
 import {
   getTaskListShortcuts,
   pickDefaultTaskListId,
@@ -848,6 +849,21 @@ export function MobileTaskPage() {
               canDelete={canDelete}
               canComplete={canComplete}
             />
+          ) : view === 'anniversary' ? (
+            <AnniversaryTaskView
+              tasks={tasks}
+              lists={taskLists}
+              users={users}
+              loading={tasksQuery.isLoading}
+              onOpen={openTaskDetail}
+              onEdit={openEdit}
+              onToggleComplete={toggleComplete}
+              togglePendingTaskId={togglePendingTaskId}
+              onDelete={(task) => deleteTask.mutate(task.id)}
+              canUpdate={canUpdate}
+              canDelete={canDelete}
+              canComplete={canComplete}
+            />
           ) : (
             <TaskListView
               tasks={tasks}
@@ -1007,6 +1023,142 @@ function TaskDock({
       ))}
     </nav>
   );
+}
+
+function AnniversaryTaskView({
+  tasks,
+  lists,
+  users,
+  loading,
+  onOpen,
+  onEdit,
+  onToggleComplete,
+  togglePendingTaskId,
+  onDelete,
+  canUpdate,
+  canDelete,
+  canComplete,
+}: {
+  tasks: Task[];
+  lists: TaskList[];
+  users: TaskAssignee[];
+  loading?: boolean;
+  onOpen: (task: Task) => void;
+  onEdit: (task: Task) => void;
+  onToggleComplete: (task: Task) => void;
+  togglePendingTaskId?: number;
+  onDelete: (task: Task) => void;
+  canUpdate: boolean;
+  canDelete: boolean;
+  canComplete: boolean;
+}) {
+  const sortedTasks = useMemo(() => sortAnniversaryTasks(tasks), [tasks]);
+
+  if (loading) {
+    return <Card className="mobile-task-list-card">加载中...</Card>;
+  }
+
+  if (sortedTasks.length === 0) {
+    return <MobileEmptyState title="暂无纪念日" />;
+  }
+
+  return (
+    <div className="mobile-anniversary-list">
+      {sortedTasks.map((task) => (
+        <AnniversaryTaskCard
+          key={task.id}
+          task={task}
+          lists={lists}
+          users={users}
+          onOpen={onOpen}
+          onEdit={canUpdate ? onEdit : undefined}
+          onToggleComplete={onToggleComplete}
+          togglePending={togglePendingTaskId === task.id}
+          onDelete={canDelete ? onDelete : undefined}
+          canToggleComplete={task.status === 'completed' ? canUpdate : canComplete}
+        />
+      ))}
+    </div>
+  );
+}
+
+function AnniversaryTaskCard({
+  task,
+  lists,
+  users,
+  onOpen,
+  onEdit,
+  onToggleComplete,
+  togglePending,
+  onDelete,
+  canToggleComplete = true,
+}: {
+  task: Task;
+  lists: TaskList[];
+  users: TaskAssignee[];
+  onOpen: (task: Task) => void;
+  onEdit?: (task: Task) => void;
+  onToggleComplete: (task: Task) => void;
+  togglePending?: boolean;
+  onDelete?: (task: Task) => void;
+  canToggleComplete?: boolean;
+}) {
+  const list = getTaskList(task, lists);
+  const assignee = getTaskAssignee(task, users);
+  const display = getAnniversaryDisplay(task);
+  const isCompleted = task.status === 'completed';
+  const content = (
+    <div
+      className={`mobile-anniversary-card${isCompleted ? ' completed' : ''}`}
+      data-testid={`mobile-anniversary-card-${task.id}`}
+      onClick={() => onOpen(task)}
+    >
+      <div className="mobile-anniversary-card-header">
+        <div>
+          <span>最近一次</span>
+          <strong>{display.nextDateLabel}</strong>
+        </div>
+        <i>{display.yearsText}</i>
+      </div>
+      <div className="mobile-anniversary-card-main">
+        <div className="mobile-anniversary-card-title">
+          <h2>{task.title}</h2>
+          <span>原始日期 {display.sourceDateLabel}</span>
+        </div>
+        <div className="mobile-anniversary-countdown">{display.countdownText}</div>
+      </div>
+      <div className="mobile-anniversary-card-footer">
+        <Checkbox
+          checked={isCompleted}
+          disabled={togglePending || !canToggleComplete}
+          onClick={(event: MouseEvent) => event.stopPropagation()}
+          onChange={() => {
+            if (canToggleComplete) {
+              onToggleComplete(task);
+            }
+          }}
+        >
+          {isCompleted ? '已完成' : '待纪念'}
+        </Checkbox>
+        <span>{[list?.name, getUserName(assignee)].filter(Boolean).join(' · ')}</span>
+      </div>
+    </div>
+  );
+
+  const rightActions = [
+    ...(onEdit
+      ? [{ key: 'edit', text: '编辑', color: 'primary' as const, onClick: () => onEdit(task) }]
+      : []),
+    ...(onDelete
+      ? [{ key: 'delete', text: '删除', color: 'danger' as const, onClick: () => onDelete(task) }]
+      : []),
+  ];
+
+  if (rightActions.length === 0) {
+    return content;
+  }
+
+  return <SwipeAction rightActions={rightActions}>{content}</SwipeAction>;
 }
 
 function TaskListView({

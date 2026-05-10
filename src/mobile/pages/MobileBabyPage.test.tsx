@@ -118,7 +118,7 @@ describe('MobileBabyPage', () => {
     vi.useRealTimers();
   });
 
-  it('shows baby status with friendly birthday album and blessing sections', () => {
+  it('opens a birthday album only after the user chooses it', () => {
     renderPage();
 
     expect(screen.getByText('小葡萄')).toBeInTheDocument();
@@ -126,12 +126,34 @@ describe('MobileBabyPage', () => {
     expect(screen.getAllByText('6.8 kg').length).toBeGreaterThan(0);
     expect(screen.getAllByText('61.5 cm').length).toBeGreaterThan(0);
     expect(screen.getByText('最近测量 2026-05-01')).toBeInTheDocument();
-    expect(screen.getAllByText('一周岁生日').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /一周岁生日/ })).toBeInTheDocument();
+    expect(screen.queryByText('愿你每天都开心')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '添加祝福' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /一周岁生日/ }));
+
     expect(screen.getByText('1 张照片')).toBeInTheDocument();
     expect(screen.getByText('1 条祝福')).toBeInTheDocument();
     expect(screen.getByText('愿你每天都开心')).toBeInTheDocument();
     expect(screen.getByText('生日快乐呀')).toBeInTheDocument();
     expect(screen.getByAltText('生日照片')).toHaveAttribute('src', '/birthday/photo.jpg');
+  });
+
+  it('hides birthday album entry when no albums have been created', () => {
+    familyHooks.useBabyOverview.mockReturnValue({
+      data: {
+        ...overview,
+        birthdays: [],
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.queryByText('生日合辑')).not.toBeInTheDocument();
+    expect(screen.queryByText('请先在后台创建生日合辑')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '添加祝福' })).not.toBeInTheDocument();
   });
 
   it('defines mobile baby styles for light and dark mode', () => {
@@ -149,6 +171,7 @@ describe('MobileBabyPage', () => {
     const { container } = renderPage();
     const file = new File(['image'], 'birthday.jpg', { type: 'image/jpeg' });
 
+    fireEvent.click(screen.getByRole('button', { name: /一周岁生日/ }));
     fireEvent.click(screen.getByRole('button', { name: '添加祝福' }));
     fireEvent.change(screen.getByPlaceholderText('写下生日祝福...'), {
       target: { value: '愿你健康快乐' },

@@ -145,10 +145,12 @@ vi.mock('antd', () => {
     Table: ({
       columns,
       dataSource,
+      loading,
       pagination,
     }: {
       columns: any[];
       dataSource: Array<Record<string, any>>;
+      loading?: boolean;
       pagination?:
         | false
         | {
@@ -158,6 +160,7 @@ vi.mock('antd', () => {
           };
     }) => (
       <div>
+        {loading ? <span>加载中</span> : null}
         {dataSource.map((record) => (
           <article key={record.id} data-testid={`row-${record.id}`}>
             {columns.map((column) => {
@@ -211,6 +214,8 @@ describe('FamilyContentPage', () => {
     vi.clearAllMocks();
     hookMocks.postsResult.data.meta.totalItems = 1;
     hookMocks.chatResult.data.meta.totalItems = 1;
+    hookMocks.postsResult.isFetching = false;
+    hookMocks.chatResult.isFetching = false;
     hookMocks.useFamilyPosts.mockReturnValue(hookMocks.postsResult);
     hookMocks.useFamilyChatMessages.mockReturnValue(hookMocks.chatResult);
   });
@@ -267,5 +272,22 @@ describe('FamilyContentPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '第 2 页' }));
 
     expect(hookMocks.useFamilyChatMessages).toHaveBeenLastCalledWith({ page: 2, limit: 100 });
+  });
+
+  it('keeps the post table loading while fetching a new page', () => {
+    hookMocks.postsResult.isFetching = true;
+
+    render(<FamilyContentPage />);
+
+    expect(screen.getByText('加载中')).toBeInTheDocument();
+  });
+
+  it('keeps the chat table loading while fetching a new page', () => {
+    hookMocks.chatResult.isFetching = true;
+
+    render(<FamilyContentPage />);
+    fireEvent.click(screen.getByRole('button', { name: '群聊' }));
+
+    expect(screen.getByText('加载中')).toBeInTheDocument();
   });
 });

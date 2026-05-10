@@ -284,13 +284,8 @@ export function MobileBabyPage() {
   const [uploading, setUploading] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (selectedBirthdayId || birthdays.length === 0) return;
-    setSelectedBirthdayId(birthdays[0].id);
-  }, [birthdays, selectedBirthdayId]);
-
   const selectedBirthday = useMemo(
-    () => birthdays.find((item) => item.id === selectedBirthdayId) ?? birthdays[0],
+    () => birthdays.find((item) => item.id === selectedBirthdayId),
     [birthdays, selectedBirthdayId]
   );
 
@@ -367,14 +362,12 @@ export function MobileBabyPage() {
         </div>
       </section>
 
-      <section className="mobile-baby-section">
-        <div className="mobile-baby-section-title">
-          <h2>生日合辑</h2>
-          <span>{birthdays.length} 年</span>
-        </div>
-        {birthdays.length === 0 ? (
-          <Empty description="请先在后台创建生日合辑" />
-        ) : (
+      {birthdays.length > 0 ? (
+        <section className="mobile-baby-section">
+          <div className="mobile-baby-section-title">
+            <h2>生日合辑</h2>
+            <span>{birthdays.length} 年</span>
+          </div>
           <div className="mobile-baby-birthday-tabs">
             {birthdays.map((birthday) => (
               <button
@@ -388,8 +381,8 @@ export function MobileBabyPage() {
               </button>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      ) : null}
 
       {selectedBirthday ? (
         <section className="mobile-baby-birthday-detail">

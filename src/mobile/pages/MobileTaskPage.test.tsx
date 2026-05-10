@@ -1,6 +1,7 @@
 import { MemoryRouter } from 'react-router-dom';
+import { readFileSync } from 'node:fs';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MobileTaskPage, TaskEditorPopup } from './MobileTaskPage';
 import type { Task } from '@/features/task/types/task.types';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -99,6 +100,15 @@ function renderPage(initialPath = '/tasks') {
   );
 }
 
+function readMobileCss() {
+  return readFileSync('src/mobile/styles.css', 'utf8');
+}
+
+function cssRule(selector: string) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return readMobileCss().match(new RegExp(`${escapedSelector} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? '';
+}
+
 describe('MobileTaskPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -137,6 +147,10 @@ describe('MobileTaskPage', () => {
     taskHooks.useDeleteTaskList.mockReturnValue({ mutate, isPending: false });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('defaults /m/tasks to the today task view', async () => {
     renderPage();
 
@@ -167,6 +181,17 @@ describe('MobileTaskPage', () => {
       )
     );
     expect(screen.getByRole('heading', { name: /月/ })).toBeInTheDocument();
+  });
+
+  it('keeps the add task button above the standalone app bottom dock', () => {
+    const css = readMobileCss();
+    const baseFabIndex = css.indexOf('.mobile-fab {');
+    const taskFabIndex = css.indexOf('.mobile-fab.mobile-task-fab {');
+
+    expect(taskFabIndex).toBeGreaterThan(baseFabIndex);
+    expect(cssRule('.mobile-fab.mobile-task-fab')).toContain(
+      'bottom: calc(86px + env(safe-area-inset-bottom));'
+    );
   });
 
   it('shows all four matrix quadrants at the same time', () => {
@@ -231,6 +256,41 @@ describe('MobileTaskPage', () => {
         expect.any(Object)
       )
     );
+  });
+
+  it('renders anniversary cards with the upcoming countdown', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'));
+    taskHooks.useTasks.mockReturnValue({
+      data: {
+        items: [
+          {
+            ...baseTask,
+            id: 77,
+            title: '结婚纪念日',
+            taskType: 'anniversary',
+            dueAt: '2020-05-20T00:00:00.000Z',
+            remindAt: null,
+            recurrenceType: 'yearly',
+            continuousReminderEnabled: false,
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 100,
+      },
+      isLoading: false,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    });
+
+    renderPage('/tasks?view=anniversary');
+
+    expect(screen.getByTestId('mobile-anniversary-card-77')).toBeInTheDocument();
+    expect(screen.getByText('结婚纪念日')).toBeInTheDocument();
+    expect(screen.getByText('还有 10 天')).toBeInTheDocument();
+    expect(screen.getByText('2026-05-20')).toBeInTheDocument();
+    expect(screen.getByText('原始日期 2020-05-20')).toBeInTheDocument();
+    expect(screen.getByText('6 周年')).toBeInTheDocument();
   });
 
   it('submits mobile checklist items in the reordered display order', async () => {

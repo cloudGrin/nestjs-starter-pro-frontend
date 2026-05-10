@@ -52,7 +52,13 @@ import type {
   FamilyUserSummary,
 } from '@/features/family/types/family.types';
 import { useAuthStore } from '@/features/auth/stores/authStore';
+import {
+  MOBILE_APP_UPDATE_DEFERRED_EVENT,
+  setMobileAppReloadBlocked,
+  type MobileAppUpdateDeferredEvent,
+} from '@/mobile/pwa/appUpdate';
 import { MobileModuleMenu } from '../components/MobileModuleHeader';
+import { logMobileDebugEvent } from '../debug/mobileDebug';
 import { MobileBabySummaryCard } from './MobileBabyPage';
 
 interface DraftMediaItem {
@@ -879,6 +885,7 @@ function FamilyPostCard({
   commentInputRef,
   onCommentBlur,
   onCommentDraftChange,
+  onCommentSubmitPressStart,
   onReplyComment,
   onSubmitComment,
   onToggleComment,
@@ -893,6 +900,7 @@ function FamilyPostCard({
   commentInputRef?: RefObject<HTMLDivElement>;
   onCommentBlur: (event: FocusEvent<HTMLDivElement>) => void;
   onCommentDraftChange: (value: string) => void;
+  onCommentSubmitPressStart: () => void;
   onReplyComment: (comment: FamilyPostComment) => void;
   onSubmitComment: () => void;
   onToggleComment: () => void;
@@ -956,7 +964,14 @@ function FamilyPostCard({
         </div>
       ) : null}
       {commentOpen ? (
-        <div className="mobile-family-inline-comment" ref={commentInputRef} onBlur={onCommentBlur}>
+        <div
+          className="mobile-family-inline-comment"
+          ref={commentInputRef}
+          onBlur={onCommentBlur}
+          onMouseDownCapture={onCommentSubmitPressStart}
+          onPointerDownCapture={onCommentSubmitPressStart}
+          onTouchStartCapture={onCommentSubmitPressStart}
+        >
           <TextArea
             value={commentDraft}
             placeholder={commentPlaceholder}
@@ -964,9 +979,16 @@ function FamilyPostCard({
             autoSize={{ minRows: 1, maxRows: 3 }}
             onChange={onCommentDraftChange}
           />
-          <Button size="small" loading={commentSubmitting} onClick={onSubmitComment}>
-            发送
-          </Button>
+          <span
+            className="mobile-family-inline-comment-submit"
+            onMouseDown={onCommentSubmitPressStart}
+            onPointerDown={onCommentSubmitPressStart}
+            onTouchStart={onCommentSubmitPressStart}
+          >
+            <Button size="small" loading={commentSubmitting} onClick={onSubmitComment}>
+              发送
+            </Button>
+          </span>
         </div>
       ) : null}
     </article>
@@ -997,8 +1019,18 @@ export function MobileFamilyPage() {
   const [pendingPostEvents, setPendingPostEvents] = useState<FamilyPostCreatedEvent[]>([]);
   const [loadingPendingPosts, setLoadingPendingPosts] = useState(false);
   const commentInputRef = useRef<HTMLDivElement>(null);
+  const commentSubmitPressRef = useRef(false);
+  const commentSubmitPressTimerRef = useRef<number | null>(null);
   const pendingPostPrompt = formatNewPostPrompt(pendingPostEvents);
   const chatUnreadBadge = formatUnreadBadge(familyReadState?.unreadChatMessages);
+
+  const clearCommentSubmitPress = () => {
+    commentSubmitPressRef.current = false;
+    if (commentSubmitPressTimerRef.current !== null && typeof window !== 'undefined') {
+      window.clearTimeout(commentSubmitPressTimerRef.current);
+      commentSubmitPressTimerRef.current = null;
+    }
+  };
 
   const handlePostCreated = useCallback(
     (event: FamilyPostCreatedEvent) => {
@@ -1033,6 +1065,8 @@ export function MobileFamilyPage() {
     const frame = window.requestAnimationFrame(focusInput);
     return () => window.cancelAnimationFrame(frame);
   }, [commentTarget]);
+
+  useEffect(() => clearCommentSubmitPress, []);
 
   if (searchParams.get('tab') === 'chat') {
     return <Navigate to="/family/chat" replace />;
@@ -1106,12 +1140,14 @@ export function MobileFamilyPage() {
     const nextTarget = { postId };
     setCommentTarget((current) => {
       if (sameCommentTarget(current, nextTarget)) {
+        logMobileDebugEvent('family.comment.close.toggle', { postId });
         return null;
       }
       if (!sameCommentTarget(commentDraftTarget, nextTarget)) {
         setCommentDraft('');
       }
       setCommentDraftTarget(nextTarget);
+      logMobileDebugEvent('family.comment.open', { postId });
       return nextTarget;
     });
   };
@@ -1127,6 +1163,11 @@ export function MobileFamilyPage() {
     }
     setCommentDraftTarget(nextTarget);
     setCommentTarget(nextTarget);
+    logMobileDebugEvent('family.comment.reply.open', {
+      postId,
+      parentCommentId: comment.id,
+      replyToUserId: comment.authorId,
+    });
   };
 
   const handleCommentDraftChange = (value: string) => {
@@ -1138,26 +1179,80 @@ export function MobileFamilyPage() {
 
   const closeCommentOnBlur = (event: FocusEvent<HTMLDivElement>) => {
     const nextFocused = event.relatedTarget;
-    if (nextFocused && event.currentTarget.contains(nextFocused as Node)) return;
+    if (nextFocused && event.currentTarget.contains(nextFocused as Node)) {
+      logMobileDebugEvent('family.comment.blur.keep-inside', {
+        postId: commentTarget?.postId ?? 0,
+      });
+      return;
+    }
+    if (commentSubmitPressRef.current) {
+      logMobileDebugEvent('family.comment.blur.keep-submit', {
+        postId: commentTarget?.postId ?? 0,
+        hasRelatedTarget: Boolean(nextFocused),
+      });
+      return;
+    }
+    logMobileDebugEvent('family.comment.blur.close', {
+      postId: commentTarget?.postId ?? 0,
+      hasRelatedTarget: Boolean(nextFocused),
+    });
     setCommentTarget(null);
+  };
+
+  const holdCommentOpenForSubmit = () => {
+    if (!commentTarget) return;
+
+    commentSubmitPressRef.current = true;
+    if (typeof window !== 'undefined') {
+      if (commentSubmitPressTimerRef.current !== null) {
+        window.clearTimeout(commentSubmitPressTimerRef.current);
+      }
+      commentSubmitPressTimerRef.current = window.setTimeout(() => {
+        commentSubmitPressRef.current = false;
+        commentSubmitPressTimerRef.current = null;
+      }, 800);
+    }
+    logMobileDebugEvent('family.comment.submit.press', { postId: commentTarget.postId });
   };
 
   const submitComment = async (postId: number) => {
     const content = commentDraft.trim();
-    if (!content) return;
+    if (!content) {
+      logMobileDebugEvent('family.comment.submit.skip-empty', { postId });
+      clearCommentSubmitPress();
+      return;
+    }
     const target = commentTarget?.postId === postId ? commentTarget : null;
 
     try {
+      logMobileDebugEvent('family.comment.submit.start', {
+        postId,
+        parentCommentId: target?.parentCommentId ?? null,
+        contentLength: content.length,
+      });
       await createComment.mutateAsync({
         postId,
         content,
         ...(target?.parentCommentId ? { parentCommentId: target.parentCommentId } : {}),
       });
+      logMobileDebugEvent('family.comment.submit.success', {
+        postId,
+        parentCommentId: target?.parentCommentId ?? null,
+        contentLength: content.length,
+      });
       setCommentDraft('');
       setCommentDraftTarget(null);
       setCommentTarget(null);
-    } catch {
+    } catch (error) {
+      logMobileDebugEvent('family.comment.submit.failure', {
+        postId,
+        parentCommentId: target?.parentCommentId ?? null,
+        contentLength: content.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
       Toast.show({ icon: 'fail', content: '评论失败', position: 'center' });
+    } finally {
+      clearCommentSubmitPress();
     }
   };
 
@@ -1243,6 +1338,7 @@ export function MobileFamilyPage() {
                 commentInputRef={commentTarget?.postId === item.id ? commentInputRef : undefined}
                 onCommentBlur={closeCommentOnBlur}
                 onCommentDraftChange={handleCommentDraftChange}
+                onCommentSubmitPressStart={holdCommentOpenForSubmit}
                 onReplyComment={(comment) => replyToComment(item.id, comment)}
                 onSubmitComment={() => void submitComment(item.id)}
                 onToggleComment={() => toggleComment(item.id)}
@@ -1481,6 +1577,7 @@ export function MobileFamilyChatPage() {
   const [pendingChatMessageIds, setPendingChatMessageIds] = useState<number[]>([]);
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
   const latestMessageIdRef = useRef<number | null>(null);
+  const appUpdateDialogOpenRef = useRef(false);
 
   const messages = useMemo(
     () =>
@@ -1492,6 +1589,7 @@ export function MobileFamilyChatPage() {
   const latestMessageId = useMemo(() => getLatestMessageId(messages), [messages]);
   const submitting = uploading || createChatMessage.isPending;
   const hasSendableContent = messageText.trim().length > 0 || draft.items.length > 0;
+  const shouldBlockAppReload = hasSendableContent || submitting;
   const canSend = hasSendableContent && !submitting;
   const previewItems = draft.items.map((item) => ({
     id: item.id,
@@ -1503,6 +1601,41 @@ export function MobileFamilyChatPage() {
   useEffect(() => {
     latestMessageIdRef.current = latestMessageId;
   }, [latestMessageId]);
+
+  useEffect(() => {
+    setMobileAppReloadBlocked(shouldBlockAppReload);
+
+    return () => {
+      setMobileAppReloadBlocked(false);
+    };
+  }, [shouldBlockAppReload]);
+
+  useEffect(() => {
+    const handleDeferredUpdate = (event: Event) => {
+      const reload = (event as MobileAppUpdateDeferredEvent).detail?.reload;
+
+      if (!reload || appUpdateDialogOpenRef.current) {
+        return;
+      }
+
+      appUpdateDialogOpenRef.current = true;
+      void Dialog.confirm({
+        title: '新版本已就绪',
+        content: '当前有未发送的群聊内容，立即刷新会丢失草稿。可以先发送或清空草稿后再刷新。',
+        cancelText: '稍后',
+        confirmText: '仍然刷新',
+        onConfirm: reload,
+      }).finally(() => {
+        appUpdateDialogOpenRef.current = false;
+      });
+    };
+
+    window.addEventListener(MOBILE_APP_UPDATE_DEFERRED_EVENT, handleDeferredUpdate);
+
+    return () => {
+      window.removeEventListener(MOBILE_APP_UPDATE_DEFERRED_EVENT, handleDeferredUpdate);
+    };
+  }, []);
 
   const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     const list = chatListRef.current;

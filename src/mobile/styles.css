@@ -377,6 +377,101 @@ body {
   box-shadow: none;
 }
 
+.mobile-anniversary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-anniversary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid rgba(244, 114, 182, 0.26);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 241, 242, 0.92) 48%),
+    linear-gradient(315deg, rgba(219, 234, 254, 0.72), rgba(255, 255, 255, 0));
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+.mobile-anniversary-card.completed {
+  opacity: 0.68;
+}
+
+.mobile-anniversary-card-header,
+.mobile-anniversary-card-main,
+.mobile-anniversary-card-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mobile-anniversary-card-header span,
+.mobile-anniversary-card-title span {
+  display: block;
+  color: var(--mobile-muted);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.mobile-anniversary-card-header strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--mobile-text);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.mobile-anniversary-card-header i {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0369a1;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mobile-anniversary-card-title {
+  min-width: 0;
+}
+
+.mobile-anniversary-card-title h2 {
+  margin: 0 0 7px;
+  overflow-wrap: anywhere;
+  color: var(--mobile-text);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.mobile-anniversary-countdown {
+  flex: 0 0 auto;
+  color: #e11d48;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mobile-anniversary-card-footer {
+  align-items: center;
+  color: var(--mobile-muted);
+  font-size: 12px;
+}
+
+.mobile-anniversary-card-footer > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .mobile-task-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -519,13 +614,6 @@ body {
 
 .mobile-insurance-dock {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.mobile-task-fab {
-  right: 22px;
-  bottom: calc(86px + env(safe-area-inset-bottom));
-  width: 58px;
-  height: 58px;
 }
 
 .mobile-task-empty {
@@ -1793,6 +1881,13 @@ body {
   box-shadow: 0 10px 24px rgba(47, 111, 237, 0.3);
 }
 
+.mobile-fab.mobile-task-fab {
+  right: 22px;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  width: 58px;
+  height: 58px;
+}
+
 .mobile-popup-body {
   max-height: 82vh;
   overflow-y: auto;
@@ -2771,6 +2866,7 @@ body {
 }
 
 .dark .mobile-task-list-card,
+.dark .mobile-anniversary-card,
 .dark .mobile-calendar-selected-card,
 .dark .mobile-matrix-panel,
 .dark .mobile-task-detail-meta-card,
@@ -2787,6 +2883,23 @@ body {
 .dark .mobile-editor-section {
   background: var(--mobile-card);
   color: var(--mobile-text);
+}
+
+.dark .mobile-anniversary-card {
+  border-color: rgba(244, 114, 182, 0.24);
+  background:
+    linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(63, 42, 58, 0.86) 48%),
+    linear-gradient(315deg, rgba(30, 64, 175, 0.28), rgba(15, 23, 42, 0));
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+}
+
+.dark .mobile-anniversary-card-header i {
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+}
+
+.dark .mobile-anniversary-countdown {
+  color: #fb7185;
 }
 
 .dark .mobile-module-menu {
@@ -3318,6 +3431,11 @@ body {
 .mobile-family-inline-comment .adm-button {
   flex: 0 0 auto;
   border-radius: 999px;
+}
+
+.mobile-family-inline-comment-submit {
+  display: inline-flex;
+  flex: 0 0 auto;
 }
 
 .mobile-family-compose-fab {

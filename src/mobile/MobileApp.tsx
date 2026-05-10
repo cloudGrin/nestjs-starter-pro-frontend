@@ -9,6 +9,7 @@ import { ErrorBoundary } from '@/shared/components/error/ErrorBoundary';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { MobileProviders } from './MobileProviders';
 import { MobileShell } from './MobileShell';
+import { MobileDebugPanel } from './debug/MobileDebugPanel';
 import { MobileInsuranceDetailPage } from './pages/MobileInsuranceDetailPage';
 import { MobileInsurancePage } from './pages/MobileInsurancePage';
 import { MobileBabyPage } from './pages/MobileBabyPage';
@@ -25,13 +26,14 @@ import { MobileTaskDetailPage } from './pages/MobileTaskDetailPage';
 import { MobileTaskPage } from './pages/MobileTaskPage';
 import { DEFAULT_MOBILE_HOME_PATH } from './routes';
 
-function MobileProtectedRoute() {
+export function MobileProtectedRoute() {
   const location = useLocation();
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
+  const from = `${location.pathname}${location.search}${location.hash}`;
 
   if (!token || !user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return <Navigate to="/login" replace state={{ from }} />;
   }
 
   return <Outlet />;
@@ -79,6 +81,7 @@ function MobileApp() {
     <ErrorBoundary>
       <MobileProviders>
         <RouterProvider router={router} />
+        <MobileDebugPanel />
       </MobileProviders>
     </ErrorBoundary>
   );

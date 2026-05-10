@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Dialog } from 'antd-mobile';
 import {
   MobileFamilyChatPage,
   MobileFamilyComposePage,
@@ -10,6 +11,7 @@ import {
 } from './MobileFamilyPage';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import type { FamilyChatMessage, FamilyPost } from '@/features/family/types/family.types';
+import { requestMobileAppReload, setMobileAppReloadBlocked } from '@/mobile/pwa/appUpdate';
 
 const familyHooks = vi.hoisted(() => ({
   familyQueryKeys: {
@@ -47,6 +49,10 @@ const familyServiceMocks = vi.hoisted(() => ({
     getChatMessages: vi.fn(),
     uploadFamilyMedia: vi.fn(),
   },
+}));
+
+const mobileUiMocks = vi.hoisted(() => ({
+  dialogConfirm: vi.fn((_options?: unknown) => Promise.resolve(false)),
 }));
 
 vi.mock('antd-mobile', async (importOriginal) => {
@@ -198,6 +204,9 @@ function createDeferred<T>() {
 describe('MobileFamilyPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setMobileAppReloadBlocked(false);
+    mobileUiMocks.dialogConfirm.mockResolvedValue(false);
+    vi.spyOn(Dialog, 'confirm').mockImplementation(mobileUiMocks.dialogConfirm);
     refetch.mockResolvedValue({ data: { items: [post], meta: { totalItems: 1 } } });
     babyRefetch.mockResolvedValue(undefined);
     familyHooks.useFamilyPosts.mockReturnValue({
@@ -751,6 +760,27 @@ describe('MobileFamilyPage', () => {
     );
   });
 
+  it('keeps the inline comment active when tapping send blurs the textarea first', async () => {
+    renderPage('/family');
+
+    fireEvent.click(screen.getByRole('button', { name: /评论/ }));
+    const input = screen.getByPlaceholderText('说点什么吧...') as HTMLTextAreaElement;
+    fireEvent.change(input, {
+      target: { value: '移动端点发送' },
+    });
+    const sendButton = screen.getByRole('button', { name: '发送' });
+
+    fireEvent.pointerDown(sendButton);
+    fireEvent.blur(input, { relatedTarget: null });
+
+    expect(screen.getByRole('button', { name: '发送' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+
+    await waitFor(() =>
+      expect(createComment).toHaveBeenCalledWith({ postId: 1, content: '移动端点发送' })
+    );
+  });
+
   it('closes the comment input on blur and keeps the draft for reopening', async () => {
     renderPage('/family');
 
@@ -983,5 +1013,76 @@ describe('MobileFamilyPage', () => {
     await waitFor(() =>
       expect(createMessage).toHaveBeenCalledWith({ content: '看图片', mediaFileIds: [901] })
     );
+  });
+
+  it('defers mobile app reload while chat has an unsent text draft', async () => {
+    renderPage('/family/chat');
+    fireEvent.change(screen.getByPlaceholderText('给家里人发消息'), {
+      target: { value: '先别刷新' },
+    });
+
+    const reload = vi.fn();
+    requestMobileAppReload(reload);
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(mobileUiMocks.dialogConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '新版本已就绪',
+        content: expect.stringContaining('未发送的群聊内容'),
+        cancelText: '稍后',
+        confirmText: '仍然刷新',
+      })
+    );
+  });
+
+  it('defers mobile app reload while chat has selected media draft', async () => {
+    const { container } = renderPage('/family/chat');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, {
+      target: {
+        files: [new File(['x'], 'draft.jpg', { type: 'image/jpeg' })],
+      },
+    });
+    await screen.findByLabelText(/移除 draft.jpg/);
+
+    const reload = vi.fn();
+    requestMobileAppReload(reload);
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(mobileUiMocks.dialogConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs deferred mobile app reload when user confirms despite chat draft', async () => {
+    mobileUiMocks.dialogConfirm.mockImplementation((options: { onConfirm?: () => void }) => {
+      options.onConfirm?.();
+      return Promise.resolve(true);
+    });
+    renderPage('/family/chat');
+    fireEvent.change(screen.getByPlaceholderText('给家里人发消息'), {
+      target: { value: '仍然刷新' },
+    });
+
+    const reload = vi.fn();
+    requestMobileAppReload(reload);
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows mobile app reload after chat draft is sent and cleared', async () => {
+    renderPage('/family/chat');
+    fireEvent.change(screen.getByPlaceholderText('给家里人发消息'), {
+      target: { value: '发送后刷新' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /发送/ }));
+
+    await waitFor(() =>
+      expect(createMessage).toHaveBeenCalledWith({ content: '发送后刷新', mediaFileIds: [] })
+    );
+    await waitFor(() => expect(screen.getByPlaceholderText('给家里人发消息')).toHaveValue(''));
+
+    const reload = vi.fn();
+    requestMobileAppReload(reload);
+
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });

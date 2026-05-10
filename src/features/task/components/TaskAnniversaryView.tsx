@@ -1,8 +1,8 @@
-import dayjs from 'dayjs';
-import { Card, Empty, List, Space, Tag } from 'antd';
-import { formatDate } from '@/shared/utils';
+import { useMemo } from 'react';
+import { Card, Empty, Space, Tag } from 'antd';
 import type { PaginatedResult, Task, TaskActionPending } from '../types/task.types';
 import { TaskQuickActions } from './TaskQuickActions';
+import { getAnniversaryDisplay, sortAnniversaryTasks } from '../utils/taskAnniversary';
 
 interface TaskAnniversaryViewProps {
   data?: PaginatedResult<Task>;
@@ -15,23 +15,6 @@ interface TaskAnniversaryViewProps {
   actionPending?: TaskActionPending | null;
 }
 
-function getCountdownText(date?: string | null) {
-  if (!date) {
-    return '未设置日期';
-  }
-
-  const target = dayjs(date).startOf('day');
-  const diffDays = target.diff(dayjs().startOf('day'), 'day');
-
-  if (diffDays === 0) {
-    return '今天';
-  }
-  if (diffDays > 0) {
-    return `还有 ${diffDays} 天`;
-  }
-  return `已过 ${Math.abs(diffDays)} 天`;
-}
-
 export function TaskAnniversaryView({
   data,
   loading,
@@ -42,49 +25,67 @@ export function TaskAnniversaryView({
   onDelete,
   actionPending,
 }: TaskAnniversaryViewProps) {
-  const tasks = data?.items ?? [];
+  const tasks = useMemo(() => sortAnniversaryTasks(data?.items ?? []), [data?.items]);
 
   return (
-    <Card loading={loading}>
+    <Card loading={loading} data-testid="task-anniversary-view">
       {tasks.length === 0 && !loading ? (
         <Empty description="暂无纪念日" />
       ) : (
-        <List
-          dataSource={tasks}
-          renderItem={(task) => (
-            <List.Item
-              actions={[
-                <TaskQuickActions
-                  key="actions"
-                  task={task}
-                  onEdit={onEdit}
-                  onComplete={onComplete}
-                  onReopen={onReopen}
-                  onSnooze={onSnooze}
-                  onDelete={onDelete}
-                  actionPending={actionPending}
-                />,
-              ]}
-            >
-              <List.Item.Meta
-                title={
-                  <Space>
-                    <span className="font-medium">{task.title}</span>
-                    <Tag color="volcano">{getCountdownText(task.dueAt)}</Tag>
-                  </Space>
-                }
-                description={
-                  <Space size={[8, 4]} wrap>
-                    <span>日期：{formatDate.date(task.dueAt)}</span>
-                    <span>提醒：{formatDate.full(task.remindAt)}</span>
-                    <span>重复：{task.recurrenceType}</span>
-                    {task.continuousReminderEnabled ? <Tag>持续提醒</Tag> : null}
-                  </Space>
-                }
-              />
-            </List.Item>
-          )}
-        />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {tasks.map((task, index) => {
+            const display = getAnniversaryDisplay(task);
+            const featured = index === 0;
+
+            return (
+              <section
+                key={task.id}
+                data-testid={`task-anniversary-card-${task.id}`}
+                className={[
+                  'rounded-lg border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md',
+                  featured
+                    ? 'border-rose-200 bg-gradient-to-br from-rose-50 via-white to-sky-50'
+                    : 'border-slate-200 bg-white',
+                ].join(' ')}
+              >
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-slate-500">最近一次</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-900">
+                      {display.nextDateLabel}
+                    </div>
+                  </div>
+                  <Tag color={display.hasDate ? 'magenta' : 'default'}>{display.yearsText}</Tag>
+                </div>
+
+                <div className="mb-4">
+                  <div className="truncate text-base font-semibold text-slate-900">
+                    {task.title}
+                  </div>
+                  <div className="mt-3 text-3xl font-bold text-rose-600">
+                    {display.countdownText}
+                  </div>
+                </div>
+
+                <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500">
+                  <span>原始日期 {display.sourceDateLabel}</span>
+                </div>
+
+                <Space size={[4, 4]} wrap>
+                  <TaskQuickActions
+                    task={task}
+                    onEdit={onEdit}
+                    onComplete={onComplete}
+                    onReopen={onReopen}
+                    onSnooze={onSnooze}
+                    onDelete={onDelete}
+                    actionPending={actionPending}
+                  />
+                </Space>
+              </section>
+            );
+          })}
+        </div>
       )}
     </Card>
   );
