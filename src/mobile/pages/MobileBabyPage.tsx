@@ -14,6 +14,7 @@ import type {
   BabyOverview,
   FamilyUserSummary,
 } from '@/features/family/types/family.types';
+import { MobileFamilyAvatar } from '../components/MobileFamilyAvatar';
 
 function displayName(user?: FamilyUserSummary | null) {
   return user?.nickname || user?.realName || user?.username || '家人';
@@ -181,7 +182,7 @@ function BirthdayContributionList({ birthday }: { birthday: BabyBirthday }) {
       {birthday.contributions.map((item) => (
         <article key={item.id} className="mobile-baby-wish-card">
           <div className="mobile-baby-wish-author">
-            <span>{avatarInitial(displayName(item.author))}</span>
+            <MobileFamilyAvatar user={item.author} size="small" />
             <div>
               <strong>{displayName(item.author)}</strong>
               <small>{formatDate(item.createdAt)}</small>

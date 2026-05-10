@@ -58,6 +58,10 @@ import {
   type MobileAppUpdateDeferredEvent,
 } from '@/mobile/pwa/appUpdate';
 import { MobileModuleMenu } from '../components/MobileModuleHeader';
+import {
+  getFamilyUserDisplayName,
+  MobileFamilyAvatar as FamilyAvatar,
+} from '../components/MobileFamilyAvatar';
 import { logMobileDebugEvent } from '../debug/mobileDebug';
 import { MobileBabySummaryCard } from './MobileBabyPage';
 
@@ -80,8 +84,6 @@ const FAMILY_POST_LIST_PARAMS = { page: 1, limit: 30 };
 const FAMILY_CHAT_LIST_PARAMS = { page: 1, limit: 100 };
 const CHAT_BOTTOM_THRESHOLD_PX = 80;
 
-type FamilyAvatarSize = 'regular' | 'small' | 'mini';
-
 interface MobileInlineVideoProps extends VideoHTMLAttributes<HTMLVideoElement> {
   stopPropagation?: boolean;
 }
@@ -102,11 +104,7 @@ function sameCommentTarget(left?: CommentTarget | null, right?: CommentTarget | 
 }
 
 function displayName(user?: FamilyUserSummary | null) {
-  return user?.nickname || user?.realName || user?.username || '家人';
-}
-
-function avatarInitial(user?: FamilyUserSummary | null) {
-  return displayName(user).slice(0, 1).toUpperCase();
+  return getFamilyUserDisplayName(user);
 }
 
 function formatFeedDate(value: string) {
@@ -443,29 +441,6 @@ async function uploadDraftMedia(items: DraftMediaItem[], target: FamilyMediaTarg
   }
 
   return uploadedIds;
-}
-
-function FamilyAvatar({
-  user,
-  size = 'regular',
-}: {
-  user?: FamilyUserSummary | null;
-  size?: FamilyAvatarSize;
-}) {
-  const name = displayName(user);
-  const className = ['mobile-family-avatar', size === 'regular' ? '' : size]
-    .filter(Boolean)
-    .join(' ');
-
-  if (user?.avatar) {
-    return <img className={`${className} image`} src={user.avatar} alt={name} />;
-  }
-
-  return (
-    <span className={`${className} text`}>
-      <span className="mobile-family-avatar-letter">{avatarInitial(user)}</span>
-    </span>
-  );
 }
 
 function LikedUserStack({ users = [] }: { users?: FamilyUserSummary[] }) {

@@ -177,20 +177,20 @@ describe('MobileProfilePage', () => {
       originalName: 'avatar.jpg',
       filename: 'avatar.jpg',
       path: 'avatar.jpg',
-      url: 'https://example.com/new.png',
+      url: undefined,
       mimeType: 'image/jpeg',
       size: 123,
       category: 'image',
       storage: 'local',
       module: 'user-avatar',
-      isPublic: true,
+      isPublic: false,
       uploaderId: 1,
       createdAt: '2026-05-04T00:00:00.000Z',
       updatedAt: '2026-05-04T00:00:00.000Z',
     });
     vi.mocked(authService.updateProfile).mockResolvedValue({
       ...user,
-      avatar: 'https://example.com/new.png',
+      avatar: '/api/v1/files/9/access?token=avatar',
     });
   });
 
@@ -345,16 +345,16 @@ describe('MobileProfilePage', () => {
         }),
         expect.objectContaining({
           module: 'user-avatar',
-          isPublic: true,
+          isPublic: false,
         })
       )
     );
     expect(authService.updateProfile).toHaveBeenCalledWith({
-      avatar: 'https://example.com/new.png',
+      avatar: '/api/v1/files/9/public',
     });
     expect(await screen.findByAltText('爸爸')).toHaveAttribute(
       'src',
-      'https://example.com/new.png'
+      '/api/v1/files/9/access?token=avatar'
     );
   });
 
@@ -365,7 +365,7 @@ describe('MobileProfilePage', () => {
     vi.mocked(authService.updateProfile).mockResolvedValue({
       ...user,
       realName: '服务端姓名',
-      avatar: 'https://example.com/new.png',
+      avatar: '/api/v1/files/9/access?token=avatar',
     });
 
     await event.click(screen.getByRole('button', { name: /编辑资料/ }));
@@ -379,7 +379,7 @@ describe('MobileProfilePage', () => {
 
     await waitFor(() =>
       expect(authService.updateProfile).toHaveBeenCalledWith({
-        avatar: 'https://example.com/new.png',
+        avatar: '/api/v1/files/9/public',
       })
     );
     expect(screen.getByLabelText('姓名')).toHaveValue('还没保存的姓名');

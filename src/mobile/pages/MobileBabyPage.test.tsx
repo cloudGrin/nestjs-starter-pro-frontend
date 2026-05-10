@@ -136,6 +136,11 @@ describe('MobileBabyPage', () => {
     expect(screen.getByText('1 条祝福')).toBeInTheDocument();
     expect(screen.getByText('愿你每天都开心')).toBeInTheDocument();
     expect(screen.getByText('生日快乐呀')).toBeInTheDocument();
+    expect(screen.getByText('妈').closest('.mobile-family-avatar')).toHaveClass(
+      'mobile-family-avatar',
+      'small',
+      'text'
+    );
     expect(screen.getByAltText('生日照片')).toHaveAttribute('src', '/birthday/photo.jpg');
   });
 

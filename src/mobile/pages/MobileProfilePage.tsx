@@ -368,7 +368,7 @@ export function MobileProfilePage() {
         const uploaded = await uploadFile(croppedFile, {
           module: 'user-avatar',
           tags: 'avatar,profile',
-          isPublic: true,
+          isPublic: false,
         });
         avatar = getUploadedAvatarUrl(uploaded);
       } catch {
