@@ -26,7 +26,7 @@ import {
   resizeAvatarCropState,
   rotateAvatarCropState,
   type AvatarCropState,
-} from '../utils/avatarCrop';
+} from '@/shared/utils/avatarCrop';
 import { MobileModuleHeader } from '../components/MobileModuleHeader';
 import { clearMobilePersistedQueryCache } from '../pwa/queryPersistence';
 

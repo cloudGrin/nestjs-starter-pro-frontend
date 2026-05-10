@@ -61,6 +61,7 @@ export interface FileListResponse {
  */
 export type FileModule =
   | 'user-avatar'
+  | 'baby-avatar'
   | 'document'
   | 'image'
   | 'video'

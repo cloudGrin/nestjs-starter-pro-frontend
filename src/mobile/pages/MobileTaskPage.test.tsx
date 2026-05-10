@@ -285,12 +285,26 @@ describe('MobileTaskPage', () => {
 
     renderPage('/tasks?view=anniversary');
 
-    expect(screen.getByTestId('mobile-anniversary-card-77')).toBeInTheDocument();
+    const card = screen.getByTestId('mobile-anniversary-card-77');
+    expect(card).toBeInTheDocument();
     expect(screen.getByText('结婚纪念日')).toBeInTheDocument();
-    expect(screen.getByText('还有 10 天')).toBeInTheDocument();
+    expect(screen.getByText('10')).toBeInTheDocument();
+    expect(screen.getByText('天')).toBeInTheDocument();
     expect(screen.getByText('2026-05-20')).toBeInTheDocument();
-    expect(screen.getByText('原始日期 2020-05-20')).toBeInTheDocument();
-    expect(screen.getByText('6 周年')).toBeInTheDocument();
+    expect(screen.queryByText('原始日期 2020-05-20')).not.toBeInTheDocument();
+    expect(screen.queryByText('6 周年')).not.toBeInTheDocument();
+    expect(screen.queryByText('待纪念')).not.toBeInTheDocument();
+    expect(card.textContent).not.toContain('收集箱');
+    expect(card.textContent).not.toContain('妈妈');
+  });
+
+  it('uses a neutral anniversary card style instead of a red background', () => {
+    const cardRule = cssRule('.mobile-anniversary-card');
+    const countdownRule = cssRule('.mobile-anniversary-countdown');
+
+    expect(cardRule).not.toContain('244, 114, 182');
+    expect(cardRule).not.toContain('255, 241, 242');
+    expect(countdownRule).not.toContain('#e11d48');
   });
 
   it('submits mobile checklist items in the reordered display order', async () => {

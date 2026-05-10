@@ -195,6 +195,27 @@ describe('family.service', () => {
     expect((vi.mocked(request.post).mock.calls[0][1] as FormData).get('file')).toBe(file);
   });
 
+  it('uploads baby avatar images through the baby endpoint', async () => {
+    const file = new File(['image'], 'avatar.jpg', { type: 'image/jpeg' });
+    vi.mocked(request.post).mockResolvedValue({ id: 88 });
+
+    await familyService.uploadBabyAvatarImage(file);
+
+    expect(request.post).toHaveBeenCalledWith(
+      '/family/baby/avatar/upload',
+      expect.any(FormData),
+      expect.objectContaining({
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        requestOptions: {
+          messageConfig: { successMessage: false },
+        },
+      })
+    );
+    expect((vi.mocked(request.post).mock.calls[0][1] as FormData).get('file')).toBe(file);
+  });
+
   it('submits birthday blessing text with uploaded image ids', async () => {
     vi.mocked(request.post).mockResolvedValue({ id: 81 });
 

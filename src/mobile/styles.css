@@ -384,92 +384,95 @@ body {
 }
 
 .mobile-anniversary-card {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px;
-  border: 1px solid rgba(244, 114, 182, 0.26);
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-areas:
+    'countdown title'
+    'countdown meta';
+  align-items: center;
+  gap: 10px 14px;
+  min-height: 132px;
+  padding: 18px;
+  border: 1px solid rgba(59, 130, 246, 0.18);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 241, 242, 0.92) 48%),
-    linear-gradient(315deg, rgba(219, 234, 254, 0.72), rgba(255, 255, 255, 0));
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(239, 246, 255, 0.96) 58%),
+    linear-gradient(315deg, rgba(236, 253, 245, 0.9), rgba(255, 255, 255, 0));
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.09);
 }
 
 .mobile-anniversary-card.completed {
   opacity: 0.68;
 }
 
-.mobile-anniversary-card-header,
-.mobile-anniversary-card-main,
-.mobile-anniversary-card-footer {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.mobile-anniversary-card-header span,
-.mobile-anniversary-card-title span {
-  display: block;
-  color: var(--mobile-muted);
-  font-size: 12px;
-  line-height: 1.2;
-}
-
-.mobile-anniversary-card-header strong {
-  display: block;
-  margin-top: 4px;
-  color: var(--mobile-text);
-  font-size: 18px;
-  line-height: 1.2;
-}
-
-.mobile-anniversary-card-header i {
-  flex: 0 0 auto;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(14, 165, 233, 0.12);
-  color: #0369a1;
-  font-style: normal;
-  font-size: 12px;
-  font-weight: 700;
-}
-
 .mobile-anniversary-card-title {
+  grid-area: title;
   min-width: 0;
 }
 
 .mobile-anniversary-card-title h2 {
-  margin: 0 0 7px;
+  margin: 0;
   overflow-wrap: anywhere;
   color: var(--mobile-text);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   line-height: 1.25;
 }
 
-.mobile-anniversary-countdown {
-  flex: 0 0 auto;
-  color: #e11d48;
-  font-size: 26px;
-  font-weight: 900;
-  line-height: 1;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.mobile-anniversary-card-footer {
-  align-items: center;
+.mobile-anniversary-card-title span {
+  display: block;
+  margin-top: 8px;
   color: var(--mobile-muted);
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.2;
 }
 
-.mobile-anniversary-card-footer > span {
+.mobile-anniversary-countdown {
+  grid-area: countdown;
+  display: flex;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.74);
+  color: #2563eb;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.14);
+}
+
+.mobile-anniversary-countdown strong {
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-anniversary-countdown span {
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
   white-space: nowrap;
+}
+
+.mobile-anniversary-card-meta {
+  grid-area: meta;
+  min-width: 0;
+}
+
+.mobile-anniversary-card-meta span {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.09);
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .mobile-task-row {
@@ -2886,20 +2889,22 @@ body {
 }
 
 .dark .mobile-anniversary-card {
-  border-color: rgba(244, 114, 182, 0.24);
+  border-color: rgba(96, 165, 250, 0.22);
   background:
-    linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(63, 42, 58, 0.86) 48%),
-    linear-gradient(315deg, rgba(30, 64, 175, 0.28), rgba(15, 23, 42, 0));
+    linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(30, 58, 92, 0.84) 58%),
+    linear-gradient(315deg, rgba(20, 83, 45, 0.22), rgba(15, 23, 42, 0));
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
 }
 
-.dark .mobile-anniversary-card-header i {
-  background: rgba(56, 189, 248, 0.16);
-  color: #7dd3fc;
+.dark .mobile-anniversary-countdown {
+  background: rgba(15, 23, 42, 0.46);
+  color: #93c5fd;
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.16);
 }
 
-.dark .mobile-anniversary-countdown {
-  color: #fb7185;
+.dark .mobile-anniversary-card-meta span {
+  background: rgba(96, 165, 250, 0.14);
+  color: #bfdbfe;
 }
 
 .dark .mobile-module-menu {

@@ -85,6 +85,7 @@ const getFileIcon = (mimeType: string) => {
 
 const FILE_MODULE_OPTIONS = [
   { value: 'user-avatar', label: '用户头像' },
+  { value: 'baby-avatar', label: '宝宝头像' },
   { value: 'document', label: '文档' },
   { value: 'image', label: '图片' },
   { value: 'video', label: '视频' },

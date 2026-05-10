@@ -142,6 +142,20 @@ export const familyService = {
     );
   },
 
+  uploadBabyAvatarImage: async (file: File): Promise<FamilyUploadedMedia> => {
+    const formData = new FormData();
+    formData.append('file', normalizeFamilyUploadFile(file));
+
+    return request.post<FamilyUploadedMedia>('/family/baby/avatar/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      requestOptions: {
+        messageConfig: { successMessage: false },
+      },
+    });
+  },
+
   createBabyBirthdayContribution: (birthdayId: number, data: CreateBabyBirthdayContributionDto) =>
     request.post<BabyBirthdayContribution>(
       `/family/baby/birthdays/${birthdayId}/contributions`,

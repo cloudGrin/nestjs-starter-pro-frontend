@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import {
+  Avatar,
   Button,
   Card,
   Empty,
@@ -12,10 +13,32 @@ import {
   Tabs,
   Tag,
   Typography,
+  Upload,
+  Slider,
 } from 'antd';
-import { DeleteOutlined, PlusOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  RotateLeftOutlined,
+  RotateRightOutlined,
+  SaveOutlined,
+  UploadOutlined,
+} from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { PageWrap } from '@/shared/components';
+import {
+  AVATAR_CROP_SIZE,
+  AVATAR_MAX_SCALE,
+  AVATAR_MIN_SCALE,
+  clampCropOffset,
+  cropAvatarFile,
+  getAvatarPreviewMetrics,
+  loadImageFromUrl,
+  resizeAvatarCropState,
+  rotateAvatarCropState,
+  type AvatarCropState,
+} from '@/shared/utils/avatarCrop';
 import { formatDate } from '@/shared/utils';
 import {
   useBabyOverview,
@@ -25,6 +48,7 @@ import {
   useDeleteBabyGrowthRecord,
   useSaveBabyProfile,
 } from '../hooks/useFamily';
+import { familyService } from '../services/family.service';
 import type {
   BabyBirthday,
   BabyGrowthRecord,
@@ -34,6 +58,11 @@ import type {
 } from '../types/family.types';
 
 const { Paragraph, Text } = Typography;
+
+interface AvatarCropDraft extends AvatarCropState {
+  file: File;
+  previewUrl: string;
+}
 
 export function BabyProfilePage() {
   const overviewQuery = useBabyOverview();
@@ -45,9 +74,25 @@ export function BabyProfilePage() {
   const [profileForm] = Form.useForm<SaveBabyProfileDto>();
   const [growthForm] = Form.useForm<CreateBabyGrowthRecordDto>();
   const [birthdayForm] = Form.useForm<CreateBabyBirthdayDto>();
+  const avatarCropFrameRef = useRef<HTMLDivElement>(null);
+  const avatarCropDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
   const [growthModalOpen, setGrowthModalOpen] = useState(false);
   const [birthdayModalOpen, setBirthdayModalOpen] = useState(false);
+  const [avatarCropDraft, setAvatarCropDraft] = useState<AvatarCropDraft | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarFeedback, setAvatarFeedback] = useState<{
+    type: 'secondary' | 'danger';
+    text: string;
+  } | null>(null);
   const overview = overviewQuery.data;
+  const avatarCropPreviewUrl = avatarCropDraft?.previewUrl;
 
   useEffect(() => {
     if (!overview?.profile) return;
@@ -59,7 +104,204 @@ export function BabyProfilePage() {
       birthHeightCm: overview.profile.birthHeightCm ?? undefined,
       birthWeightKg: overview.profile.birthWeightKg ?? undefined,
     });
+    setAvatarPreviewUrl(overview.profile.avatarUrl ?? null);
+    setAvatarFeedback(null);
   }, [overview?.profile, profileForm]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarCropPreviewUrl && typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(avatarCropPreviewUrl);
+      }
+    };
+  }, [avatarCropPreviewUrl]);
+
+  useEffect(() => {
+    if (!avatarCropPreviewUrl) return;
+
+    const updateCropFrameSize = () => {
+      const size = getMeasuredAvatarCropFrameSize();
+      if (size > 0) {
+        setAvatarCropDraft((draft) => (draft ? resizeAvatarCropState(draft, size) : draft));
+      }
+    };
+
+    updateCropFrameSize();
+    window.addEventListener('resize', updateCropFrameSize);
+    return () => window.removeEventListener('resize', updateCropFrameSize);
+  }, [avatarCropPreviewUrl]);
+
+  const avatarFallbackText = overview?.profile?.nickname?.trim().slice(0, 1) || '宝';
+
+  const handleAvatarFileSelected = async (file: File) => {
+    const isImage =
+      file.type.startsWith('image/') || /\.(avif|gif|heic|heif|jpe?g|png|webp)$/i.test(file.name);
+
+    if (!isImage) {
+      setAvatarFeedback({ type: 'danger', text: '请选择图片文件作为宝宝头像' });
+      return;
+    }
+
+    if (typeof URL.createObjectURL !== 'function') {
+      setAvatarFeedback({ type: 'danger', text: '当前浏览器不支持头像裁剪' });
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    try {
+      const image = await loadImageFromUrl(previewUrl);
+      setAvatarFeedback(null);
+      setAvatarCropDraft({
+        file,
+        previewUrl,
+        imageWidth: image.naturalWidth || image.width,
+        imageHeight: image.naturalHeight || image.height,
+        cropSize: AVATAR_CROP_SIZE,
+        scale: 1,
+        offsetX: 0,
+        offsetY: 0,
+        rotation: 0,
+      });
+    } catch {
+      URL.revokeObjectURL(previewUrl);
+      setAvatarFeedback({ type: 'danger', text: '图片读取失败，请重新选择' });
+    }
+  };
+
+  const closeAvatarCropModal = (options?: { force?: boolean }) => {
+    if (avatarUploading && !options?.force) return;
+
+    avatarCropDragRef.current = null;
+    setAvatarCropDraft(null);
+  };
+
+  const getMeasuredAvatarCropFrameSize = () => {
+    const rect = avatarCropFrameRef.current?.getBoundingClientRect();
+    return rect ? Math.floor(Math.min(rect.width, rect.height)) : 0;
+  };
+
+  const updateAvatarCropOffset = (offsetX: number, offsetY: number) => {
+    if (avatarUploading) return;
+
+    setAvatarCropDraft((draft) => {
+      if (!draft) return draft;
+      return {
+        ...draft,
+        ...clampCropOffset(offsetX, offsetY, draft),
+      };
+    });
+  };
+
+  const updateAvatarCropScale = (scale: number) => {
+    if (avatarUploading) return;
+
+    setAvatarCropDraft((draft) => {
+      if (!draft) return draft;
+      const nextDraft = { ...draft, scale: clampValue(scale, AVATAR_MIN_SCALE, AVATAR_MAX_SCALE) };
+      return {
+        ...nextDraft,
+        ...clampCropOffset(nextDraft.offsetX, nextDraft.offsetY, nextDraft),
+      };
+    });
+  };
+
+  const rotateAvatarCrop = (rotationDelta: number) => {
+    if (avatarUploading) return;
+
+    setAvatarCropDraft((draft) => (draft ? rotateAvatarCropState(draft, rotationDelta) : draft));
+  };
+
+  const resetAvatarCrop = () => {
+    if (avatarUploading) return;
+
+    setAvatarCropDraft((draft) =>
+      draft
+        ? {
+            ...draft,
+            scale: 1,
+            offsetX: 0,
+            offsetY: 0,
+            rotation: 0,
+          }
+        : draft
+    );
+  };
+
+  const handleAvatarCropPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!avatarCropDraft || avatarUploading) return;
+
+    avatarCropDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: avatarCropDraft.offsetX,
+      offsetY: avatarCropDraft.offsetY,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleAvatarCropPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!avatarCropDragRef.current || avatarUploading) return;
+    if (avatarCropDragRef.current.pointerId !== event.pointerId) return;
+
+    updateAvatarCropOffset(
+      avatarCropDragRef.current.offsetX + event.clientX - avatarCropDragRef.current.startX,
+      avatarCropDragRef.current.offsetY + event.clientY - avatarCropDragRef.current.startY
+    );
+  };
+
+  const handleAvatarCropPointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    avatarCropDragRef.current = null;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
+
+  const handleAvatarCropSave = async () => {
+    if (!avatarCropDraft || avatarUploading) return;
+
+    setAvatarUploading(true);
+    setAvatarFeedback(null);
+    try {
+      const measuredCropSize = getMeasuredAvatarCropFrameSize();
+      const cropState =
+        measuredCropSize > 0
+          ? resizeAvatarCropState(avatarCropDraft, measuredCropSize)
+          : avatarCropDraft;
+      const croppedFile = await cropAvatarFile(
+        avatarCropDraft.file,
+        avatarCropDraft.previewUrl,
+        cropState
+      );
+      const uploaded = await familyService.uploadBabyAvatarImage(croppedFile);
+      const previewUrl = URL.createObjectURL(croppedFile);
+      profileForm.setFieldValue('avatarFileId', uploaded.id);
+      setAvatarPreviewUrl(previewUrl);
+      setAvatarFeedback({ type: 'secondary', text: '已选择新头像，保存资料后生效' });
+      closeAvatarCropModal({ force: true });
+    } catch {
+      setAvatarFeedback({ type: 'danger', text: '头像裁剪或上传失败，请稍后重试' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarRemove = () => {
+    profileForm.setFieldValue('avatarFileId', null);
+    setAvatarPreviewUrl(null);
+    setAvatarFeedback({ type: 'secondary', text: '已移除头像，保存资料后生效' });
+  };
+
+  const avatarCropMetrics = avatarCropDraft ? getAvatarPreviewMetrics(avatarCropDraft) : null;
+  const avatarCropImageLayerStyle = avatarCropDraft
+    ? {
+        transform: `translate(-50%, -50%) translate(${avatarCropDraft.offsetX}px, ${avatarCropDraft.offsetY}px) rotate(${avatarCropDraft.rotation}deg)`,
+      }
+    : undefined;
+  const avatarCropImageStyle = avatarCropMetrics
+    ? {
+        width: avatarCropMetrics.imageWidth,
+        height: avatarCropMetrics.imageHeight,
+      }
+    : undefined;
 
   const growthColumns: ColumnsType<BabyGrowthRecord> = [
     {
@@ -168,6 +410,9 @@ export function BabyProfilePage() {
                 {overview?.profile ? (
                   <Space direction="vertical" size="large" className="w-full">
                     <Space size="large" wrap>
+                      <Avatar size={72} src={overview.profile.avatarUrl ?? undefined}>
+                        {avatarFallbackText}
+                      </Avatar>
                       <div>
                         <Text type="secondary">宝宝昵称</Text>
                         <div className="mt-1 text-xl font-semibold">
@@ -201,6 +446,37 @@ export function BabyProfilePage() {
                   <Form.Item name="nickname" label="宝宝昵称" rules={[{ required: true }]}>
                     <Input placeholder="例如：小葡萄" />
                   </Form.Item>
+                  <Form.Item name="avatarFileId" hidden>
+                    <InputNumber />
+                  </Form.Item>
+                  <Form.Item label="宝宝头像">
+                    <Space size="middle" wrap>
+                      <Avatar size={64} src={avatarPreviewUrl ?? undefined}>
+                        {avatarFallbackText}
+                      </Avatar>
+                      <Upload
+                        accept="image/*"
+                        maxCount={1}
+                        showUploadList={false}
+                        beforeUpload={(file) => {
+                          void handleAvatarFileSelected(file);
+                          return false;
+                        }}
+                      >
+                        <Button icon={<UploadOutlined />} loading={avatarUploading}>
+                          上传头像
+                        </Button>
+                      </Upload>
+                      {avatarPreviewUrl || profileForm.getFieldValue('avatarFileId') ? (
+                        <Button onClick={handleAvatarRemove}>移除头像</Button>
+                      ) : null}
+                    </Space>
+                    {avatarFeedback ? (
+                      <div className="mt-2">
+                        <Text type={avatarFeedback.type}>{avatarFeedback.text}</Text>
+                      </div>
+                    ) : null}
+                  </Form.Item>
                   <Form.Item name="birthDate" label="出生日期" rules={[{ required: true }]}>
                     <Input type="date" />
                   </Form.Item>
@@ -221,6 +497,7 @@ export function BabyProfilePage() {
                       htmlType="submit"
                       icon={<SaveOutlined />}
                       loading={saveProfile.isPending}
+                      disabled={avatarUploading}
                     >
                       保存资料
                     </Button>
@@ -276,6 +553,86 @@ export function BabyProfilePage() {
           },
         ]}
       />
+
+      <Modal
+        title="裁剪宝宝头像"
+        open={!!avatarCropDraft}
+        onCancel={() => closeAvatarCropModal()}
+        maskClosable={!avatarUploading}
+        footer={[
+          <Button key="reset" disabled={avatarUploading} onClick={resetAvatarCrop}>
+            重置
+          </Button>,
+          <Button key="cancel" disabled={avatarUploading} onClick={() => closeAvatarCropModal()}>
+            取消
+          </Button>,
+          <Button
+            key="save"
+            type="primary"
+            loading={avatarUploading}
+            disabled={!avatarCropDraft || avatarUploading}
+            onClick={() => void handleAvatarCropSave()}
+          >
+            保存头像
+          </Button>,
+        ]}
+      >
+        {avatarCropDraft ? (
+          <div className="flex flex-col items-center gap-5">
+            <div
+              ref={avatarCropFrameRef}
+              className="relative mx-auto aspect-square w-full max-w-[320px] touch-none overflow-hidden rounded-full border border-dashed border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-950"
+              onPointerDown={handleAvatarCropPointerDown}
+              onPointerMove={handleAvatarCropPointerMove}
+              onPointerUp={handleAvatarCropPointerEnd}
+              onPointerCancel={handleAvatarCropPointerEnd}
+            >
+              <div
+                className="absolute left-1/2 top-1/2 pointer-events-none"
+                style={avatarCropImageLayerStyle}
+              >
+                <img
+                  src={avatarCropDraft.previewUrl}
+                  alt="宝宝头像预览"
+                  className="block max-w-none select-none"
+                  draggable={false}
+                  style={avatarCropImageStyle}
+                />
+              </div>
+              <div className="pointer-events-none absolute inset-0 rounded-full border-2 border-white/90 shadow-inner" />
+            </div>
+
+            <div className="w-full max-w-md">
+              <Text type="secondary">缩放</Text>
+              <Slider
+                min={AVATAR_MIN_SCALE}
+                max={AVATAR_MAX_SCALE}
+                step={0.01}
+                value={avatarCropDraft.scale}
+                disabled={avatarUploading}
+                onChange={(value) => updateAvatarCropScale(Number(value))}
+              />
+            </div>
+
+            <Space wrap>
+              <Button
+                icon={<RotateLeftOutlined />}
+                disabled={avatarUploading}
+                onClick={() => rotateAvatarCrop(-90)}
+              >
+                左旋
+              </Button>
+              <Button
+                icon={<RotateRightOutlined />}
+                disabled={avatarUploading}
+                onClick={() => rotateAvatarCrop(90)}
+              >
+                右旋
+              </Button>
+            </Space>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         title="新增成长记录"
@@ -337,4 +694,8 @@ export function BabyProfilePage() {
       </Modal>
     </PageWrap>
   );
+}
+
+function clampValue(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
