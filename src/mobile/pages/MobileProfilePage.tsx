@@ -71,6 +71,8 @@ interface CropPointer {
   y: number;
 }
 
+const AVATAR_CROP_POPUP_Z_INDEX = '1200';
+
 export function MobileProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -572,6 +574,7 @@ export function MobileProfilePage() {
         closeOnMaskClick={false}
         mask
         onMaskClick={() => undefined}
+        style={{ '--z-index': AVATAR_CROP_POPUP_Z_INDEX }}
         bodyStyle={{ borderRadius: '18px 18px 0 0' }}
       >
         <div className="mobile-popup-body mobile-avatar-crop-sheet">

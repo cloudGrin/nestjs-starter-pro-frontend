@@ -1924,7 +1924,8 @@ body {
 
 .mobile-task-detail-sheet,
 .mobile-insurance-detail-sheet,
-.mobile-filter-popup {
+.mobile-filter-popup,
+.mobile-avatar-crop-sheet {
   padding-bottom: 0;
 }
 

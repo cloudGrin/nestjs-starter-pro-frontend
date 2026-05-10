@@ -300,6 +300,33 @@ describe('MobileProfilePage', () => {
     expect(screen.getByLabelText('姓名')).toHaveValue('还没保存的姓名');
   });
 
+  it('keeps the avatar crop popup above the profile edit popup after reopening it', async () => {
+    const event = userEvent.setup();
+    const { container } = renderPage();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })] },
+    });
+    await screen.findByText('裁剪头像');
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: '保存头像' })).not.toBeInTheDocument()
+    );
+
+    await event.click(screen.getByRole('button', { name: /编辑资料/ }));
+    fireEvent.change(input, {
+      target: { files: [new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })] },
+    });
+    await screen.findByText('裁剪头像');
+
+    const cropPopup = document.querySelector('.mobile-avatar-crop-sheet')?.closest('.adm-popup');
+
+    expect(cropPopup).toBeInstanceOf(HTMLElement);
+    expect((cropPopup as HTMLElement).style.getPropertyValue('--z-index')).toBe('1200');
+  });
+
   it('uploads the cropped avatar and updates the current profile', async () => {
     const { container } = renderPage();
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
