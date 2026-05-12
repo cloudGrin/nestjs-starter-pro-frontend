@@ -66,6 +66,8 @@ export function mergeStableFamilyPostMediaUrls(
         return {
           ...media,
           displayUrl: previousMedia.displayUrl,
+          previewUrl: previousMedia.previewUrl,
+          posterUrl: previousMedia.posterUrl,
           expiresAt: previousMedia.expiresAt,
         };
       }),

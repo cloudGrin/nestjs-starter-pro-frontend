@@ -83,6 +83,9 @@ interface PreviewMediaItem {
 const FAMILY_POST_LIST_PARAMS = { page: 1, limit: 30 };
 const FAMILY_CHAT_LIST_PARAMS = { page: 1, limit: 100 };
 const CHAT_BOTTOM_THRESHOLD_PX = 80;
+const DRAFT_IMAGE_MAX_EDGE = 1600;
+const DRAFT_IMAGE_COMPRESS_MIN_SIZE = 1024 * 1024;
+const DRAFT_IMAGE_JPEG_QUALITY = 0.86;
 
 interface MobileInlineVideoProps extends VideoHTMLAttributes<HTMLVideoElement> {
   stopPropagation?: boolean;
@@ -271,6 +274,128 @@ function getPreviewUrl(file: File) {
   }
 }
 
+function shouldCompressDraftImage(file: File) {
+  const isImage =
+    file.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
+  const isAnimatedGif = file.type === 'image/gif' || /\.gif$/i.test(file.name);
+  return isImage && !isAnimatedGif && file.size >= DRAFT_IMAGE_COMPRESS_MIN_SIZE;
+}
+
+function getCompressedImageName(filename: string) {
+  return `${filename.replace(/\.[^.]+$/i, '') || 'image'}.jpg`;
+}
+
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality: number
+): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), type, quality);
+  });
+}
+
+function createDraftImageElement(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = getPreviewUrl(file);
+    if (!url) {
+      reject(new Error('Object URL is not available'));
+      return;
+    }
+
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Image preview failed'));
+    };
+    image.src = url;
+  });
+}
+
+async function loadDraftImageSource(file: File): Promise<{
+  width: number;
+  height: number;
+  draw: (context: CanvasRenderingContext2D, width: number, height: number) => void;
+  close: () => void;
+}> {
+  if (typeof createImageBitmap === 'function') {
+    const bitmap = await createImageBitmap(file);
+    return {
+      width: bitmap.width,
+      height: bitmap.height,
+      draw: (context, width, height) => context.drawImage(bitmap, 0, 0, width, height),
+      close: () => bitmap.close(),
+    };
+  }
+
+  const image = await createDraftImageElement(file);
+  return {
+    width: image.naturalWidth || image.width,
+    height: image.naturalHeight || image.height,
+    draw: (context, width, height) => context.drawImage(image, 0, 0, width, height),
+    close: () => undefined,
+  };
+}
+
+async function compressDraftImage(file: File): Promise<File> {
+  if (!shouldCompressDraftImage(file) || typeof document === 'undefined') {
+    return file;
+  }
+
+  let image: Awaited<ReturnType<typeof loadDraftImageSource>> | undefined;
+  try {
+    image = await loadDraftImageSource(file);
+    const maxEdge = Math.max(image.width, image.height);
+    if (!maxEdge || maxEdge <= DRAFT_IMAGE_MAX_EDGE) {
+      return file;
+    }
+
+    const scale = DRAFT_IMAGE_MAX_EDGE / maxEdge;
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return file;
+    }
+
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    image.draw(context, width, height);
+    const blob = await canvasToBlob(canvas, 'image/jpeg', DRAFT_IMAGE_JPEG_QUALITY);
+    if (!blob || blob.size >= file.size) {
+      return file;
+    }
+
+    return new File([blob], getCompressedImageName(file.name), {
+      type: 'image/jpeg',
+      lastModified: file.lastModified,
+    });
+  } catch {
+    return file;
+  } finally {
+    image?.close();
+  }
+}
+
+async function buildDraftMediaItem(file: File, id: string): Promise<DraftMediaItem> {
+  const mediaType = isVideoFile(file) ? 'video' : 'image';
+  const uploadFile = mediaType === 'image' ? await compressDraftImage(file) : file;
+  return {
+    id,
+    file: uploadFile,
+    name: uploadFile.name,
+    mediaType,
+    previewUrl: getPreviewUrl(uploadFile),
+  };
+}
+
 function revokeDraftPreview(item: DraftMediaItem) {
   if (item.previewUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
     URL.revokeObjectURL(item.previewUrl);
@@ -280,7 +405,7 @@ function revokeDraftPreview(item: DraftMediaItem) {
 function toPreviewItems(media: FamilyMedia[]): PreviewMediaItem[] {
   return media.map((item) => ({
     id: String(item.id),
-    url: item.displayUrl,
+    url: item.previewUrl || item.displayUrl,
     name: item.originalName,
     mediaType: isVideo(item) ? 'video' : 'image',
   }));
@@ -338,8 +463,11 @@ function useFamilyRealtime({
 
 function useDraftMedia() {
   const [items, setItems] = useState<DraftMediaItem[]>([]);
+  const [processingCount, setProcessingCount] = useState(0);
   const itemsRef = useRef<DraftMediaItem[]>([]);
+  const processingCountRef = useRef(0);
   const sequenceRef = useRef(0);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -347,29 +475,47 @@ function useDraftMedia() {
 
   useEffect(() => {
     return () => {
+      mountedRef.current = false;
       itemsRef.current.forEach(revokeDraftPreview);
     };
   }, []);
 
   const addFiles = useCallback((files: FileList | File[] | null | undefined) => {
-    setItems((current) => {
-      const remainingSlots = Math.max(0, 9 - current.length);
-      const selected = Array.from(files ?? []).slice(0, remainingSlots);
-      if (selected.length === 0) return current;
+    const remainingSlots = Math.max(0, 9 - itemsRef.current.length - processingCountRef.current);
+    const selected = Array.from(files ?? []).slice(0, remainingSlots);
+    if (selected.length === 0) return;
 
-      const nextItems = selected.map((file) => {
-        sequenceRef.current += 1;
-        return {
-          id: `${Date.now()}-${sequenceRef.current}-${file.name}`,
-          file,
-          name: file.name,
-          mediaType: isVideoFile(file) ? 'video' : 'image',
-          previewUrl: getPreviewUrl(file),
-        } satisfies DraftMediaItem;
-      });
+    processingCountRef.current += selected.length;
+    setProcessingCount(processingCountRef.current);
 
-      return [...current, ...nextItems];
-    });
+    void (async () => {
+      let nextItems: DraftMediaItem[] = [];
+      try {
+        nextItems = await Promise.all(
+          selected.map((file) => {
+            sequenceRef.current += 1;
+            return buildDraftMediaItem(file, `${Date.now()}-${sequenceRef.current}-${file.name}`);
+          })
+        );
+
+        if (!mountedRef.current) {
+          nextItems.forEach(revokeDraftPreview);
+          return;
+        }
+
+        setItems((current) => {
+          const acceptedCount = Math.max(0, 9 - current.length);
+          const accepted = nextItems.slice(0, acceptedCount);
+          nextItems.slice(acceptedCount).forEach(revokeDraftPreview);
+          return [...current, ...accepted];
+        });
+      } finally {
+        processingCountRef.current = Math.max(0, processingCountRef.current - selected.length);
+        if (mountedRef.current) {
+          setProcessingCount(processingCountRef.current);
+        }
+      }
+    })();
   }, []);
 
   const removeItem = useCallback((id: string) => {
@@ -386,7 +532,7 @@ function useDraftMedia() {
     });
   }, []);
 
-  return { items, addFiles, removeItem, clearItems };
+  return { items, addFiles, removeItem, clearItems, isProcessing: processingCount > 0 };
 }
 
 function FamilyIconButton({
@@ -536,7 +682,7 @@ function MediaGrid({
               </span>
             </>
           ) : (
-            <img src={item.displayUrl} alt="家庭图片" loading="lazy" />
+            <img src={item.displayUrl} alt="家庭图片" decoding="async" />
           )}
           {remainingCount > 0 && index === visibleMedia.length - 1 ? (
             <span className="mobile-family-media-more">+{remainingCount}</span>
@@ -818,7 +964,7 @@ function MediaPreviewOverlay({
           {item.mediaType === 'video' ? (
             <MobileInlineVideo src={item.url} controls />
           ) : (
-            <img src={item.url} alt={item.name || '家庭图片'} />
+            <img src={item.url} alt={item.name || '家庭图片'} decoding="async" />
           )}
         </div>
       </div>
@@ -1433,9 +1579,10 @@ export function MobileFamilyComposePage() {
   const [uploading, setUploading] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const submitting = uploading || createPost.isPending;
+  const publishDisabled = submitting || draft.isProcessing;
 
   const submitPost = async () => {
-    if (submitting) return;
+    if (publishDisabled) return;
 
     const trimmedContent = content.trim();
     if (!trimmedContent && draft.items.length === 0) {
@@ -1483,7 +1630,7 @@ export function MobileFamilyComposePage() {
           <Button
             className="mobile-family-publish-button"
             loading={submitting}
-            disabled={submitting}
+            disabled={publishDisabled}
             onClick={submitPost}
           >
             发布
@@ -1561,7 +1708,7 @@ function ChatMessageMediaBubble({
       type="button"
       onClick={() => onPreview(index)}
     >
-      <img src={media.displayUrl} alt="家庭图片" loading="lazy" />
+      <img src={media.displayUrl} alt="家庭图片" decoding="async" />
     </button>
   );
 }
@@ -1646,9 +1793,11 @@ export function MobileFamilyChatPage() {
   );
   const latestMessageId = useMemo(() => getLatestMessageId(messages), [messages]);
   const submitting = uploading || createChatMessage.isPending;
-  const hasSendableContent = messageText.trim().length > 0 || draft.items.length > 0;
+  const hasPendingDraftMedia = draft.isProcessing;
+  const hasDraftContent = messageText.trim().length > 0 || draft.items.length > 0;
+  const hasSendableContent = hasDraftContent || hasPendingDraftMedia;
   const shouldBlockAppReload = hasSendableContent || submitting;
-  const canSend = hasSendableContent && !submitting;
+  const canSend = hasDraftContent && !submitting && !hasPendingDraftMedia;
   const previewItems = draft.items.map((item) => ({
     id: item.id,
     url: item.previewUrl || '',
@@ -1787,7 +1936,7 @@ export function MobileFamilyChatPage() {
   };
 
   const submitMessage = async () => {
-    if (submitting) return;
+    if (submitting || hasPendingDraftMedia) return;
 
     const content = messageText.trim();
     if (!content && draft.items.length === 0) {

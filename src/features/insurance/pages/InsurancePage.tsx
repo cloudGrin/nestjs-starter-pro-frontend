@@ -37,7 +37,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { useLocation } from 'react-router-dom';
 import { PageWrap, PermissionGuard, SearchForm, TableActions } from '@/shared/components';
 import { formatDate } from '@/shared/utils';
-import { createFileAccessLink, uploadFile } from '@/features/file/services/file.service';
+import { createFileAccessLink } from '@/features/file/services/file.service';
 import { resolveFileAccessUrl } from '@/features/file/utils/file-url';
 import { useUsers } from '@/features/rbac/user/hooks/useUsers';
 import { insuranceService } from '../services/insurance.service';
@@ -359,10 +359,7 @@ export function InsurancePage() {
   const handleAttachmentUpload = async (file: File) => {
     setUploading(true);
     try {
-      const uploaded = await uploadFile(file, {
-        module: 'insurance-policy',
-        isPublic: false,
-      });
+      const uploaded = await insuranceService.uploadAttachment(file);
       const currentIds = policyForm.getFieldValue('attachmentFileIds') ?? [];
       policyForm.setFieldValue('attachmentFileIds', [...currentIds, uploaded.id]);
       setUploadedAttachments((previous) => [

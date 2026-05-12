@@ -1,5 +1,11 @@
+import axios from 'axios';
 import { appConfig } from '@/shared/config/app.config';
 import { request } from '@/shared/utils/request';
+import type {
+  DirectUploadInitResponse,
+  FileEntity,
+  FileStorage,
+} from '@/features/file/types/file.types';
 import type {
   CreateInsuranceMemberDto,
   CreateInsurancePolicyDto,
@@ -11,6 +17,83 @@ import type {
   UpdateInsuranceMemberDto,
   UpdateInsurancePolicyDto,
 } from '../types/insurance.types';
+
+interface UploadInsuranceAttachmentOptions {
+  storage?: FileStorage;
+  onProgress?: (progress: number) => void;
+}
+
+const ATTACHMENTS_BASE_URL = '/insurance-policies/attachments';
+
+async function uploadAttachmentMultipart(
+  file: File,
+  options?: UploadInsuranceAttachmentOptions
+): Promise<FileEntity> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const uploaded = await request.post<FileEntity>(`${ATTACHMENTS_BASE_URL}/upload`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    requestOptions: {
+      messageConfig: {
+        successMessage: '附件已上传',
+      },
+    },
+    onUploadProgress: (progressEvent: { loaded: number; total?: number }) => {
+      if (progressEvent.total && options?.onProgress) {
+        options.onProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+      }
+    },
+  });
+  options?.onProgress?.(100);
+  return uploaded;
+}
+
+async function uploadAttachmentDirect(
+  file: File,
+  options?: UploadInsuranceAttachmentOptions
+): Promise<FileEntity> {
+  const initResult = await request.post<DirectUploadInitResponse>(
+    `${ATTACHMENTS_BASE_URL}/direct-upload/initiate`,
+    {
+      originalName: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      size: file.size,
+    },
+    {
+      requestOptions: {
+        messageConfig: {
+          successMessage: false,
+        },
+      },
+    }
+  );
+
+  await axios.put(initResult.uploadUrl, file, {
+    headers: initResult.headers,
+    onUploadProgress: (progressEvent) => {
+      if (progressEvent.total && options?.onProgress) {
+        options.onProgress(Math.round((progressEvent.loaded * 95) / progressEvent.total));
+      }
+    },
+  });
+
+  const uploaded = await request.post<FileEntity>(
+    `${ATTACHMENTS_BASE_URL}/direct-upload/complete`,
+    { uploadToken: initResult.uploadToken },
+    {
+      requestOptions: {
+        messageConfig: {
+          successMessage: '附件已上传',
+        },
+      },
+    }
+  );
+  options?.onProgress?.(100);
+  return uploaded;
+}
 
 export const insuranceService = {
   getMembers: () => request.get<InsuranceMember[]>('/insurance-members'),
@@ -83,6 +166,13 @@ export const insuranceService = {
         },
       },
     }),
+
+  uploadAttachment: (file: File, options?: UploadInsuranceAttachmentOptions) => {
+    const storage = options?.storage ?? appConfig.insuranceAttachmentUploadMode;
+    return storage === 'oss'
+      ? uploadAttachmentDirect(file, options)
+      : uploadAttachmentMultipart(file, options);
+  },
 
   getAttachmentDownloadUrl: (policyId: number, fileId: number) => {
     const base = appConfig.apiBaseUrl.endsWith('/')

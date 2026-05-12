@@ -84,7 +84,7 @@ export function MobileBabySummaryCard({
     >
       <span className="mobile-baby-avatar">
         {profile.avatarUrl ? (
-          <img src={profile.avatarUrl} alt={profile.nickname} />
+          <img src={profile.avatarUrl} alt={profile.nickname} decoding="async" />
         ) : (
           avatarInitial(profile.nickname)
         )}
@@ -118,7 +118,7 @@ function BirthdayPhotoWall({
     <div className="mobile-baby-photo-wall">
       {media.map((item, index) => (
         <button key={item.id} type="button" onClick={() => onPreview(index)}>
-          <img src={item.displayUrl} alt="生日照片" loading="lazy" />
+          <img src={item.displayUrl} alt="生日照片" decoding="async" />
         </button>
       ))}
     </div>
@@ -157,7 +157,7 @@ function PhotoPreview({
         <span />
       </div>
       <div className="mobile-baby-preview-body">
-        <img src={item.displayUrl} alt="生日照片" />
+        <img src={item.previewUrl || item.displayUrl} alt="生日照片" decoding="async" />
       </div>
       {safeIndex > 0 ? (
         <button
@@ -201,7 +201,7 @@ function BirthdayContributionList({ birthday }: { birthday: BabyBirthday }) {
           {item.media.length > 0 ? (
             <div className="mobile-baby-wish-media">
               {item.media.slice(0, 3).map((media) => (
-                <img key={media.id} src={media.displayUrl} alt="生日照片" loading="lazy" />
+                <img key={media.id} src={media.displayUrl} alt="生日照片" decoding="async" />
               ))}
             </div>
           ) : null}
@@ -320,7 +320,9 @@ function BirthdayDetailPageContent({
 
       <section className="mobile-baby-birthday-detail">
         <div className="mobile-baby-birthday-cover">
-          {birthday.coverUrl ? <img src={birthday.coverUrl} alt={birthday.title} /> : null}
+          {birthday.coverUrl ? (
+            <img src={birthday.coverUrl} alt={birthday.title} decoding="async" />
+          ) : null}
           <div>
             <span>{birthday.year}</span>
             <h2>{birthday.title}</h2>

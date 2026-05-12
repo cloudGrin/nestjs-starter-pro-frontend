@@ -20,6 +20,7 @@ export interface FamilyMedia {
   originalName?: string;
   size?: number;
   displayUrl: string;
+  previewUrl?: string;
   posterUrl?: string;
   expiresAt: string;
 }
@@ -166,6 +167,7 @@ export interface BabyBirthdayMedia {
   mimeType?: string;
   size?: number;
   displayUrl: string;
+  previewUrl?: string;
   expiresAt: string;
   createdAt?: string;
 }

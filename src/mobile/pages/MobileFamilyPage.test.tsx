@@ -208,6 +208,15 @@ function createDeferred<T>() {
 describe('MobileFamilyPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn((file: File) => `blob:${file.name}:${file.size}`),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn(),
+    });
+    vi.stubGlobal('createImageBitmap', undefined);
     setMobileAppReloadBlocked(false);
     mobileUiMocks.dialogConfirm.mockResolvedValue(false);
     vi.spyOn(Dialog, 'confirm').mockImplementation(mobileUiMocks.dialogConfirm);
@@ -725,6 +734,157 @@ describe('MobileFamilyPage', () => {
     );
   });
 
+  it('compresses large compose images before previewing and uploading', async () => {
+    const bitmapClose = vi.fn();
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(async () => ({
+        width: 4000,
+        height: 3000,
+        close: bitmapClose,
+      }))
+    );
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage,
+      imageSmoothingEnabled: false,
+      imageSmoothingQuality: 'low',
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (
+      callback: BlobCallback,
+      type?: string,
+      quality?: unknown
+    ) {
+      expect(this.width).toBe(1600);
+      expect(this.height).toBe(1200);
+      expect(type).toBe('image/jpeg');
+      expect(quality).toBe(0.86);
+      callback(new Blob(['compressed-image'], { type: 'image/jpeg' }));
+    });
+
+    const { container } = renderPage('/family/compose');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const largeImage = new File([new Uint8Array(2 * 1024 * 1024)], 'large.jpg', {
+      type: 'image/jpeg',
+    });
+
+    fireEvent.change(input, { target: { files: [largeImage] } });
+    expect(await screen.findByText('large.jpg')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+
+    await waitFor(() =>
+      expect(familyServiceMocks.familyService.uploadFamilyMedia).toHaveBeenCalled()
+    );
+    const uploadedFile = familyServiceMocks.familyService.uploadFamilyMedia.mock
+      .calls[0][0] as File;
+    expect(uploadedFile).not.toBe(largeImage);
+    expect(uploadedFile.name).toBe('large.jpg');
+    expect(uploadedFile.type).toBe('image/jpeg');
+    expect(uploadedFile.size).toBeLessThan(largeImage.size);
+    expect(bitmapClose).toHaveBeenCalled();
+    expect(drawImage).toHaveBeenCalled();
+  });
+
+  it('blocks compose publish while selected images are still processing', async () => {
+    const bitmap = createDeferred<{
+      width: number;
+      height: number;
+      close: () => void;
+    }>();
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(() => bitmap.promise)
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      imageSmoothingEnabled: false,
+      imageSmoothingQuality: 'low',
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback: BlobCallback) => {
+      callback(new Blob(['compressed-image'], { type: 'image/jpeg' }));
+    });
+
+    const { container } = renderPage('/family/compose');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(screen.getByPlaceholderText('配一句话...'), {
+      target: { value: '带图发布' },
+    });
+    fireEvent.change(input, {
+      target: {
+        files: [new File([new Uint8Array(2 * 1024 * 1024)], 'slow.jpg', { type: 'image/jpeg' })],
+      },
+    });
+
+    const publishButton = document.querySelector('.mobile-family-publish-button');
+    expect(publishButton).toBeDisabled();
+    fireEvent.click(publishButton!);
+    expect(familyServiceMocks.familyService.uploadFamilyMedia).not.toHaveBeenCalled();
+    expect(createPost).not.toHaveBeenCalled();
+
+    await act(async () => {
+      bitmap.resolve({ width: 4000, height: 3000, close: vi.fn() });
+    });
+    expect(await screen.findByText('slow.jpg')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '发布' })).not.toBeDisabled();
+  });
+
+  it('blocks chat send while selected images are still processing', async () => {
+    const bitmap = createDeferred<{
+      width: number;
+      height: number;
+      close: () => void;
+    }>();
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(() => bitmap.promise)
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      imageSmoothingEnabled: false,
+      imageSmoothingQuality: 'low',
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback: BlobCallback) => {
+      callback(new Blob(['compressed-image'], { type: 'image/jpeg' }));
+    });
+
+    const { container } = renderPage('/family/chat');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(screen.getByPlaceholderText('给家里人发消息'), {
+      target: { value: '等图片处理完' },
+    });
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File([new Uint8Array(2 * 1024 * 1024)], 'slow-chat.jpg', {
+            type: 'image/jpeg',
+          }),
+        ],
+      },
+    });
+
+    const sendButton = document.querySelector('.mobile-family-chat-send');
+    expect(sendButton).toBeDisabled();
+    fireEvent.click(sendButton!);
+    expect(familyServiceMocks.familyService.uploadFamilyMedia).not.toHaveBeenCalled();
+    expect(createMessage).not.toHaveBeenCalled();
+
+    await act(async () => {
+      bitmap.resolve({ width: 4000, height: 3000, close: vi.fn() });
+    });
+    await screen.findByLabelText(/移除 slow-chat.jpg/);
+    expect(screen.getByRole('button', { name: /发送/ })).not.toBeDisabled();
+  });
+
+  it('renders feed images eagerly to avoid iOS lazy loading black tiles', () => {
+    renderPage('/family');
+
+    const image = document.querySelector('.mobile-family-media-item img');
+    expect(image).toHaveAttribute('src', '/api/v1/files/17/access?token=webp');
+    expect(image).not.toHaveAttribute('loading');
+    expect(image).toHaveAttribute('decoding', 'async');
+  });
+
   it('keeps family dark mode readable across feed comments and chat controls', () => {
     const css = readMobileCss();
 
@@ -958,10 +1118,7 @@ describe('MobileFamilyPage', () => {
     expect(thumbnailVideo).toBeTruthy();
     expect(thumbnailVideo).not.toHaveAttribute('controls');
     expect(thumbnailVideo).toHaveAttribute('playsinline');
-    expect(thumbnailVideo).toHaveAttribute(
-      'poster',
-      '/api/v1/files/20/access?token=poster'
-    );
+    expect(thumbnailVideo).toHaveAttribute('poster', '/api/v1/files/20/access?token=poster');
 
     fireEvent.click(thumbnailVideo);
 
