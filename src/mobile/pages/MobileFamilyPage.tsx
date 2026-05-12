@@ -42,6 +42,7 @@ import {
 } from '@/features/family/hooks/useFamily';
 import { connectFamilySocket } from '@/features/family/realtime/familySocket';
 import { familyService } from '@/features/family/services/family.service';
+import { appConfig } from '@/shared/config/app.config';
 import type {
   FamilyChatMessage,
   FamilyChatMessageCreatedEvent,
@@ -78,6 +79,7 @@ interface PreviewMediaItem {
   url: string;
   name?: string;
   mediaType: FamilyMedia['mediaType'];
+  posterUrl?: string;
 }
 
 const FAMILY_POST_LIST_PARAMS = { page: 1, limit: 30 };
@@ -86,6 +88,15 @@ const CHAT_BOTTOM_THRESHOLD_PX = 80;
 const DRAFT_IMAGE_MAX_EDGE = 1600;
 const DRAFT_IMAGE_COMPRESS_MIN_SIZE = 1024 * 1024;
 const DRAFT_IMAGE_JPEG_QUALITY = 0.86;
+const FAMILY_VIDEO_EXTENSIONS = /\.(mp4|mov|webm)$/i;
+const FAMILY_VIDEO_MAX_SIZE_BY_TARGET: Record<FamilyMediaTarget, number> = {
+  circle: 200 * 1024 * 1024,
+  chat: 100 * 1024 * 1024,
+};
+const FAMILY_VIDEO_MAX_DURATION_BY_TARGET: Record<FamilyMediaTarget, number> = {
+  circle: 5 * 60,
+  chat: 90,
+};
 
 interface MobileInlineVideoProps extends VideoHTMLAttributes<HTMLVideoElement> {
   stopPropagation?: boolean;
@@ -210,7 +221,84 @@ function isVideo(media: Pick<FamilyMedia, 'mediaType' | 'mimeType'>) {
 }
 
 function isVideoFile(file: File) {
-  return file.type.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi|wmv)$/i.test(file.name);
+  return file.type.startsWith('video/') || FAMILY_VIDEO_EXTENSIONS.test(file.name);
+}
+
+function isSupportedFamilyVideoFile(file: File) {
+  const hasSupportedExtension = FAMILY_VIDEO_EXTENSIONS.test(file.name);
+  const hasVideoMimeType = file.type.startsWith('video/');
+  const hasGenericMimeType = !file.type || file.type === 'application/octet-stream';
+  return hasSupportedExtension && (hasVideoMimeType || hasGenericMimeType);
+}
+
+function formatFileMegabytes(bytes: number) {
+  return `${Math.round(bytes / 1024 / 1024)}MB`;
+}
+
+function formatVideoDurationLimit(seconds: number) {
+  return seconds >= 60 && seconds % 60 === 0 ? `${seconds / 60}分钟` : `${seconds}秒`;
+}
+
+function loadDraftVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = getPreviewUrl(file);
+    if (!url) {
+      reject(new Error('Object URL is not available'));
+      return;
+    }
+
+    const video = document.createElement('video');
+    const cleanup = () => {
+      video.removeAttribute('src');
+      URL.revokeObjectURL(url);
+    };
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.onloadedmetadata = () => {
+      const duration = video.duration;
+      cleanup();
+      resolve(duration);
+    };
+    video.onerror = () => {
+      cleanup();
+      reject(new Error('Video metadata failed'));
+    };
+    video.src = url;
+    video.load();
+  });
+}
+
+async function validateDraftVideoFile(
+  file: File,
+  target: FamilyMediaTarget
+): Promise<string | null> {
+  if (appConfig.familyMediaUploadMode !== 'oss') {
+    return '视频需启用 OSS 直传后再上传';
+  }
+
+  if (!isSupportedFamilyVideoFile(file)) {
+    return '家庭视频仅支持 MP4、MOV、WEBM';
+  }
+
+  const maxSize = FAMILY_VIDEO_MAX_SIZE_BY_TARGET[target];
+  if (file.size > maxSize) {
+    return `视频不能超过 ${formatFileMegabytes(maxSize)}`;
+  }
+
+  let duration = 0;
+  try {
+    duration = await loadDraftVideoDuration(file);
+  } catch {
+    return '视频信息读取失败，请重新选择';
+  }
+
+  const maxDuration = FAMILY_VIDEO_MAX_DURATION_BY_TARGET[target];
+  if (Number.isFinite(duration) && duration > maxDuration) {
+    return `视频时长不能超过 ${formatVideoDurationLimit(maxDuration)}`;
+  }
+
+  return null;
 }
 
 function MobileInlineVideo({
@@ -384,8 +472,27 @@ async function compressDraftImage(file: File): Promise<File> {
   }
 }
 
-async function buildDraftMediaItem(file: File, id: string): Promise<DraftMediaItem> {
+async function buildDraftMediaItem(
+  file: File,
+  id: string,
+  target: FamilyMediaTarget
+): Promise<DraftMediaItem | null> {
   const mediaType = isVideoFile(file) ? 'video' : 'image';
+  if (mediaType === 'video') {
+    const validationMessage = await validateDraftVideoFile(file, target);
+    if (validationMessage) {
+      Toast.show({ icon: 'fail', content: validationMessage, position: 'center' });
+      return null;
+    }
+
+    return {
+      id,
+      file,
+      name: file.name,
+      mediaType,
+    };
+  }
+
   const uploadFile = mediaType === 'image' ? await compressDraftImage(file) : file;
   return {
     id,
@@ -397,8 +504,12 @@ async function buildDraftMediaItem(file: File, id: string): Promise<DraftMediaIt
 }
 
 function revokeDraftPreview(item: DraftMediaItem) {
-  if (item.previewUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
-    URL.revokeObjectURL(item.previewUrl);
+  revokeObjectUrl(item.previewUrl);
+}
+
+function revokeObjectUrl(url?: string) {
+  if (url && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+    URL.revokeObjectURL(url);
   }
 }
 
@@ -408,6 +519,7 @@ function toPreviewItems(media: FamilyMedia[]): PreviewMediaItem[] {
     url: item.previewUrl || item.displayUrl,
     name: item.originalName,
     mediaType: isVideo(item) ? 'video' : 'image',
+    posterUrl: item.posterUrl,
   }));
 }
 
@@ -461,7 +573,7 @@ function useFamilyRealtime({
   }, [onChatMessageCreated, onPostCreated, queryClient, refetchChatMessages, refetchPosts, token]);
 }
 
-function useDraftMedia() {
+function useDraftMedia(target: FamilyMediaTarget) {
   const [items, setItems] = useState<DraftMediaItem[]>([]);
   const [processingCount, setProcessingCount] = useState(0);
   const itemsRef = useRef<DraftMediaItem[]>([]);
@@ -491,12 +603,17 @@ function useDraftMedia() {
     void (async () => {
       let nextItems: DraftMediaItem[] = [];
       try {
-        nextItems = await Promise.all(
+        const builtItems = await Promise.all(
           selected.map((file) => {
             sequenceRef.current += 1;
-            return buildDraftMediaItem(file, `${Date.now()}-${sequenceRef.current}-${file.name}`);
+            return buildDraftMediaItem(
+              file,
+              `${Date.now()}-${sequenceRef.current}-${file.name}`,
+              target
+            );
           })
         );
+        nextItems = builtItems.filter((item): item is DraftMediaItem => Boolean(item));
 
         if (!mountedRef.current) {
           nextItems.forEach(revokeDraftPreview);
@@ -516,7 +633,7 @@ function useDraftMedia() {
         }
       }
     })();
-  }, []);
+  }, [target]);
 
   const removeItem = useCallback((id: string) => {
     setItems((current) => {
@@ -533,6 +650,45 @@ function useDraftMedia() {
   }, []);
 
   return { items, addFiles, removeItem, clearItems, isProcessing: processingCount > 0 };
+}
+
+function useDraftPreviewItems(items: DraftMediaItem[], previewIndex: number | null) {
+  const [videoPreviewUrls, setVideoPreviewUrls] = useState<Record<string, string>>({});
+  const videoPreviewUrlsRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    Object.values(videoPreviewUrlsRef.current).forEach(revokeObjectUrl);
+    videoPreviewUrlsRef.current = {};
+
+    if (previewIndex === null) {
+      setVideoPreviewUrls({});
+      return undefined;
+    }
+
+    const urls = items.reduce<Record<string, string>>((result, item) => {
+      if (item.mediaType === 'video') {
+        const url = getPreviewUrl(item.file);
+        if (url) {
+          result[item.id] = url;
+        }
+      }
+      return result;
+    }, {});
+    videoPreviewUrlsRef.current = urls;
+    setVideoPreviewUrls(urls);
+
+    return () => {
+      Object.values(videoPreviewUrlsRef.current).forEach(revokeObjectUrl);
+      videoPreviewUrlsRef.current = {};
+    };
+  }, [items, previewIndex]);
+
+  return items.map((item) => ({
+    id: item.id,
+    url: item.mediaType === 'video' ? videoPreviewUrls[item.id] || '' : item.previewUrl || '',
+    name: item.name,
+    mediaType: item.mediaType,
+  }));
 }
 
 function FamilyIconButton({
@@ -671,12 +827,13 @@ function MediaGrid({
         >
           {isVideo(item) ? (
             <>
-              <MobileInlineVideo
-                src={item.displayUrl}
-                poster={item.posterUrl}
-                preload="metadata"
-                stopPropagation={false}
-              />
+              {item.posterUrl ? (
+                <img src={item.posterUrl} alt={item.originalName || '家庭视频'} decoding="async" />
+              ) : (
+                <span className="mobile-family-video-placeholder">
+                  <PlayCircleFilled />
+                </span>
+              )}
               <span className="mobile-family-video-mark">
                 <PlayCircleFilled />
               </span>
@@ -715,13 +872,10 @@ function DraftMediaGrid({
       {items.map((item, index) => (
         <div className="mobile-family-draft-tile" key={item.id}>
           <button type="button" onClick={() => onPreview(index)}>
-            {item.previewUrl && item.mediaType === 'video' ? (
-              <MobileInlineVideo
-                src={item.previewUrl}
-                muted
-                preload="metadata"
-                stopPropagation={false}
-              />
+            {item.mediaType === 'video' ? (
+              <span className="mobile-family-draft-video-placeholder">
+                <PlayCircleFilled />
+              </span>
             ) : item.previewUrl ? (
               <img src={item.previewUrl} alt={item.name} />
             ) : (
@@ -731,7 +885,7 @@ function DraftMediaGrid({
           <button type="button" disabled={disabled} onClick={() => onRemove(item.id)}>
             <CloseCircleFilled />
           </button>
-          {item.previewUrl ? <span>{item.name}</span> : null}
+          {item.previewUrl || item.mediaType === 'video' ? <span>{item.name}</span> : null}
         </div>
       ))}
       {items.length < 9 ? (
@@ -773,13 +927,11 @@ function ChatDraftMediaStrip({
             type="button"
             onClick={() => onPreview(index)}
           >
-            {item.previewUrl && item.mediaType === 'video' ? (
-              <MobileInlineVideo
-                src={item.previewUrl}
-                muted
-                preload="metadata"
-                stopPropagation={false}
-              />
+            {item.mediaType === 'video' ? (
+              <span className="mobile-family-draft-video-placeholder compact">
+                <PlayCircleFilled />
+                <span>{item.name}</span>
+              </span>
             ) : item.previewUrl ? (
               <img src={item.previewUrl} alt={item.name} />
             ) : (
@@ -962,7 +1114,7 @@ function MediaPreviewOverlay({
           style={frameDragStyle}
         >
           {item.mediaType === 'video' ? (
-            <MobileInlineVideo src={item.url} controls />
+            <MobileInlineVideo src={item.url} poster={item.posterUrl} controls preload="metadata" />
           ) : (
             <img src={item.url} alt={item.name || '家庭图片'} decoding="async" />
           )}
@@ -1574,7 +1726,7 @@ export function MobileFamilyComposePage() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const createPost = useCreateFamilyPost();
-  const draft = useDraftMedia();
+  const draft = useDraftMedia('circle');
   const [content, setContent] = useState('');
   const [uploading, setUploading] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
@@ -1604,12 +1756,7 @@ export function MobileFamilyComposePage() {
     }
   };
 
-  const previewItems = draft.items.map((item) => ({
-    id: item.id,
-    url: item.previewUrl || '',
-    name: item.name,
-    mediaType: item.mediaType,
-  }));
+  const previewItems = useDraftPreviewItems(draft.items, previewIndex);
 
   return (
     <div className="mobile-family-compose-page">
@@ -1696,9 +1843,22 @@ function ChatMessageMediaBubble({
 
   if (video) {
     return (
-      <div className="mobile-family-chat-media-bubble video">
-        <MobileInlineVideo src={media.displayUrl} controls preload="metadata" />
-      </div>
+      <button
+        className="mobile-family-chat-media-bubble video"
+        type="button"
+        onClick={() => onPreview(index)}
+      >
+        {media.posterUrl ? (
+          <img src={media.posterUrl} alt={media.originalName || '家庭视频'} decoding="async" />
+        ) : (
+          <span className="mobile-family-video-placeholder">
+            <PlayCircleFilled />
+          </span>
+        )}
+        <span className="mobile-family-video-mark">
+          <PlayCircleFilled />
+        </span>
+      </button>
     );
   }
 
@@ -1774,7 +1934,7 @@ export function MobileFamilyChatPage() {
   const chatQuery = useFamilyChatMessages(FAMILY_CHAT_LIST_PARAMS);
   const { markChatReadAsync } = useFamilyState();
   const createChatMessage = useCreateFamilyChatMessage();
-  const draft = useDraftMedia();
+  const draft = useDraftMedia('chat');
   const [messageText, setMessageText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [attachmentPanelOpen, setAttachmentPanelOpen] = useState(false);
@@ -1798,12 +1958,7 @@ export function MobileFamilyChatPage() {
   const hasSendableContent = hasDraftContent || hasPendingDraftMedia;
   const shouldBlockAppReload = hasSendableContent || submitting;
   const canSend = hasDraftContent && !submitting && !hasPendingDraftMedia;
-  const previewItems = draft.items.map((item) => ({
-    id: item.id,
-    url: item.previewUrl || '',
-    name: item.name,
-    mediaType: item.mediaType,
-  }));
+  const previewItems = useDraftPreviewItems(draft.items, previewIndex);
 
   useEffect(() => {
     latestMessageIdRef.current = latestMessageId;

@@ -152,6 +152,9 @@ describe('MobileBabyPage', () => {
 
     expect(screen.getByText('小葡萄')).toBeInTheDocument();
     expect(screen.getByText('3 个月 9 天')).toBeInTheDocument();
+    expect(screen.getByText('生日纪念日')).toBeInTheDocument();
+    expect(screen.getByText('1周岁')).toBeInTheDocument();
+    expect(screen.getByText('267天')).toBeInTheDocument();
     expect(screen.getAllByText('6.8 kg').length).toBeGreaterThan(0);
     expect(screen.getAllByText('61.5 cm').length).toBeGreaterThan(0);
     expect(screen.getByText('最近测量 2026-05-01')).toBeInTheDocument();
@@ -219,11 +222,13 @@ describe('MobileBabyPage', () => {
 
     expect(css).toContain('.mobile-baby-page');
     expect(css).toContain('.mobile-baby-summary-card');
+    expect(css).toContain('.mobile-baby-birthday-countdown');
     expect(css).toContain('.mobile-baby-growth-timeline');
     expect(css).toContain('.mobile-baby-album-strip');
     expect(css).toContain('.mobile-baby-composer-panel');
     expect(css).toContain('.dark .mobile-baby-page');
     expect(css).toContain('.dark .mobile-baby-summary-card');
+    expect(css).toContain('.dark .mobile-baby-birthday-countdown');
     expect(css).toContain('.dark .mobile-baby-growth-timeline article');
     expect(css).toContain('.dark .mobile-baby-composer .adm-text-area');
   });

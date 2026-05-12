@@ -43,6 +43,27 @@ function formatBabyAge(birthDate?: string | null) {
   return months > 0 ? `${years} 岁 ${months} 个月` : `${years} 岁`;
 }
 
+function formatBirthdayCountdown(birthDate?: string | null) {
+  if (!birthDate) return null;
+
+  const birth = dayjs(birthDate).startOf('day');
+  const today = dayjs().startOf('day');
+  if (!birth.isValid() || birth.isAfter(today)) return null;
+
+  const currentAge = today.diff(birth, 'year');
+  let targetAge = Math.max(1, currentAge);
+  let anniversary = birth.add(targetAge, 'year');
+  if (anniversary.isBefore(today, 'day')) {
+    targetAge += 1;
+    anniversary = birth.add(targetAge, 'year');
+  }
+
+  return {
+    age: `${targetAge}周岁`,
+    days: anniversary.diff(today, 'day'),
+  };
+}
+
 function formatMetric(value?: number | null, unit?: string) {
   if (value == null) return '--';
   return `${Number(value).toString()} ${unit}`;
@@ -75,6 +96,7 @@ export function MobileBabySummaryCard({
   const measuredText = latest?.measuredAt
     ? `最近测量 ${formatDate(latest.measuredAt)}`
     : '暂无测量记录';
+  const birthdayCountdown = formatBirthdayCountdown(profile.birthDate);
 
   return (
     <button
@@ -94,6 +116,13 @@ export function MobileBabySummaryCard({
         <span>{formatBabyAge(profile.birthDate)}</span>
       </span>
       {showMoreHint ? <span className="mobile-baby-summary-more">更多</span> : null}
+      {birthdayCountdown ? (
+        <span className="mobile-baby-birthday-countdown">
+          <small>生日纪念日</small>
+          <strong>{birthdayCountdown.age}</strong>
+          <span>{birthdayCountdown.days === 0 ? '今天' : `${birthdayCountdown.days}天`}</span>
+        </span>
+      ) : null}
       <span className="mobile-baby-summary-metrics">
         <span>{formatMetric(latest?.weightKg, 'kg')}</span>
         <span>{formatMetric(latest?.heightCm, 'cm')}</span>

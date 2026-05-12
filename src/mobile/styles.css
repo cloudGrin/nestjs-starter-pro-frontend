@@ -3002,6 +3002,7 @@ body {
 .mobile-family-compose-fab,
 .mobile-family-chat-header button,
 .mobile-family-chat-tool,
+.mobile-family-chat-media-bubble,
 .mobile-family-chat-draft-preview,
 .mobile-family-chat-draft-remove,
 .mobile-family-chat-attachment-action,
@@ -3275,11 +3276,23 @@ body {
 }
 
 .mobile-family-media-item img,
-.mobile-family-media-item video {
+.mobile-family-media-item video,
+.mobile-family-video-placeholder {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.mobile-family-video-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(135deg, rgba(17, 24, 39, 0.88), rgba(64, 64, 64, 0.72)),
+    #222222;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 34px;
 }
 
 .mobile-family-video-mark,
@@ -3579,7 +3592,8 @@ body {
 
 .mobile-family-draft-tile > button:first-child,
 .mobile-family-draft-tile img,
-.mobile-family-draft-tile video {
+.mobile-family-draft-tile video,
+.mobile-family-draft-video-placeholder {
   display: block;
   width: 100%;
   height: 100%;
@@ -3588,6 +3602,18 @@ body {
 .mobile-family-draft-tile img,
 .mobile-family-draft-tile video {
   object-fit: cover;
+}
+
+.mobile-family-draft-video-placeholder {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(135deg, rgba(17, 24, 39, 0.86), rgba(75, 85, 99, 0.72)),
+    #222222;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 30px;
 }
 
 .mobile-family-draft-tile > button:nth-child(2) {
@@ -3938,7 +3964,8 @@ body {
 }
 
 .mobile-family-chat-media-bubble img,
-.mobile-family-chat-media-bubble video {
+.mobile-family-chat-media-bubble video,
+.mobile-family-chat-media-bubble .mobile-family-video-placeholder {
   display: block;
   width: 100%;
   height: 100%;
@@ -4075,7 +4102,8 @@ body {
 
 .mobile-family-chat-draft-preview,
 .mobile-family-chat-draft-preview img,
-.mobile-family-chat-draft-preview video {
+.mobile-family-chat-draft-preview video,
+.mobile-family-chat-draft-preview .mobile-family-draft-video-placeholder {
   display: block;
   width: 100%;
   height: 100%;
@@ -4084,6 +4112,25 @@ body {
 .mobile-family-chat-draft-preview img,
 .mobile-family-chat-draft-preview video {
   object-fit: cover;
+}
+
+.mobile-family-chat-draft-preview .mobile-family-draft-video-placeholder {
+  font-size: 18px;
+}
+
+.mobile-family-chat-draft-preview .mobile-family-draft-video-placeholder span {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  left: 4px;
+  overflow: hidden;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(17, 17, 17, 0.62);
+  color: #ffffff;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mobile-family-chat-draft-remove {
@@ -4452,6 +4499,45 @@ body {
   gap: 8px;
 }
 
+.mobile-baby-birthday-countdown {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 151, 110, 0.2);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 136, 92, 0.14), rgba(99, 185, 149, 0.12)),
+    rgba(255, 255, 255, 0.76);
+  color: #8d4329;
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-baby-birthday-countdown small {
+  color: #ad735f;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.mobile-baby-birthday-countdown strong {
+  min-width: 0;
+  color: #2f473f;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.mobile-baby-birthday-countdown span {
+  justify-self: end;
+  color: #ff6d3f;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .mobile-baby-summary-metrics span {
   padding: 9px 10px;
   border: 1px solid rgba(91, 143, 123, 0.12);
@@ -4473,6 +4559,16 @@ body {
 
 .mobile-baby-summary-card.compact .mobile-baby-summary-metrics {
   gap: 6px;
+}
+
+.mobile-baby-summary-card.compact .mobile-baby-birthday-countdown {
+  gap: 6px;
+  padding: 8px 9px;
+}
+
+.mobile-baby-summary-card.compact .mobile-baby-birthday-countdown strong,
+.mobile-baby-summary-card.compact .mobile-baby-birthday-countdown span {
+  font-size: 15px;
 }
 
 .mobile-baby-summary-card.compact .mobile-baby-summary-metrics span {
@@ -5037,10 +5133,27 @@ body {
 }
 
 .dark .mobile-baby-summary-metrics span,
+.dark .mobile-baby-birthday-countdown,
 .dark .mobile-baby-growth-metrics span,
 .dark .mobile-baby-composer .adm-text-area {
   background: rgba(255, 255, 255, 0.08);
   color: var(--mobile-text);
+}
+
+.dark .mobile-baby-birthday-countdown {
+  border-color: rgba(255, 155, 114, 0.18);
+}
+
+.dark .mobile-baby-birthday-countdown small {
+  color: var(--mobile-muted);
+}
+
+.dark .mobile-baby-birthday-countdown strong {
+  color: var(--mobile-text);
+}
+
+.dark .mobile-baby-birthday-countdown span {
+  color: #ffb08c;
 }
 
 .dark .mobile-baby-summary-more {

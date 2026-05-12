@@ -3,13 +3,14 @@ import type { ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Dialog } from 'antd-mobile';
+import { Dialog, Toast } from 'antd-mobile';
 import {
   MobileFamilyChatPage,
   MobileFamilyComposePage,
   MobileFamilyPage,
 } from './MobileFamilyPage';
 import { useAuthStore } from '@/features/auth/stores/authStore';
+import { appConfig } from '@/shared/config/app.config';
 import type { FamilyChatMessage, FamilyPost } from '@/features/family/types/family.types';
 import { requestMobileAppReload, setMobileAppReloadBlocked } from '@/mobile/pwa/appUpdate';
 
@@ -205,9 +206,32 @@ function createDeferred<T>() {
   return { promise, resolve, reject };
 }
 
+function createSizedFile(name: string, type: string, size: number) {
+  const file = new File(['x'], name, { type });
+  Object.defineProperty(file, 'size', { configurable: true, value: size });
+  return file;
+}
+
+function mockVideoMetadata(duration: number) {
+  const originalCreateElement = document.createElement.bind(document);
+  vi.spyOn(document, 'createElement').mockImplementation((tagName, options) => {
+    const element = originalCreateElement(tagName, options);
+    if (tagName.toLowerCase() === 'video') {
+      Object.defineProperty(element, 'duration', { configurable: true, value: duration });
+      Object.defineProperty(element, 'videoWidth', { configurable: true, value: 1280 });
+      Object.defineProperty(element, 'videoHeight', { configurable: true, value: 720 });
+      element.load = vi.fn(() => {
+        setTimeout(() => element.dispatchEvent(new Event('loadedmetadata')), 0);
+      });
+    }
+    return element;
+  });
+}
+
 describe('MobileFamilyPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    appConfig.familyMediaUploadMode = 'oss';
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
       value: vi.fn((file: File) => `blob:${file.name}:${file.size}`),
@@ -220,6 +244,7 @@ describe('MobileFamilyPage', () => {
     setMobileAppReloadBlocked(false);
     mobileUiMocks.dialogConfirm.mockResolvedValue(false);
     vi.spyOn(Dialog, 'confirm').mockImplementation(mobileUiMocks.dialogConfirm);
+    vi.spyOn(Toast, 'show').mockImplementation(() => undefined as never);
     refetch.mockResolvedValue({ data: { items: [post], meta: { totalItems: 1 } } });
     babyRefetch.mockResolvedValue(undefined);
     familyHooks.useFamilyPosts.mockReturnValue({
@@ -786,6 +811,57 @@ describe('MobileFamilyPage', () => {
     expect(drawImage).toHaveBeenCalled();
   });
 
+  it('rejects oversized compose videos before they enter the draft', async () => {
+    const { container } = renderPage('/family/compose');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const video = createSizedFile('too-large.mp4', 'video/mp4', 200 * 1024 * 1024 + 1);
+
+    fireEvent.change(input, { target: { files: [video] } });
+
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('200MB') })
+      )
+    );
+    expect(screen.queryByText('too-large.mp4')).not.toBeInTheDocument();
+    expect(familyServiceMocks.familyService.uploadFamilyMedia).not.toHaveBeenCalled();
+  });
+
+  it('rejects chat videos that exceed the short-message duration limit', async () => {
+    mockVideoMetadata(91);
+    const { container } = renderPage('/family/chat');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const video = createSizedFile('too-long.mp4', 'video/mp4', 5 * 1024 * 1024);
+
+    fireEvent.change(input, { target: { files: [video] } });
+
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('90秒') })
+      )
+    );
+    expect(screen.queryByText('too-long.mp4')).not.toBeInTheDocument();
+    expect(familyServiceMocks.familyService.uploadFamilyMedia).not.toHaveBeenCalled();
+  });
+
+  it('rejects family videos in local upload mode before creating draft previews', async () => {
+    appConfig.familyMediaUploadMode = 'local';
+    const { container } = renderPage('/family/chat');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const video = createSizedFile('local-video.mp4', 'video/mp4', 5 * 1024 * 1024);
+
+    fireEvent.change(input, { target: { files: [video] } });
+
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('OSS') })
+      )
+    );
+    expect(screen.queryByText('local-video.mp4')).not.toBeInTheDocument();
+    expect(URL.createObjectURL).not.toHaveBeenCalledWith(video);
+    expect(familyServiceMocks.familyService.uploadFamilyMedia).not.toHaveBeenCalled();
+  });
+
   it('blocks compose publish while selected images are still processing', async () => {
     const bitmap = createDeferred<{
       width: number;
@@ -1112,15 +1188,11 @@ describe('MobileFamilyPage', () => {
     });
     renderPage('/family');
 
-    const thumbnailVideo = document.querySelector(
-      '.mobile-family-media-item video'
-    ) as HTMLVideoElement;
-    expect(thumbnailVideo).toBeTruthy();
-    expect(thumbnailVideo).not.toHaveAttribute('controls');
-    expect(thumbnailVideo).toHaveAttribute('playsinline');
-    expect(thumbnailVideo).toHaveAttribute('poster', '/api/v1/files/20/access?token=poster');
+    expect(document.querySelector('.mobile-family-media-item video')).toBeNull();
+    const poster = document.querySelector('.mobile-family-media-item img');
+    expect(poster).toHaveAttribute('src', '/api/v1/files/20/access?token=poster');
 
-    fireEvent.click(thumbnailVideo);
+    fireEvent.click(document.querySelector('.mobile-family-media-item') as HTMLElement);
 
     const previewVideo = document.querySelector('.mobile-family-preview video');
     expect(previewVideo).toHaveAttribute('controls');
@@ -1145,15 +1217,17 @@ describe('MobileFamilyPage', () => {
     expect(textBubble?.querySelector('video')).toBeNull();
     const mediaBubble = document.querySelector('.mobile-family-chat-media-bubble.video');
     expect(mediaBubble).toBeTruthy();
-    expect(mediaBubble?.tagName).toBe('DIV');
-    expect(mediaBubble?.querySelector('video')).toHaveAttribute(
-      'src',
-      '/api/v1/files/20/access?token=video'
-    );
-    expect(mediaBubble?.querySelector('video')).toHaveAttribute('controls');
-    expect(mediaBubble?.querySelector('video')).toHaveAttribute('playsinline');
-    expect(mediaBubble?.querySelector('video')).toHaveAttribute('webkit-playsinline', 'true');
-    expect(mediaBubble?.querySelector('video')).toHaveAttribute('x5-playsinline', 'true');
+    expect(mediaBubble?.tagName).toBe('BUTTON');
+    expect(mediaBubble?.querySelector('video')).toBeNull();
+
+    fireEvent.click(mediaBubble as HTMLElement);
+
+    const previewVideo = document.querySelector('.mobile-family-preview video');
+    expect(previewVideo).toHaveAttribute('src', '/api/v1/files/20/access?token=video');
+    expect(previewVideo).toHaveAttribute('controls');
+    expect(previewVideo).toHaveAttribute('playsinline');
+    expect(previewVideo).toHaveAttribute('webkit-playsinline', 'true');
+    expect(previewVideo).toHaveAttribute('x5-playsinline', 'true');
 
     fireEvent.change(screen.getByPlaceholderText('给家里人发消息'), {
       target: { value: '收到' },
