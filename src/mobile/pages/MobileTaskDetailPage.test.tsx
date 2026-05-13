@@ -155,6 +155,14 @@ describe('MobileTaskDetailPage', () => {
     expect(screen.queryByRole('button', { name: /完成/ })).not.toBeInTheDocument();
   });
 
+  it('disables the standalone complete action while completion is pending', async () => {
+    taskHooks.useCompleteTask.mockReturnValue({ mutate, isPending: true, variables: 42 });
+
+    renderPage();
+
+    expect(await screen.findByRole('button', { name: /完成/ })).toBeDisabled();
+  });
+
   it('preopens a window before awaiting private attachment download links', async () => {
     const openedWindow = {
       close: vi.fn(),

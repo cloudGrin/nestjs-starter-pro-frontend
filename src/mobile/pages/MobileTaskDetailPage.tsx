@@ -111,6 +111,14 @@ export function MobileTaskDetailPage() {
   const canDelete = hasPermission(['task:delete']);
   const canComplete = hasPermission(['task:complete']);
   const canToggleTask = task ? (task.status === 'completed' ? canUpdate : canComplete) : false;
+  const togglePendingTaskId = (
+    completeTask.isPending
+      ? completeTask.variables
+      : reopenTask.isPending
+        ? reopenTask.variables
+        : undefined
+  ) as number | undefined;
+  const togglePending = task ? togglePendingTaskId === task.id : false;
 
   const handleSubmit = (payload: CreateTaskDto | UpdateTaskDto) => {
     if (!task) return;
@@ -279,9 +287,15 @@ export function MobileTaskDetailPage() {
               <Button
                 size="small"
                 color={isCompleted ? 'default' : 'success'}
-                onClick={() =>
-                  isCompleted ? reopenTask.mutate(task.id) : completeTask.mutate(task.id)
-                }
+                disabled={togglePending}
+                onClick={() => {
+                  if (togglePending) return;
+                  if (isCompleted) {
+                    reopenTask.mutate(task.id);
+                    return;
+                  }
+                  completeTask.mutate(task.id);
+                }}
               >
                 {isCompleted ? '重开' : '完成'}
               </Button>

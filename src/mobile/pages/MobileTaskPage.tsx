@@ -1590,6 +1590,7 @@ function TaskDetailSheet({
   const list = task ? getTaskList(task, lists) : null;
   const assignee = task ? getTaskAssignee(task, users) : null;
   const canToggleTask = task ? (task.status === 'completed' ? canUpdate : canComplete) : false;
+  const togglePending = task ? togglePendingTaskId === task.id : false;
 
   const handleDelete = async () => {
     if (!task) return;
@@ -1712,7 +1713,15 @@ function TaskDetailSheet({
                   </Button>
                 ) : null}
                 {canToggleTask ? (
-                  <Button size="small" color="success" onClick={() => onToggleComplete(task)}>
+                  <Button
+                    size="small"
+                    color="success"
+                    disabled={togglePending}
+                    onClick={() => {
+                      if (togglePending) return;
+                      onToggleComplete(task);
+                    }}
+                  >
                     {task.status === 'completed' ? '取消完成' : '完成'}
                   </Button>
                 ) : null}

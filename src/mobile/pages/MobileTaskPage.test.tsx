@@ -618,6 +618,15 @@ describe('MobileTaskPage', () => {
     );
   });
 
+  it('disables the mobile detail sheet complete action while completion is pending', async () => {
+    taskHooks.useTask.mockReturnValue({ data: baseTask, isLoading: false });
+    taskHooks.useCompleteTask.mockReturnValue({ mutate, isPending: true, variables: 42 });
+
+    renderPage('/tasks?taskId=42');
+
+    expect(await screen.findByRole('button', { name: /完成/ })).toBeDisabled();
+  });
+
   it('hides mobile task actions when the user lacks write permissions', async () => {
     setMobilePermissions(['task:read']);
     taskHooks.useTask.mockReturnValue({ data: baseTask, isLoading: false });
