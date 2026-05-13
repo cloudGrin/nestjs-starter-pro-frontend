@@ -224,6 +224,10 @@ function hasMediaDisplayUrl(media: Pick<FamilyMedia, 'displayUrl'>) {
   return typeof media.displayUrl === 'string' && media.displayUrl.trim().length > 0;
 }
 
+function getPreviewableFamilyMedia(media: FamilyMedia[]) {
+  return media.filter(hasMediaDisplayUrl);
+}
+
 function isVideoFile(file: File) {
   return file.type.startsWith('video/') || FAMILY_VIDEO_EXTENSIONS.test(file.name);
 }
@@ -518,7 +522,7 @@ function revokeObjectUrl(url?: string) {
 }
 
 function toPreviewItems(media: FamilyMedia[]): PreviewMediaItem[] {
-  return media.map((item) => ({
+  return getPreviewableFamilyMedia(media).map((item) => ({
     id: String(item.id),
     url: item.previewUrl || item.displayUrl,
     name: item.originalName,
@@ -809,20 +813,18 @@ function MediaGrid({
     return null;
   }
 
-  const mediaWithIndexes = media
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => hasMediaDisplayUrl(item));
+  const previewableMedia = getPreviewableFamilyMedia(media);
 
-  if (!mediaWithIndexes.length) {
+  if (!previewableMedia.length) {
     return null;
   }
 
-  const visibleMedia = compact ? mediaWithIndexes.slice(0, 2) : mediaWithIndexes.slice(0, 9);
-  const remainingCount = mediaWithIndexes.length - visibleMedia.length;
+  const visibleMedia = compact ? previewableMedia.slice(0, 2) : previewableMedia.slice(0, 9);
+  const remainingCount = previewableMedia.length - visibleMedia.length;
   const className = [
     'mobile-family-media-grid',
-    mediaWithIndexes.length === 1 ? 'single' : '',
-    !compact && mediaWithIndexes.length === 4 ? 'quad' : '',
+    previewableMedia.length === 1 ? 'single' : '',
+    !compact && previewableMedia.length === 4 ? 'quad' : '',
     compact ? 'compact' : '',
   ]
     .filter(Boolean)
@@ -830,12 +832,12 @@ function MediaGrid({
 
   return (
     <div className={className}>
-      {visibleMedia.map(({ item, index }, visibleIndex) => (
+      {visibleMedia.map((item, visibleIndex) => (
         <button
           className="mobile-family-media-item"
           key={item.id}
           type="button"
-          onClick={() => onPreview?.(index)}
+          onClick={() => onPreview?.(visibleIndex)}
         >
           {isVideo(item) ? (
             <>
@@ -1953,6 +1955,7 @@ function ChatMessageBubble({
 }) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const hasContent = Boolean(message.content);
+  const previewableMedia = getPreviewableFamilyMedia(message.media);
 
   return (
     <div className={mine ? 'mobile-family-chat-message mine' : 'mobile-family-chat-message'}>
@@ -1963,7 +1966,7 @@ function ChatMessageBubble({
             <p>{message.content}</p>
           </div>
         ) : null}
-        {message.media.map((item, index) => (
+        {previewableMedia.map((item, index) => (
           <ChatMessageMediaBubble
             key={item.id}
             media={item}
@@ -1974,7 +1977,7 @@ function ChatMessageBubble({
       </div>
       {mine ? <FamilyAvatar user={message.sender} size="small" /> : null}
       <MediaPreviewOverlay
-        items={toPreviewItems(message.media)}
+        items={toPreviewItems(previewableMedia)}
         index={previewIndex}
         onClose={() => setPreviewIndex(null)}
       />

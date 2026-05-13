@@ -664,6 +664,41 @@ describe('MobileFamilyPage', () => {
     );
   });
 
+  it('keeps feed media preview aligned after filtering missing cached media urls', () => {
+    const mixedMediaPost: FamilyPost = {
+      ...post,
+      media: [0, 1, 2].map((index) => ({
+        ...post.media[0],
+        id: 80 + index,
+        fileId: 180 + index,
+        sort: index,
+        displayUrl:
+          index === 0
+            ? (undefined as never)
+            : `/api/v1/files/${180 + index}/access?token=image-${index}`,
+        expiresAt: index === 0 ? (undefined as never) : post.media[0].expiresAt,
+      })),
+    };
+    familyHooks.useFamilyPosts.mockReturnValue({
+      data: { items: [mixedMediaPost], meta: { totalItems: 1 } },
+      isLoading: false,
+      refetch,
+    });
+
+    renderPage();
+
+    const visibleImages = screen.getAllByAltText('家庭图片');
+    expect(visibleImages).toHaveLength(2);
+    fireEvent.click(visibleImages[0].closest('button')!);
+
+    expect(screen.getByText('1/2')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /上一张/ })).not.toBeInTheDocument();
+    expect(document.querySelector('.mobile-family-preview-media img')).toHaveAttribute(
+      'src',
+      '/api/v1/files/181/access?token=image-1'
+    );
+  });
+
   it('keeps family headers vertically aligned through the shared top bar', () => {
     const topBar = cssRule('.mobile-family-top-bar');
 
