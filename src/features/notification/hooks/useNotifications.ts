@@ -3,6 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/features/auth/stores/authStore';
 import { notificationService } from '../services/notification.service';
 import type { QueryNotificationDto } from '../types/notification.types';
 
@@ -30,9 +31,13 @@ export const useNotifications = (params: QueryNotificationDto) => {
  * 获取未读通知列表
  */
 export const useUnreadNotifications = () => {
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+
   return useQuery({
     queryKey: notificationKeys.unread(),
     queryFn: () => notificationService.getUnreadList(),
+    enabled: Boolean(token && user),
   });
 };
 

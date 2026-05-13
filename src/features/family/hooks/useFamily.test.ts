@@ -87,4 +87,18 @@ describe('mergeStableFamilyPostMediaUrls', () => {
     expect(result.items[0].media[0].displayUrl).toBe('/api/v1/files/20/access?token=new');
     expect(result.items[0].media[0].expiresAt).toBe('2026-05-06T11:00:00.000Z');
   });
+
+  it('uses refreshed media urls when the previous cached media url is missing', () => {
+    const previousPost = createPost(undefined as never, '2026-05-06T10:10:00.000Z');
+    const nextPost = createPost('/api/v1/files/20/access?token=new', '2026-05-06T11:00:00.000Z');
+
+    const result = mergeStableFamilyPostMediaUrls(
+      createResult(previousPost),
+      createResult(nextPost),
+      now
+    );
+
+    expect(result.items[0].media[0].displayUrl).toBe('/api/v1/files/20/access?token=new');
+    expect(result.items[0].media[0].expiresAt).toBe('2026-05-06T11:00:00.000Z');
+  });
 });

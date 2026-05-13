@@ -1,17 +1,25 @@
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import {
+  MemoryRouter,
+  Route,
+  RouterProvider,
+  Routes,
+  createMemoryRouter,
+  useLocation,
+} from 'react-router-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { MobileProtectedRoute } from './MobileApp';
-
-vi.mock('./MobileShell', () => ({
-  MobileShell: () => null,
-}));
+import { mobileRoutes } from './mobileRoutes';
 
 vi.mock('./pages/MobileFamilyPage', () => ({
-  MobileFamilyChatPage: () => null,
-  MobileFamilyComposePage: () => null,
-  MobileFamilyPage: () => null,
+  MobileFamilyChatPage: () => <div data-testid="family-chat-page" />,
+  MobileFamilyComposePage: () => <div data-testid="family-compose-page" />,
+  MobileFamilyPage: () => <div data-testid="family-page" />,
+}));
+
+vi.mock('./pages/MobileLoginPage', () => ({
+  MobileLoginPage: () => <div data-testid="mobile-login-page" />,
 }));
 
 function LoginState() {
@@ -44,5 +52,16 @@ describe('MobileProtectedRoute', () => {
     await waitFor(() => {
       expect(screen.getByTestId('login-from')).toHaveTextContent('/tasks?view=today#section');
     });
+  });
+
+  it('allows unauthenticated users to open the family preview route', async () => {
+    const router = createMemoryRouter(mobileRoutes, { initialEntries: ['/family'] });
+
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('family-page')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('login-from')).not.toBeInTheDocument();
   });
 });

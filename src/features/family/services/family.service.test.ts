@@ -148,6 +148,22 @@ describe('family.service', () => {
     expect(request.get).toHaveBeenCalledWith('/family/baby');
   });
 
+  it('loads the public baby preview from the preview endpoint', async () => {
+    vi.mocked(request.get).mockResolvedValue({ profile: null, birthdays: [] });
+
+    await familyService.getPublicBabyOverview();
+
+    expect(request.get).toHaveBeenCalledWith('/family/baby/preview');
+  });
+
+  it('loads the public family post preview from the preview endpoint', async () => {
+    vi.mocked(request.get).mockResolvedValue({ items: [], meta: { totalItems: 0 } });
+
+    await familyService.getPublicPreviewPosts();
+
+    expect(request.get).toHaveBeenCalledWith('/family/posts/preview');
+  });
+
   it('saves baby profile through the backend maintenance endpoint', async () => {
     vi.mocked(request.put).mockResolvedValue({ id: 1 });
 

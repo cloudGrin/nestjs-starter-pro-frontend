@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { ReactNode } from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Dialog, Toast } from 'antd-mobile';
@@ -22,6 +22,8 @@ const familyHooks = vi.hoisted(() => ({
     chatMessages: () => ['family', 'chat-messages'],
     chatMessageList: (params: unknown) => ['family', 'chat-messages', params],
     state: () => ['family', 'state'],
+    postPreview: () => ['family', 'posts', 'preview'],
+    babyPreview: () => ['family', 'baby', 'preview'],
   },
   useFamilyPosts: vi.fn(),
   useBabyOverview: vi.fn(),
@@ -50,6 +52,8 @@ const familyServiceMocks = vi.hoisted(() => ({
   familyService: {
     getPosts: vi.fn(),
     getChatMessages: vi.fn(),
+    getPublicPreviewPosts: vi.fn(),
+    getPublicBabyOverview: vi.fn(),
     uploadFamilyMedia: vi.fn(),
   },
 }));
@@ -181,9 +185,17 @@ function renderPage(path = '/family') {
         <Route path="/family/compose" element={<MobileFamilyComposePage />} />
         <Route path="/family/posts/:id" element={<MobileFamilyPage />} />
         <Route path="/family/chat" element={<MobileFamilyChatPage />} />
+        <Route path="/login" element={<LoginState />} />
       </Routes>
     </MemoryRouter>
   );
+}
+
+function LoginState() {
+  const location = useLocation();
+  const state = location.state as { from?: string } | null;
+
+  return <div data-testid="login-from">{state?.from}</div>;
 }
 
 function readMobileCss() {
@@ -382,6 +394,93 @@ describe('MobileFamilyPage', () => {
     );
     expect(screen.getByAltText('妈妈')).toHaveAttribute('src', 'https://example.com/mom.png');
     expect(screen.queryByText('2 人喜欢')).not.toBeInTheDocument();
+  });
+
+  it('shows public baby summary and the first five family posts to guests', () => {
+    const previewPosts = Array.from({ length: 5 }, (_, index) => ({
+      ...post,
+      id: index + 1,
+      content: `公开预览动态 ${index + 1}`,
+      authorId: index + 20,
+    }));
+    useAuthStore.setState({ token: null, refreshToken: null, user: null });
+    familyHooks.useBabyOverview.mockReturnValue({
+      data: {
+        profile: {
+          id: 1,
+          nickname: '小葡萄',
+          birthDate: '2026-02-01',
+          avatarUrl: null,
+        },
+        latestGrowthRecord: {
+          id: 12,
+          measuredAt: '2026-05-01',
+          heightCm: 61.5,
+          weightKg: 6.8,
+          remark: null,
+        },
+        growthRecords: [],
+        birthdays: [],
+      },
+      isLoading: false,
+      refetch: babyRefetch,
+    });
+    familyHooks.useFamilyPosts.mockReturnValue({
+      data: { items: previewPosts, meta: { totalItems: 6 } },
+      isLoading: false,
+      refetch,
+    });
+
+    renderPage('/family');
+
+    expect(screen.getByText('小葡萄')).toBeInTheDocument();
+    expect(screen.getByText('公开预览动态 1')).toBeInTheDocument();
+    expect(screen.getByText('公开预览动态 5')).toBeInTheDocument();
+    expect(screen.queryByText('公开预览动态 6')).not.toBeInTheDocument();
+    expect(screen.getByText('登录后继续查看更多家庭动态')).toBeInTheDocument();
+    expect(markPostsReadAsync).not.toHaveBeenCalled();
+  });
+
+  it('redirects guest family actions to mobile login with the intended destination', () => {
+    useAuthStore.setState({ token: null, refreshToken: null, user: null });
+
+    const view = renderPage('/family');
+    fireEvent.click(screen.getByRole('button', { name: /家庭群聊/ }));
+    expect(screen.getByTestId('login-from')).toHaveTextContent('/family/chat');
+    view.unmount();
+
+    renderPage('/family');
+    fireEvent.click(screen.getByRole('button', { name: /发布家庭圈/ }));
+    expect(screen.getByTestId('login-from')).toHaveTextContent('/family/compose');
+  });
+
+  it('redirects guest baby summary and feed interactions to login', () => {
+    useAuthStore.setState({ token: null, refreshToken: null, user: null });
+    familyHooks.useBabyOverview.mockReturnValue({
+      data: {
+        profile: {
+          id: 1,
+          nickname: '小葡萄',
+          birthDate: '2026-02-01',
+          avatarUrl: null,
+        },
+        latestGrowthRecord: null,
+        growthRecords: [],
+        birthdays: [],
+      },
+      isLoading: false,
+      refetch: babyRefetch,
+    });
+
+    const view = renderPage('/family');
+    fireEvent.click(screen.getByRole('button', { name: /更多/ }));
+    expect(screen.getByTestId('login-from')).toHaveTextContent('/family/baby');
+    view.unmount();
+
+    renderPage('/family');
+    fireEvent.click(screen.getByRole('button', { name: /点赞/ }));
+    expect(screen.getByTestId('login-from')).toHaveTextContent('/family');
+    expect(likePost).not.toHaveBeenCalled();
   });
 
   it('refreshes the baby summary card together with the family feed', async () => {
@@ -959,6 +1058,33 @@ describe('MobileFamilyPage', () => {
     expect(image).toHaveAttribute('src', '/api/v1/files/17/access?token=webp');
     expect(image).not.toHaveAttribute('loading');
     expect(image).toHaveAttribute('decoding', 'async');
+  });
+
+  it('does not render broken feed image elements when cached media urls are missing', () => {
+    familyHooks.useFamilyPosts.mockReturnValue({
+      data: {
+        items: [
+          {
+            ...post,
+            media: [
+              {
+                ...post.media[0],
+                displayUrl: undefined as never,
+                expiresAt: undefined as never,
+              },
+            ],
+          },
+        ],
+        meta: { totalItems: 1 },
+      },
+      isLoading: false,
+      refetch,
+    });
+
+    renderPage('/family');
+
+    expect(screen.queryByAltText('家庭图片')).not.toBeInTheDocument();
+    expect(document.querySelector('.mobile-family-media-item img')).toBeNull();
   });
 
   it('keeps family dark mode readable across feed comments and chat controls', () => {

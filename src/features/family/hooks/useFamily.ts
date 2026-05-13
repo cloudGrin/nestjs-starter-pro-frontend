@@ -21,12 +21,14 @@ export const familyQueryKeys = {
   all: ['family'] as const,
   posts: () => ['family', 'posts'] as const,
   postList: (params: QueryFamilyPostsParams) => ['family', 'posts', params] as const,
+  postPreview: () => ['family', 'posts', 'preview'] as const,
   post: (id: number) => ['family', 'posts', id] as const,
   chatMessages: () => ['family', 'chat-messages'] as const,
   chatMessageList: (params: QueryFamilyChatMessagesParams) =>
     ['family', 'chat-messages', params] as const,
   state: () => ['family', 'state'] as const,
   baby: () => ['family', 'baby'] as const,
+  babyPreview: () => ['family', 'baby', 'preview'] as const,
 };
 
 const FAMILY_MEDIA_LINK_REFRESH_BUFFER_MS = 60 * 1000;
@@ -35,6 +37,18 @@ function isReusableFamilyMediaLink(expiresAt: string, now: number) {
   const expiresAtTime = Date.parse(expiresAt);
   return (
     Number.isFinite(expiresAtTime) && expiresAtTime - now > FAMILY_MEDIA_LINK_REFRESH_BUFFER_MS
+  );
+}
+
+function hasReusableFamilyMediaLink(
+  media: Pick<FamilyPost['media'][number], 'displayUrl' | 'expiresAt'>,
+  now: number
+) {
+  return (
+    typeof media.displayUrl === 'string' &&
+    media.displayUrl.trim().length > 0 &&
+    typeof media.expiresAt === 'string' &&
+    isReusableFamilyMediaLink(media.expiresAt, now)
   );
 }
 
@@ -59,15 +73,15 @@ export function mergeStableFamilyPostMediaUrls(
       ...post,
       media: post.media.map((media) => {
         const previousMedia = previousMediaByKey.get(`${media.id}:${media.fileId}`);
-        if (!previousMedia || !isReusableFamilyMediaLink(previousMedia.expiresAt, now)) {
+        if (!previousMedia || !hasReusableFamilyMediaLink(previousMedia, now)) {
           return media;
         }
 
         return {
           ...media,
           displayUrl: previousMedia.displayUrl,
-          previewUrl: previousMedia.previewUrl,
-          posterUrl: previousMedia.posterUrl,
+          ...(previousMedia.previewUrl ? { previewUrl: previousMedia.previewUrl } : {}),
+          ...(previousMedia.posterUrl ? { posterUrl: previousMedia.posterUrl } : {}),
           expiresAt: previousMedia.expiresAt,
         };
       }),
@@ -77,12 +91,19 @@ export function mergeStableFamilyPostMediaUrls(
 
 export function useFamilyPosts(params: QueryFamilyPostsParams) {
   const queryClient = useQueryClient();
-  const queryKey = familyQueryKeys.postList(params);
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = Boolean(token && user);
+  const queryKey = isAuthenticated
+    ? familyQueryKeys.postList(params)
+    : familyQueryKeys.postPreview();
 
   return useQuery({
     queryKey,
     queryFn: async () => {
-      const next = await familyService.getPosts(params);
+      const next = isAuthenticated
+        ? await familyService.getPosts(params)
+        : await familyService.getPublicPreviewPosts();
       const previous = queryClient.getQueryData<FamilyPaginationResult<FamilyPost>>(queryKey);
       return mergeStableFamilyPostMediaUrls(previous, next);
     },
@@ -92,9 +113,14 @@ export function useFamilyPosts(params: QueryFamilyPostsParams) {
 }
 
 export function useBabyOverview() {
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = Boolean(token && user);
+
   return useQuery({
-    queryKey: familyQueryKeys.baby(),
-    queryFn: () => familyService.getBabyOverview(),
+    queryKey: isAuthenticated ? familyQueryKeys.baby() : familyQueryKeys.babyPreview(),
+    queryFn: () =>
+      isAuthenticated ? familyService.getBabyOverview() : familyService.getPublicBabyOverview(),
     staleTime: 60 * 1000,
   });
 }

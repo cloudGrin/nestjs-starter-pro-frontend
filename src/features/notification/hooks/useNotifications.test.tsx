@@ -1,7 +1,7 @@
 import { waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useUnreadNotifications } from './useNotifications';
-import { renderWithProviders } from '@/test/test-utils';
+import { clearMockUser, mockUsers, renderWithProviders, setMockUser } from '@/test/test-utils';
 
 const serviceMocks = vi.hoisted(() => ({
   getList: vi.fn(),
@@ -27,10 +27,13 @@ function UnreadNotificationsConsumer() {
 describe('notification hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearMockUser();
     serviceMocks.getUnreadList.mockResolvedValue([]);
   });
 
   it('useUnreadNotifications 只负责查询未读通知', async () => {
+    setMockUser(mockUsers.admin);
+
     renderWithProviders(
       <>
         <UnreadNotificationsConsumer />
@@ -39,5 +42,11 @@ describe('notification hooks', () => {
     );
 
     await waitFor(() => expect(serviceMocks.getUnreadList).toHaveBeenCalled());
+  });
+
+  it('skips unread notification requests before mobile guests log in', async () => {
+    renderWithProviders(<UnreadNotificationsConsumer />);
+
+    await waitFor(() => expect(serviceMocks.getUnreadList).not.toHaveBeenCalled());
   });
 });

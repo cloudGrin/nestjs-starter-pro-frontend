@@ -72,6 +72,8 @@ function normalizeFamilyUploadFile(file: File) {
 export const familyService = {
   getBabyOverview: () => request.get<BabyOverview>('/family/baby'),
 
+  getPublicBabyOverview: () => request.get<BabyOverview>('/family/baby/preview'),
+
   saveBabyProfile: (data: SaveBabyProfileDto) =>
     request.put<BabyProfile>('/family/baby/profile', data, {
       requestOptions: {
@@ -166,6 +168,9 @@ export const familyService = {
 
   getPosts: (params: QueryFamilyPostsParams) =>
     request.get<FamilyPaginationResult<FamilyPost>>(`${BASE_URL}/posts`, { params }),
+
+  getPublicPreviewPosts: () =>
+    request.get<FamilyPaginationResult<FamilyPost>>(`${BASE_URL}/posts/preview`),
 
   getPost: (id: number) => request.get<FamilyPost>(`${BASE_URL}/posts/${id}`),
 

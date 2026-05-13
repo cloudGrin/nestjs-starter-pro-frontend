@@ -25,7 +25,7 @@ import {
   SendOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   familyQueryKeys,
   useCreateFamilyChatMessage,
@@ -218,6 +218,10 @@ function isNearScrollBottom(element: HTMLElement | null) {
 
 function isVideo(media: Pick<FamilyMedia, 'mediaType' | 'mimeType'>) {
   return media.mediaType === 'video' || media.mimeType?.startsWith('video/');
+}
+
+function hasMediaDisplayUrl(media: Pick<FamilyMedia, 'displayUrl'>) {
+  return typeof media.displayUrl === 'string' && media.displayUrl.trim().length > 0;
 }
 
 function isVideoFile(file: File) {
@@ -805,12 +809,20 @@ function MediaGrid({
     return null;
   }
 
-  const visibleMedia = compact ? media.slice(0, 2) : media.slice(0, 9);
-  const remainingCount = media.length - visibleMedia.length;
+  const mediaWithIndexes = media
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => hasMediaDisplayUrl(item));
+
+  if (!mediaWithIndexes.length) {
+    return null;
+  }
+
+  const visibleMedia = compact ? mediaWithIndexes.slice(0, 2) : mediaWithIndexes.slice(0, 9);
+  const remainingCount = mediaWithIndexes.length - visibleMedia.length;
   const className = [
     'mobile-family-media-grid',
-    media.length === 1 ? 'single' : '',
-    !compact && media.length === 4 ? 'quad' : '',
+    mediaWithIndexes.length === 1 ? 'single' : '',
+    !compact && mediaWithIndexes.length === 4 ? 'quad' : '',
     compact ? 'compact' : '',
   ]
     .filter(Boolean)
@@ -818,7 +830,7 @@ function MediaGrid({
 
   return (
     <div className={className}>
-      {visibleMedia.map((item, index) => (
+      {visibleMedia.map(({ item, index }, visibleIndex) => (
         <button
           className="mobile-family-media-item"
           key={item.id}
@@ -841,7 +853,7 @@ function MediaGrid({
           ) : (
             <img src={item.displayUrl} alt="家庭图片" decoding="async" />
           )}
-          {remainingCount > 0 && index === visibleMedia.length - 1 ? (
+          {remainingCount > 0 && visibleIndex === visibleMedia.length - 1 ? (
             <span className="mobile-family-media-more">+{remainingCount}</span>
           ) : null}
         </button>
@@ -1191,7 +1203,7 @@ function FamilyPostCard({
   onToggleComment: () => void;
   canDeleteComment?: (comment: FamilyPostComment) => boolean;
 }) {
-  const hasMedia = post.media.length > 0;
+  const hasMedia = post.media.some(hasMediaDisplayUrl);
   const comments = post.comments ?? [];
   const reactions = (
     <div className="mobile-family-feed-reactions">
@@ -1301,6 +1313,7 @@ function FamilyPostCard({
 export function MobileFamilyPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const babyOverviewQuery = useBabyOverview();
   const postsQuery = useFamilyPosts(FAMILY_POST_LIST_PARAMS);
@@ -1310,7 +1323,9 @@ export function MobileFamilyPage() {
   const deleteComment = useDeleteFamilyComment();
   const likePost = useLikeFamilyPost();
   const unlikePost = useUnlikeFamilyPost();
+  const token = useAuthStore((state) => state.token);
   const currentUser = useAuthStore((state) => state.user);
+  const isAuthenticated = Boolean(token && currentUser);
   const posts = useMemo(() => postsQuery.data?.items ?? [], [postsQuery.data?.items]);
   const latestPostId = useMemo(() => getLatestPostId(posts), [posts]);
   const postListQueryKey = familyQueryKeys.postList(FAMILY_POST_LIST_PARAMS);
@@ -1327,7 +1342,28 @@ export function MobileFamilyPage() {
   const commentSubmitPressRef = useRef(false);
   const commentSubmitPressTimerRef = useRef<number | null>(null);
   const pendingPostPrompt = formatNewPostPrompt(pendingPostEvents);
-  const chatUnreadBadge = formatUnreadBadge(familyReadState?.unreadChatMessages);
+  const chatUnreadBadge = isAuthenticated
+    ? formatUnreadBadge(familyReadState?.unreadChatMessages)
+    : null;
+  const currentPath = `${location.pathname}${location.search}${location.hash}`;
+  const hasMoreGuestPosts =
+    !isAuthenticated && (postsQuery.data?.meta.totalItems ?? posts.length) > posts.length;
+
+  const requestLogin = useCallback(
+    (from = currentPath) => {
+      navigate('/login', { state: { from } });
+    },
+    [currentPath, navigate]
+  );
+
+  const requireAuthenticated = useCallback(
+    (from = currentPath) => {
+      if (isAuthenticated) return true;
+      requestLogin(from);
+      return false;
+    },
+    [currentPath, isAuthenticated, requestLogin]
+  );
 
   const clearCommentSubmitPress = () => {
     commentSubmitPressRef.current = false;
@@ -1352,9 +1388,9 @@ export function MobileFamilyPage() {
   useFamilyRealtime({ refetchPosts: postsQuery.refetch, onPostCreated: handlePostCreated });
 
   useEffect(() => {
-    if (!latestPostId) return;
+    if (!isAuthenticated || !latestPostId) return;
     void markPostsReadAsync(latestPostId);
-  }, [latestPostId, markPostsReadAsync]);
+  }, [isAuthenticated, latestPostId, markPostsReadAsync]);
 
   useEffect(() => {
     if (!commentTarget || typeof window === 'undefined') return undefined;
@@ -1386,12 +1422,13 @@ export function MobileFamilyPage() {
     const [result] = await Promise.all([postsQuery.refetch(), babyOverviewQuery.refetch()]);
     const refreshedLatestPostId = getLatestPostId(result.data?.items ?? []);
     setPendingPostEvents([]);
-    if (refreshedLatestPostId) {
+    if (isAuthenticated && refreshedLatestPostId) {
       await markPostsReadAsync(refreshedLatestPostId);
     }
   };
 
   const loadPendingPosts = async () => {
+    if (!requireAuthenticated('/family')) return;
     if (loadingPendingPosts) return;
     setLoadingPendingPosts(true);
     try {
@@ -1442,6 +1479,8 @@ export function MobileFamilyPage() {
   };
 
   const toggleComment = (postId: number) => {
+    if (!requireAuthenticated('/family')) return;
+
     const nextTarget = { postId };
     setCommentTarget((current) => {
       if (sameCommentTarget(current, nextTarget)) {
@@ -1458,6 +1497,8 @@ export function MobileFamilyPage() {
   };
 
   const replyToComment = (postId: number, comment: FamilyPostComment) => {
+    if (!requireAuthenticated('/family')) return;
+
     const nextTarget = {
       postId,
       parentCommentId: comment.id,
@@ -1505,6 +1546,7 @@ export function MobileFamilyPage() {
   };
 
   const holdCommentOpenForSubmit = () => {
+    if (!isAuthenticated) return;
     if (!commentTarget) return;
 
     commentSubmitPressRef.current = true;
@@ -1521,6 +1563,8 @@ export function MobileFamilyPage() {
   };
 
   const submitComment = async (postId: number) => {
+    if (!requireAuthenticated('/family')) return;
+
     const content = commentDraft.trim();
     if (!content) {
       logMobileDebugEvent('family.comment.submit.skip-empty', { postId });
@@ -1608,6 +1652,8 @@ export function MobileFamilyPage() {
   };
 
   const toggleLike = (post: FamilyPost) => {
+    if (!requireAuthenticated('/family')) return;
+
     const displayPost = getDisplayPost(post);
     const nextLikedByMe = !displayPost.likedByMe;
 
@@ -1646,7 +1692,11 @@ export function MobileFamilyPage() {
           <FamilyIconButton
             className="mobile-family-logo-button"
             label="家庭群聊"
-            onClick={() => navigate('/family/chat')}
+            onClick={() => {
+              if (requireAuthenticated('/family/chat')) {
+                navigate('/family/chat');
+              }
+            }}
             badge={chatUnreadBadge}
           >
             <MessageFilled />
@@ -1658,7 +1708,11 @@ export function MobileFamilyPage() {
         <section className="mobile-family-feed">
           <MobileBabySummaryCard
             overview={babyOverviewQuery.data}
-            onClick={() => navigate('/family/baby')}
+            onClick={() => {
+              if (requireAuthenticated('/family/baby')) {
+                navigate('/family/baby');
+              }
+            }}
             compact
             showMoreHint
           />
@@ -1701,6 +1755,15 @@ export function MobileFamilyPage() {
               />
             ))
           )}
+          {hasMoreGuestPosts ? (
+            <button
+              className="mobile-family-preview-login"
+              type="button"
+              onClick={() => requestLogin('/family')}
+            >
+              登录后继续查看更多家庭动态
+            </button>
+          ) : null}
         </section>
       </PullToRefresh>
 
@@ -1708,7 +1771,11 @@ export function MobileFamilyPage() {
       <button
         className="mobile-family-compose-fab"
         type="button"
-        onClick={() => navigate('/family/compose')}
+        onClick={() => {
+          if (requireAuthenticated('/family/compose')) {
+            navigate('/family/compose');
+          }
+        }}
       >
         <PlusOutlined />
         <span className="mobile-family-sr">发布家庭圈</span>
@@ -1839,6 +1906,10 @@ function ChatMessageMediaBubble({
   index: number;
   onPreview: (index: number) => void;
 }) {
+  if (!hasMediaDisplayUrl(media)) {
+    return null;
+  }
+
   const video = isVideo(media);
 
   if (video) {
