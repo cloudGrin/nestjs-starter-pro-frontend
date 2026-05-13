@@ -441,6 +441,19 @@ describe('MobileFamilyPage', () => {
     expect(markPostsReadAsync).not.toHaveBeenCalled();
   });
 
+  it('shows the guest login guide even when the public preview has fewer than five posts', () => {
+    useAuthStore.setState({ token: null, refreshToken: null, user: null });
+    familyHooks.useFamilyPosts.mockReturnValue({
+      data: { items: [post], meta: { totalItems: 1 } },
+      isLoading: false,
+      refetch,
+    });
+
+    renderPage('/family');
+
+    expect(screen.getByText('登录后继续查看更多家庭动态')).toBeInTheDocument();
+  });
+
   it('redirects guest family actions to mobile login with the intended destination', () => {
     useAuthStore.setState({ token: null, refreshToken: null, user: null });
 
@@ -473,7 +486,9 @@ describe('MobileFamilyPage', () => {
     });
 
     const view = renderPage('/family');
-    fireEvent.click(screen.getByRole('button', { name: /更多/ }));
+    const babySummaryCard = screen.getByText('小葡萄').closest('button');
+    expect(babySummaryCard).not.toBeNull();
+    fireEvent.click(babySummaryCard!);
     expect(screen.getByTestId('login-from')).toHaveTextContent('/family/baby');
     view.unmount();
 

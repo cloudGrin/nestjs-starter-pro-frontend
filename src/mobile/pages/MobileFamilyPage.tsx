@@ -1348,8 +1348,7 @@ export function MobileFamilyPage() {
     ? formatUnreadBadge(familyReadState?.unreadChatMessages)
     : null;
   const currentPath = `${location.pathname}${location.search}${location.hash}`;
-  const hasMoreGuestPosts =
-    !isAuthenticated && (postsQuery.data?.meta.totalItems ?? posts.length) > posts.length;
+  const shouldShowGuestLoginPrompt = !isAuthenticated;
 
   const requestLogin = useCallback(
     (from = currentPath) => {
@@ -1757,7 +1756,7 @@ export function MobileFamilyPage() {
               />
             ))
           )}
-          {hasMoreGuestPosts ? (
+          {shouldShowGuestLoginPrompt ? (
             <button
               className="mobile-family-preview-login"
               type="button"
